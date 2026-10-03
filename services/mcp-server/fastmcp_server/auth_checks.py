@@ -19,10 +19,10 @@ from typing import Any, Iterable
 from urllib.parse import quote
 
 from fastmcp.exceptions import AuthorizationError
-from fastmcp.server.auth.authorization import AuthCheck, AuthContext
+from fastmcp.server.auth import AuthCheck, AuthContext
 from fastmcp.server.dependencies import get_access_token
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 from starlette.responses import JSONResponse
 import mcp.types as mt
 
@@ -43,6 +43,10 @@ PROTECTED_MCP_METHODS = frozenset(
         "tools/call",
         "resources/read",
         "prompts/get",
+        "tasks/get",
+        "tasks/update",
+        "tasks/cancel",
+        "subscriptions/listen",
     }
 )
 

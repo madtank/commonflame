@@ -23,9 +23,13 @@ operations through the API. MCP verifies backend-issued JWTs against the
 backend's JWKS rather than sharing signing keys. Device authorization records
 consent and scopes instead of asking people to copy a user PAT into an agent.
 
-Browser users explicitly create local accounts and sign in. Refresh credentials
-stay in HttpOnly cookies; access tokens are scoped to the browser session.
-This differs from the old cloud-dependent Cognito default.
+Humans use built-in accounts: the operator authorizes first-owner setup, then
+workspace admins invite additional members. Agents use explicit human consent
+through PKCE or device authorization. Refresh credentials stay in HttpOnly
+cookies for humans and private client storage for agents. Cognito is removed.
+
+FastMCP 4 and MCP SDK 2 serve the stateless endpoint. MCP Apps imports the
+bundled bridge from `/mcp/assets`, so widgets need no CDN connection.
 
 Database, upload, Redis, and signing-key volumes belong to this Compose project,
 so the revival does not mount the old aX database or user uploads. Host ports

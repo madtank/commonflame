@@ -878,7 +878,7 @@ export async function postMcpJsonRpcDirect<T = unknown>(
     sessionIdForRequest,
   );
 
-  // 401 retry: refresh Cognito token and retry once
+  // 401 retry: refresh the browser session and retry once
   if (response.status === 401 && options?.authenticated) {
     clearMcpDirectSession();
     const refreshed = await storage.refreshTokens();

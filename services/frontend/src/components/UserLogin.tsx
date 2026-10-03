@@ -1,26 +1,58 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { ArrowRight, Loader2, Moon, Sun } from 'lucide-react';
 import { Logo } from './Logo';
-import { loginLocal } from '@/lib/local-auth';
+import { createAccount, getAccountStatus, loginLocal, type AccountStatus } from '@/lib/local-auth';
+import { accountEntryHref, getApprovalReturnPath } from '@/lib/approval-navigation';
 import { applyThemePreference, getStoredThemeState } from '@/lib/theme';
 
-export function UserLogin({ onLogin }: { onLogin: (token: string, username: string) => void }) {
+type UserLoginProps = {
+  onLogin: (token: string, username: string) => void;
+  initialMode?: 'login' | 'account';
+};
+
+export function UserLogin({ onLogin, initialMode = 'login' }: UserLoginProps) {
+  const creatingAccount = initialMode === 'account';
+  const next = getApprovalReturnPath();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [accountToken, setAccountToken] = useState('');
+  const [status, setStatus] = useState<AccountStatus | null>(null);
+  const [statusError, setStatusError] = useState('');
+  const [statusAttempt, setStatusAttempt] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [isDark, setIsDark] = useState(() => getStoredThemeState().isDarkMode);
+  useEffect(() => {
+    let active = true;
+    setStatusError('');
+    getAccountStatus().then(value => { if (active) setStatus(value); })
+      .catch(() => { if (active) setStatusError('Could not check account setup. Please try again.'); });
+    return () => { active = false; };
+  }, [statusAttempt]);
+  const ownerSetup = status?.setup_required === true;
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); setError(''); setBusy(true);
+    event.preventDefault();
+    setError('');
+    if (creatingAccount && (!status || password !== confirmation)) {
+      setError(status ? 'Your passwords do not match.' : 'Wait for account setup to finish loading.');
+      return;
+    }
+    setBusy(true);
     try {
-      const session = await loginLocal(username.trim(), password);
-      setPassword('');
+      const session = creatingAccount
+        ? await createAccount({ token: accountToken.trim(), username: username.trim(), password, ...(fullName.trim() ? { full_name: fullName.trim() } : {}) }, ownerSetup ? 'setup' : 'invite')
+        : await loginLocal(username.trim(), password);
+      setPassword(''); setConfirmation(''); setAccountToken('');
       onLogin(session.access_token, session.user.username);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'The server is unavailable. Please try again.');
+      setError(cause instanceof Error ? cause.message : 'Waystation is unavailable. Please try again.');
     } finally { setBusy(false); }
   };
   const toggleTheme = () => setIsDark(applyThemePreference(isDark ? 'light' : 'dark').isDarkMode);
+  const inputClass = `w-full rounded-xl border px-3 py-3 outline-none focus:ring-2 focus:ring-cyan-500 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`;
+  const heading = creatingAccount ? (ownerSetup ? 'Create the owner account' : 'Create your account') : 'Welcome to your Waystation';
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#080f1a] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
@@ -33,32 +65,49 @@ export function UserLogin({ onLogin }: { onLogin: (token: string, username: stri
         <section>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-500">Your agents. Shared ground.</p>
           <h1 className="mt-5 max-w-xl text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">Good work starts with a place to gather.</h1>
-          <p className="mt-6 max-w-lg text-lg leading-relaxed opacity-70">Bring agents, people, tasks, and context into one workspace you run yourself.</p>
+          <p className="mt-6 max-w-lg text-lg leading-relaxed opacity-70">Bring agents, people, tasks, and context into one shared workspace.</p>
           <div className="mt-9 flex flex-wrap gap-3 text-sm">
             {['Durable conversations', 'Shared tasks', 'MCP tools'].map(label => <span key={label} className={`rounded-full border px-4 py-2 ${isDark ? 'border-slate-700' : 'border-slate-300'}`}>{label}</span>)}
           </div>
           <a href="/auth.md" className="mt-10 inline-flex items-center gap-2 text-sm font-medium text-cyan-500 hover:underline">Connect an agent <ArrowRight className="h-4 w-4" /></a>
         </section>
         <section className={`rounded-3xl border p-7 sm:p-9 ${isDark ? 'border-slate-700/70 bg-slate-900/80 shadow-2xl' : 'border-slate-200 bg-white shadow-xl shadow-slate-200/50'}`}>
-          <h2 className="text-2xl font-semibold tracking-tight">Welcome to your Waystation</h2>
-          <p className="mt-2 text-sm opacity-65">Sign in to this installation.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{heading}</h2>
+          <p className="mt-2 text-sm opacity-65">{creatingAccount
+            ? ownerSetup ? 'Use the one-time setup token from the person running this Waystation.' : 'Use the one-time invitation from a workspace owner.'
+            : next ? 'Sign in to review the agent connection.' : 'Sign in with your Waystation account.'}</p>
+          {next && <p className="mt-4 rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3 text-sm">After {creatingAccount ? 'creating your account' : 'signing in'}, you’ll return to review the connection. You decide whether to approve it.</p>}
+          {creatingAccount && !status && !statusError && <p className="mt-5 text-sm opacity-65" role="status">Checking account setup…</p>}
+          {statusError && <div className="mt-5 text-sm"><p role="alert">{statusError}</p><button type="button" className="mt-2 text-cyan-500 hover:underline" onClick={() => setStatusAttempt(value => value + 1)}>Try again</button></div>}
           <form onSubmit={submit} className="mt-7 space-y-5">
-            <div><label htmlFor="username" className="mb-2 block text-sm font-medium">Username</label>
-              <input id="username" name="username" autoComplete="username" required value={username} onChange={e => setUsername(e.target.value)} className={`w-full rounded-xl border px-3 py-3 outline-none focus:ring-2 focus:ring-cyan-500 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`} /></div>
-            <div><label htmlFor="password" className="mb-2 block text-sm font-medium">Password</label>
-              <input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} className={`w-full rounded-xl border px-3 py-3 outline-none focus:ring-2 focus:ring-cyan-500 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`} /></div>
+            <fieldset disabled={busy || (creatingAccount && !status)} className="space-y-5 disabled:opacity-60">
+              {creatingAccount && <>
+                <div><label htmlFor="account-token" className="mb-2 block text-sm font-medium">{ownerSetup ? 'Setup token' : 'Invitation token'}</label>
+                  <input id="account-token" name="account-token" type="password" autoComplete="off" spellCheck={false} required minLength={16} maxLength={256} value={accountToken} onChange={event => setAccountToken(event.target.value)} className={inputClass} aria-describedby="token-help" />
+                  <p id="token-help" className="mt-2 text-xs opacity-65">Paste your token here. It works once; keep it private.</p></div>
+                <div><label htmlFor="full-name" className="mb-2 block text-sm font-medium">Your name <span className="font-normal opacity-65">(optional)</span></label>
+                  <input id="full-name" name="full-name" autoComplete="name" maxLength={100} value={fullName} onChange={event => setFullName(event.target.value)} className={inputClass} /></div>
+              </>}
+              <div><label htmlFor="username" className="mb-2 block text-sm font-medium">Username</label>
+                <input id="username" name="username" autoComplete="username" required minLength={creatingAccount ? 3 : undefined} maxLength={creatingAccount ? 50 : 255} pattern={creatingAccount ? '[A-Za-z0-9][A-Za-z0-9_.\\-]+' : undefined} value={username} onChange={event => setUsername(event.target.value)} className={inputClass} />
+                {creatingAccount && <p className="mt-2 text-xs opacity-65">3–50 characters. Start with a letter or number; use letters, numbers, dots, dashes, or underscores.</p>}</div>
+              <div><label htmlFor="password" className="mb-2 block text-sm font-medium">Password</label>
+                <input id="password" name="password" type="password" autoComplete={creatingAccount ? 'new-password' : 'current-password'} required minLength={creatingAccount ? 12 : undefined} maxLength={512} value={password} onChange={event => setPassword(event.target.value)} className={inputClass} />
+                {creatingAccount && <p className="mt-2 text-xs opacity-65">Use at least 12 characters.</p>}</div>
+              {creatingAccount && <div><label htmlFor="confirm-password" className="mb-2 block text-sm font-medium">Confirm password</label>
+                <input id="confirm-password" name="confirm-password" type="password" autoComplete="new-password" required minLength={12} maxLength={512} value={confirmation} onChange={event => setConfirmation(event.target.value)} className={inputClass} /></div>}
+            </fieldset>
             {error && <p role="alert" className="rounded-xl border border-red-400/40 bg-red-400/10 px-3 py-3 text-sm text-red-500">{error}</p>}
-            <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />} {busy ? 'Signing in…' : 'Enter workspace'}</button>
+            <button disabled={busy || (creatingAccount && !status)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />} {busy ? creatingAccount ? 'Creating account…' : 'Signing in…' : creatingAccount ? 'Create account' : next ? 'Continue to connection' : 'Enter workspace'}</button>
           </form>
-          <details className="mt-7 border-t border-current/10 pt-5 text-sm">
-            <summary className="cursor-pointer font-medium opacity-75">Setting up for the first time?</summary>
-            <p className="mt-3 leading-relaxed opacity-70">The person running this installation creates local accounts. From the repository directory, run:</p>
-            <code className={`mt-3 block overflow-x-auto rounded-lg p-3 text-xs ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>docker compose exec backend python -m scripts.create_local_user</code>
-            <p className="mt-3 text-xs leading-relaxed opacity-60">Choose a unique password in the terminal, then sign in here.</p>
-          </details>
+          <div className="mt-7 border-t border-current/10 pt-5 text-sm">
+            {creatingAccount ? <p>Already have an account? <a href={accountEntryHref('/login', next)} className="font-medium text-cyan-500 hover:underline">Sign in</a></p>
+              : <p>{ownerSetup ? 'Setting up for the first time?' : 'Have an invitation?'} <a href={accountEntryHref('/signup', next)} className="font-medium text-cyan-500 hover:underline">{ownerSetup ? 'Set up Waystation' : 'Create an account'}</a></p>}
+            {creatingAccount && <p className="mt-3 text-xs leading-relaxed opacity-65">{ownerSetup ? 'Ask the person running this Waystation for a setup token.' : 'Ask a workspace owner for an invitation if you don’t have one.'}</p>}
+          </div>
         </section>
       </main>
-      <footer className="mx-auto max-w-6xl px-6 pb-7 text-xs opacity-50">Waystation · Self-hosted agent collaboration</footer>
+      <footer className="mx-auto max-w-6xl px-6 pb-7 text-xs opacity-50">Waystation · A shared home for your agents</footer>
     </div>
   );
 }

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import logging
 import asyncio
-import os
 import re
 from dataclasses import dataclass
 from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_access_token
-from mcp.shared.exceptions import McpError
-import mcp.types
+from fastmcp.exceptions import McpError
+import mcp.types as mt
 
 logger = logging.getLogger(__name__)
 
@@ -147,27 +146,6 @@ def mentioned_agents(content: str | None) -> set[str]:
     }
 
 
-def _csv_env_values(name: str) -> frozenset[str]:
-    return frozenset(
-        value.strip() for value in os.getenv(name, "").split(",") if value.strip()
-    )
-
-
-def _claim_values(value: Any) -> set[str]:
-    if isinstance(value, str):
-        return {value} if value else set()
-    if isinstance(value, list):
-        return {str(item) for item in value if item}
-    return set()
-
-
-def _claim_client_ids(claims: dict[str, Any]) -> set[str]:
-    claim_client_ids = set()
-    claim_client_ids.update(_claim_values(claims.get("client_id")))
-    claim_client_ids.update(_claim_values(claims.get("azp")))
-    return claim_client_ids
-
-
 def _current_token_claims(*, allow_no_auth: bool = False) -> dict[str, Any] | None:
     try:
         token = get_access_token()
@@ -176,29 +154,14 @@ def _current_token_claims(*, allow_no_auth: bool = False) -> dict[str, Any] | No
             "Inbox subscription token context is unavailable; rejecting subscription",
             exc_info=True,
         )
-        raise McpError(
-            mcp.types.ErrorData(
-                code=-32602,
-                message="Agent token context is required for inbox subscriptions.",
-            )
-        ) from exc
+        raise McpError(code=-32602, message="Agent token context is required for inbox subscriptions.") from exc
     if token is None and allow_no_auth:
         return None
     if token is None:
-        raise McpError(
-            mcp.types.ErrorData(
-                code=-32602,
-                message="Agent token is required for inbox subscriptions.",
-            )
-        )
+        raise McpError(code=-32602, message="Agent token is required for inbox subscriptions.")
     claims = getattr(token, "claims", None)
     if not isinstance(claims, dict):
-        raise McpError(
-            mcp.types.ErrorData(
-                code=-32602,
-                message="Agent token claims are required for inbox subscriptions.",
-            )
-        )
+        raise McpError(code=-32602, message="Agent token claims are required for inbox subscriptions.")
     return claims
 
 
@@ -220,8 +183,7 @@ def _agent_from_inbox_uri(uri: str, *, current_agent: str | None) -> str | None:
 
 
 def _is_frontend_user_token(claims: dict[str, Any]) -> bool:
-    frontend_client_ids = _csv_env_values("COGNITO_FRONTEND_CLIENT_ID")
-    return bool(frontend_client_ids and _claim_client_ids(claims) & frontend_client_ids)
+    return claims.get("typ") == "local-user"
 
 
 def _claim_agent_id(claims: dict[str, Any]) -> str | None:
@@ -240,12 +202,7 @@ def _authorize_subscription_agent(
     current_key = normalize_agent_name(current_agent)
     target_key = normalize_agent_name(target_agent)
     if target_key != current_key:
-        raise McpError(
-            mcp.types.ErrorData(
-                code=-32602,
-                message="Inbox subscriptions are limited to the connected agent.",
-            )
-        )
+        raise McpError(code=-32602, message="Inbox subscriptions are limited to the connected agent.")
 
     # token_claims=None is reserved for servers with no auth middleware, such
     # as the local MCP smoke harness. In authenticated deployments,
@@ -253,35 +210,15 @@ def _authorize_subscription_agent(
     # multi-tenant expansion remains blocked on TODO(AUTH-INBOX-SUBSCRIPTIONS).
     if token_claims is not None:
         if _is_frontend_user_token(token_claims):
-            raise McpError(
-                mcp.types.ErrorData(
-                    code=-32602,
-                    message="Agent token is required for inbox subscriptions.",
-                )
-            )
+            raise McpError(code=-32602, message="Agent token is required for inbox subscriptions.")
         claimed_agent = token_claims.get("agent_name")
         if not claimed_agent:
-            raise McpError(
-                mcp.types.ErrorData(
-                    code=-32602,
-                    message="Agent token claim is required for inbox subscriptions.",
-                )
-            )
+            raise McpError(code=-32602, message="Agent token claim is required for inbox subscriptions.")
         if normalize_agent_name(str(claimed_agent)) != current_key:
-            raise McpError(
-                mcp.types.ErrorData(
-                    code=-32602,
-                    message="Connected agent does not match token claims.",
-                )
-            )
+            raise McpError(code=-32602, message="Connected agent does not match token claims.")
         claimed_agent_id = _claim_agent_id(token_claims)
         if not claimed_agent_id:
-            raise McpError(
-                mcp.types.ErrorData(
-                    code=-32602,
-                    message="Agent token id claim is required for inbox subscriptions.",
-                )
-            )
+            raise McpError(code=-32602, message="Agent token id claim is required for inbox subscriptions.")
         return target_key, claimed_agent_id
 
     return target_key, None
@@ -290,23 +227,13 @@ def _authorize_subscription_agent(
 def _resolve_subscription_target(uri: str, request: Any) -> tuple[str, str, str]:
     current_agent = _agent_from_request(request)
     if not current_agent:
-        raise McpError(
-            mcp.types.ErrorData(
-                code=-32602,
-                message="Agent identity is required to use ax://inbox/me.",
-            )
-        )
+        raise McpError(code=-32602, message="Agent identity is required to use ax://inbox/me.")
     # Non-me subscriptions still resolve against the route-injected connected
     # agent. Keep TODO(AUTH-INBOX-SUBSCRIPTIONS) closed before expanding this
     # primitive beyond the current single-process authenticated route model.
     agent_name = _agent_from_inbox_uri(uri, current_agent=current_agent)
     if not agent_name:
-        raise McpError(
-            mcp.types.ErrorData(
-                code=-32602,
-                message="Only ax://inbox/me or ax://inbox/{agent} subscriptions are supported.",
-            )
-        )
+        raise McpError(code=-32602, message="Only ax://inbox/me or ax://inbox/{agent} subscriptions are supported.")
     return current_agent, agent_name, uri
 
 
@@ -472,70 +399,30 @@ def register_inbox_notifications(
         )
         return
 
-    # FastMCP 3.3 does not expose public decorators for resource subscription
-    # capability advertising, so these handlers use the underlying MCP server
-    # API. TODO(FASTMCP-SUBSCRIBE-PUBLIC-API): replace this when FastMCP offers
-    # public subscription capability registration. Validated against the
-    # fastmcp[tasks]>=3.3.1,<3.4.0 requirement in this repo.
-    if getattr(mcp._mcp_server, "_ax_inbox_subscribe_capability", False):
+    # SDK v2 uses explicit context/params handlers. Keep this stateful legacy
+    # compatibility surface; modern sessionless clients poll messages.check.
+    lowlevel = mcp._mcp_server
+    if getattr(lowlevel, "_ax_inbox_subscribe_capability", False):
         return
 
-    original_get_capabilities = mcp._mcp_server.get_capabilities
-    if not callable(original_get_capabilities):
-        raise RuntimeError(
-            "FastMCP get_capabilities API changed; cannot advertise inbox subscriptions"
-        )
-    if not hasattr(mcp._mcp_server, "subscribe_resource") or not hasattr(
-        mcp._mcp_server,
-        "unsubscribe_resource",
-    ):
-        raise RuntimeError(
-            "FastMCP resource subscription API changed; cannot register inbox subscriptions"
-        )
-
-    def get_capabilities(notification_options, experimental_capabilities):
-        capabilities = original_get_capabilities(
-            notification_options,
-            experimental_capabilities,
-        )
-        if capabilities.resources is not None:
-            capabilities.resources.subscribe = True
-        return capabilities
-
-    mcp._mcp_server.get_capabilities = get_capabilities
-
-    # MCP registers one resources/subscribe handler for the whole server, not
-    # per resource URI. Until FastMCP exposes resource-scoped subscription
-    # routing, this global handler intentionally accepts only ax://inbox/* and
-    # returns InvalidParams for other resource namespaces.
-    @mcp._mcp_server.subscribe_resource()
-    async def _subscribe_inbox(uri) -> None:
-        ctx = mcp._mcp_server.request_context
+    async def subscribe(ctx, params):
         resolved = _resolve_subscription(
-            str(uri),
-            ctx.request,
-            allow_no_auth=allow_no_auth,
+            str(params.uri), ctx.request, allow_no_auth=allow_no_auth,
         )
         inbox_subscriptions.subscribe(
-            resolved.agent_name,
-            resolved.uri,
-            ctx.session,
-            agent_id=resolved.agent_id,
+            resolved.agent_name, resolved.uri, ctx.session, agent_id=resolved.agent_id,
         )
+        return mt.EmptyResult()
 
-    @mcp._mcp_server.unsubscribe_resource()
-    async def _unsubscribe_inbox(uri) -> None:
-        ctx = mcp._mcp_server.request_context
+    async def unsubscribe(ctx, params):
         resolved = _resolve_subscription(
-            str(uri),
-            ctx.request,
-            allow_no_auth=allow_no_auth,
+            str(params.uri), ctx.request, allow_no_auth=allow_no_auth,
         )
         inbox_subscriptions.unsubscribe(
-            resolved.agent_name,
-            resolved.uri,
-            ctx.session,
-            agent_id=resolved.agent_id,
+            resolved.agent_name, resolved.uri, ctx.session, agent_id=resolved.agent_id,
         )
+        return mt.EmptyResult()
 
-    mcp._mcp_server._ax_inbox_subscribe_capability = True
+    lowlevel.add_request_handler("resources/subscribe", mt.SubscribeRequestParams, subscribe)
+    lowlevel.add_request_handler("resources/unsubscribe", mt.UnsubscribeRequestParams, unsubscribe)
+    lowlevel._ax_inbox_subscribe_capability = True

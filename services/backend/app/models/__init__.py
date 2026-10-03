@@ -62,6 +62,7 @@ OrganizationMembership = SpaceMembership
 OrganizationInvite = SpaceInviteCode
 
 __all__ = [
+    "AccountInvite",
     "AccessRequest",
     "Agent",
     "AgentKey",
@@ -116,3 +117,5 @@ __all__ = [
     "ContextPatch",
     "ContextStateVersion",
 ]
+
+from .account_invite import AccountInvite

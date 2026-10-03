@@ -158,7 +158,7 @@ const writeAccessToken = (value: string | null): void => {
 };
 
 export const storage = {
-  // Token management - using safeLocalStorage for persistence (GitHub SSO)
+  // Short-lived access credentials stay within this browser tab.
   getUserToken(): string | null {
     return readAccessToken();
   },
@@ -183,7 +183,7 @@ export const storage = {
   },
 
   // Compatibility methods for older API callers. Refresh tokens are never
-  // available to JavaScript in local-auth mode.
+  // available to JavaScript with built-in account authentication.
   getRefreshToken(): string | null { return null; },
   setRefreshToken(_token: string): void {},
   removeRefreshToken(): void {},

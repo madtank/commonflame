@@ -348,6 +348,11 @@ describe("AxMcpAppWidget", () => {
           jsonrpc: "2.0",
           id: "initialize-panel-mode",
           result: expect.objectContaining({
+            hostCapabilities: expect.objectContaining({
+              sandbox: {
+                csp: { resourceDomains: [window.location.origin] },
+              },
+            }),
             hostContext: expect.objectContaining({
               displayMode: "fullscreen",
               containerDimensions: expect.objectContaining({

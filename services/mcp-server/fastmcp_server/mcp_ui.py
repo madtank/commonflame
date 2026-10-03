@@ -7,13 +7,22 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-from fastmcp_server.fastmcp_compat import AppConfig, ResourceCSP
-from fastmcp.tools.tool import ToolResult
+from fastmcp.apps import AppConfig, ResourceCSP
+from fastmcp.tools import ToolResult
+from fastmcp_server.config import MCP_SERVER_URL
 
 WIDGET_STATIC_DIR = Path(__file__).parent / "resources" / "static" / "widgets"
+MCP_APPS_BRIDGE_VERSION = "2.0.3"
+MCP_APPS_BRIDGE_PATH = f"/mcp/assets/ext-apps-{MCP_APPS_BRIDGE_VERSION}.js"
+D3_VERSION = "7.9.0"
+D3_ASSET_PATH = f"/mcp/assets/d3-{D3_VERSION}.min.js"
+_public_url = urlsplit(MCP_SERVER_URL)
+MCP_PUBLIC_ORIGIN = f"{_public_url.scheme}://{_public_url.netloc}"
+MCP_APPS_BRIDGE_URL = MCP_PUBLIC_ORIGIN + MCP_APPS_BRIDGE_PATH
 WIDGET_RESOURCE_DOMAINS = [
-    "https://unpkg.com",
+    MCP_PUBLIC_ORIGIN,
     # Agent dashboard avatars are rendered as static image resources. Keep this
     # list in sync with agent-dashboard.html's AVATAR_RESOURCE_ORIGINS and
     # AVATAR_UPLOAD_ORIGINS so the embedded MCP Apps CSP permits every remote
@@ -24,6 +33,15 @@ WIDGET_RESOURCE_DOMAINS = [
     "https://user-images.githubusercontent.com",
 ]
 WIDGET_CONNECT_DOMAINS: list[str] = []
+
+
+def load_widget_html(path: Path) -> str:
+    """Resolve the local bridge URL for isolated MCP Apps iframe resources."""
+    return path.read_text(encoding="utf-8").replace(
+        "__WAYSTATION_MCP_APPS_BRIDGE_URL__", MCP_APPS_BRIDGE_URL,
+    ).replace(
+        "__WAYSTATION_D3_URL__", MCP_PUBLIC_ORIGIN + D3_ASSET_PATH,
+    )
 
 
 @dataclass(frozen=True)

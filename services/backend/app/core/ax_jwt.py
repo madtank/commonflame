@@ -11,6 +11,7 @@ Spec: specs/AX-MCP-AUTH-001/spec.md
 
 import json
 import logging
+import os
 import time
 import uuid
 from functools import lru_cache
@@ -34,6 +35,10 @@ _SAFE_EXTRA_CLAIMS = {
     "delegated_space_owner",
     "scope",
 }
+
+
+def get_issuer() -> str:
+    return os.getenv("AX_JWT_ISSUER", _ISSUER).rstrip("/")
 
 
 @lru_cache(maxsize=1)
@@ -113,7 +118,7 @@ def mint_ax_jwt(
     now = int(time.time())
 
     payload = {
-        "iss": _ISSUER,
+        "iss": get_issuer(),
         "sub": f"agent:{agent_id}",
         "token_class": "agent_access",
         "agent_id": agent_id,
@@ -161,7 +166,7 @@ def mint_exchange_jwt(
     now = int(time.time())
 
     payload = {
-        "iss": _ISSUER,
+        "iss": get_issuer(),
         "sub": sub,
         "token_class": token_class,
         "aud": audience,

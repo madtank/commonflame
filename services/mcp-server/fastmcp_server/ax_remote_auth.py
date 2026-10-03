@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-import httpx
+import httpx2 as httpx
 from fastmcp.server.auth import RemoteAuthProvider
 from fastmcp.server.auth.providers.jwt import JWTVerifier
 from pydantic import AnyHttpUrl

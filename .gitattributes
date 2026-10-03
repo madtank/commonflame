@@ -1,0 +1,2 @@
+# Keep official vendored bundles byte-for-byte intact for integrity checks.
+services/mcp-server/fastmcp_server/resources/static/vendor/**/*.js -whitespace

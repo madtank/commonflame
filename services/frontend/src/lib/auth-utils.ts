@@ -1,7 +1,5 @@
-/** Unauthenticated actions use the local sign-in page. */
-export async function redirectToLocalLogin(): Promise<void> {
-  window.location.assign('/login');
-}
-export function getGitHubAuthUrl(): string {
-  return '/login';
+import { accountEntryHref } from './approval-navigation';
+
+export async function redirectToSignIn(next: string | null = null): Promise<void> {
+  window.location.assign(accountEntryHref('/login', next));
 }

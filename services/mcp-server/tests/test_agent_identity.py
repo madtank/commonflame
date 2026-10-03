@@ -46,7 +46,7 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
         """Agent claim space_id wins over X-Space-Id header."""
         token = SimpleNamespace(
             token="agent-jwt",
-            claims={"agent_name": "Waystation", "space_id": "claims-space"},
+            claims={"agent_name": "Waystation", "space_id": "claims-space", "agent_id": "agent-test"},
         )
         request = SimpleNamespace(headers={"x-space-id": "header-space"})
 
@@ -58,7 +58,7 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
         """When agent claims and header space_id differ, log a warning."""
         token = SimpleNamespace(
             token="agent-jwt",
-            claims={"agent_name": "Waystation", "space_id": "claims-space"},
+            claims={"agent_name": "Waystation", "space_id": "claims-space", "agent_id": "agent-test"},
         )
         request = SimpleNamespace(headers={"x-space-id": "different-space"})
 
@@ -81,6 +81,7 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
                 "scope": "openid profile",
                 "client_id": "frontend-client",
                 "space_id": "stale-claims-space",
+                "typ": "local-user",
             },
         )
         request = SimpleNamespace(
@@ -90,11 +91,7 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
             }
         )
 
-        with patch(
-            "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-            frozenset({"frontend-client"}),
-        ):
-            ctx = extract_agent_context(token, request)
+        ctx = extract_agent_context(token, request)
 
         self.assertEqual(ctx["principal_type"], "user")
         self.assertEqual(ctx["space_id"], "current-ui-space")
@@ -108,62 +105,32 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
                 "username": "GitHub_48119320",
                 "scope": "openid profile",
                 "client_id": "frontend-client",
+                "typ": "local-user",
             },
         )
         request = SimpleNamespace(headers={"x-agent-name": "protocol_sage_738"})
 
-        with patch(
-            "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-            frozenset({"frontend-client"}),
-        ):
-            ctx = extract_agent_context(token, request)
+        ctx = extract_agent_context(token, request)
 
         self.assertEqual(ctx["principal_type"], "user")
         self.assertIsNone(ctx["agent_name"])
         self.assertEqual(ctx["route_agent_name"], "protocol_sage_738")
 
-    def test_cognito_m2m_header_resolves_agent_principal(self):
-        """MCP M2M tokens use X-Agent-Name as their agent binding."""
-        token = SimpleNamespace(
-            token="cognito-m2m-jwt",
-            claims={
-                "sub": "m2m-client-subject",
-                "token_use": "access",
-                "client_id": "mcp-m2m-client",
-                "scope": "ax-api/mcp:read",
-            },
-        )
-        request = SimpleNamespace(headers={"x-agent-name": "protocol_sage_738"})
-
-        with patch(
-            "fastmcp_server.api_client._MCP_CLIENT_IDS",
-            frozenset({"mcp-m2m-client"}),
-        ):
-            ctx = extract_agent_context(token, request)
-
-        self.assertEqual(ctx["principal_type"], "agent")
-        self.assertEqual(ctx["agent_name"], "protocol_sage_738")
-
-    def test_pat_exchanged_mcp_token_header_resolves_agent_principal(self):
-        """Headless PAT→MCP JWTs use X-Agent-Name as their agent binding."""
-        token = SimpleNamespace(
-            token="pat-exchanged-mcp-jwt",
-            claims={
-                "sub": "user-123",
-                "user_id": "user-123",
-                "token_class": "user_access",
-                "audience": "ax-mcp",
-                "scope": "messages tasks context agents spaces search",
-            },
-        )
-        request = SimpleNamespace(headers={"x-agent-name": "agentx2"})
-
-        with patch("fastmcp_server.api_client._MCP_CLIENT_IDS", frozenset()):
-            ctx = extract_agent_context(token, request)
-
-        self.assertEqual(ctx["principal_type"], "agent")
-        self.assertEqual(ctx["agent_name"], "agentx2")
-        self.assertEqual(ctx["user_id"], "user-123")
+    def test_cognito_m2m_header_cannot_promote_user_principal(self):
+        """Route labels and OAuth metadata cannot create an unsigned agent identity."""
+        token = SimpleNamespace(token='cognito-m2m-jwt', claims={'sub': 'm2m-client-subject', 'token_use': 'access', 'client_id': 'mcp-m2m-client', 'scope': 'ax-api/mcp:read'})
+        request = SimpleNamespace(headers={'x-agent-name': 'protocol_sage_738'})
+        ctx = extract_agent_context(token, request)
+        self.assertEqual(ctx['principal_type'], 'user')
+        self.assertIsNone(ctx['agent_name'])
+    def test_pat_exchanged_mcp_token_header_cannot_promote_user_principal(self):
+        """Route labels and OAuth metadata cannot create an unsigned agent identity."""
+        token = SimpleNamespace(token='pat-exchanged-mcp-jwt', claims={'sub': 'user-123', 'user_id': 'user-123', 'token_class': 'user_access', 'audience': 'ax-mcp', 'scope': 'messages tasks context agents spaces search'})
+        request = SimpleNamespace(headers={'x-agent-name': 'agentx2'})
+        ctx = extract_agent_context(token, request)
+        self.assertEqual(ctx['principal_type'], 'user')
+        self.assertIsNone(ctx['agent_name'])
+        self.assertEqual(ctx['user_id'], 'user-123')
 
     def test_no_agent_id_for_user_tokens(self):
         """User tokens don't have agent_id — should be None."""

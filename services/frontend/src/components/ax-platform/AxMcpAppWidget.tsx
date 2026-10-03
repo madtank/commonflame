@@ -1515,7 +1515,7 @@ export function AxMcpAppWidget({
                 serverResources: {},
                 sandbox: {
                   csp: {
-                    resourceDomains: ["https://unpkg.com"],
+                    resourceDomains: [window.location.origin],
                   },
                 },
               },

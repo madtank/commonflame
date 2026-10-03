@@ -1,9 +1,55 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loginLocal, logoutLocal } from './local-auth';
+import { canInviteToWorkspace, createAccount, createWorkspaceInvitation, getAccountStatus, loginLocal, logoutLocal } from './local-auth';
 import { storage } from './storage';
 
-describe('local authentication client', () => {
+describe('Waystation account authentication client', () => {
   beforeEach(() => { storage.clearTokens(); vi.restoreAllMocks(); });
+  it('checks invite-only setup status without caching it', async () => {
+    const status = { auth_mode: 'builtin', setup_required: true, signup: 'invite_only' };
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(status)));
+    await expect(getAccountStatus()).resolves.toEqual(status);
+    expect(fetchMock).toHaveBeenCalledWith('/auth/local/status', { credentials: 'include', cache: 'no-store' });
+  });
+  it.each(['setup', 'invite'] as const)('consumes a %s token only in the request body', async kind => {
+    const details = { token: 'synthetic-one-time-token', username: 'owner', password: 'synthetic-test-password' };
+    const user = { id: 'user-1', username: 'owner', email: 'owner@example.test', role: 'user' };
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'session-token', user })));
+    const persistent = vi.spyOn(localStorage, 'setItem');
+    const tabStorage = vi.spyOn(sessionStorage, 'setItem');
+    await createAccount(details, kind);
+    expect(fetchMock).toHaveBeenCalledWith(kind === 'setup' ? '/auth/local/setup' : '/auth/local/signup', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details),
+    });
+    const saved = [...persistent.mock.calls, ...tabStorage.mock.calls].map(([, value]) => value).join('');
+    expect(saved).not.toContain(details.token);
+    expect(saved).not.toContain(details.password);
+    expect(storage.getUserToken()).toBe('session-token');
+  });
+  it('does not create an account session from an expired or invalid one-time token', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ detail: 'Setup or invitation token is invalid or expired' }), { status: 400 }));
+    await expect(createAccount({ token: 'expired-synthetic-token', username: 'owner', password: 'synthetic-password' }, 'invite')).rejects.toThrow('invalid or expired');
+    expect(storage.getUserToken()).toBeNull();
+  });
+  it('asks the backend for workspace invitation permission as the signed-in human', async () => {
+    storage.setUserToken('session-token');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ can_invite: true })));
+    await expect(canInviteToWorkspace()).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith('/auth/local/invites', { credentials: 'include', cache: 'no-store', headers: { Authorization: 'Bearer session-token' } });
+  });
+  it('creates a private one-time invitation without saving it', async () => {
+    storage.setUserToken('session-token');
+    const invitation = { token: 'synthetic-invitation-token', expires_at: '2030-01-01T00:00:00Z' };
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(invitation)));
+    const persistent = vi.spyOn(localStorage, 'setItem');
+    const tabStorage = vi.spyOn(sessionStorage, 'setItem');
+    await expect(createWorkspaceInvitation()).resolves.toEqual(invitation);
+    expect(fetchMock).toHaveBeenCalledWith('/auth/local/invites', {
+      method: 'POST', credentials: 'include', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer session-token' }, body: JSON.stringify({ expires_in_hours: 24 }),
+    });
+    expect(persistent).not.toHaveBeenCalled();
+    expect(tabStorage).not.toHaveBeenCalled();
+  });
   it('posts credentials to this installation and stores only its access session', async () => {
     const user = { id: 'user-1', username: 'owner', email: 'owner@example.test', role: 'admin' };
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'session-token', user }), { status: 200 }));

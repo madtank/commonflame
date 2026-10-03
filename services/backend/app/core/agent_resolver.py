@@ -55,7 +55,7 @@ async def resolve_agent(
     """Resolve the agent associated with the current MCP token.
 
     MCP tokens carry agent_id/agent_name in claims (set on user._effective_*).
-    Falls back to X-Agent-Name header (for Cognito JWTs that lack agent claims).
+    Falls back to X-Agent-Name header (for upstream JWTs that lack agent claims).
     If AUTO_REGISTER_AGENTS is enabled and the agent doesn't exist, creates it.
     """
     header_agent_id = request.headers.get("X-Agent-Id") if request else None

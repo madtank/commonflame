@@ -1,6 +1,8 @@
-# Proven framework baseline; upgrade separately after consolidation.
-fastmcp[tasks]==3.3.1
-# FastMCP 3.x task storage requires FakeRedis before its async API rename.
-fakeredis==2.34.1
-uvicorn==0.35.0
+# MCP SDK v2 / sessionless protocol, with negotiated background tasks.
+fastmcp[tasks]==4.0.10
+mcp==2.3.0
+mcp-types==2.3.0
+uvicorn==0.54.0
+# FastMCP's HTTP/auth transports use httpx2. Backend tool calls use httpx.
+httpx2==2.13.1
 httpx==0.28.1

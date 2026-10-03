@@ -21,17 +21,18 @@ async def create_user(username: str, password: str, full_name: str | None = None
         raise ValueError("Password must contain 12-512 characters")
     async with AsyncSessionLocal() as db:
         await db.execute(text("SELECT set_config('app.is_privileged', 'true', true)"))
+        await db.execute(text("SELECT pg_advisory_xact_lock(840220261003)"))
         exists = await db.execute(select(User).where(User.username == username))
         if exists.scalar_one_or_none():
             raise ValueError("Username already exists; existing users are never overwritten")
         user_id, space_id = uuid.uuid4(), uuid.uuid4()
         space = Space(id=space_id, name=f"{username}'s Workspace",
-                      slug=f"{username.lower()}-{str(space_id)[:8]}", visibility="private")
+                      slug=f"{username.lower()[:40]}-{str(space_id)[:8]}", visibility="private")
         db.add(space)
         await db.flush()
         user = User(id=user_id, space_id=space_id, current_space_id=space_id,
                     username=username, email=f"{username}@waystation.local",
-                    full_name=full_name or username, role="user", auth_provider="local",
+                    full_name=full_name or username, role="user", auth_provider="builtin",
                     password_hash=password_hasher.hash(password), active=True, token_version=0)
         db.add(user)
         await db.flush()

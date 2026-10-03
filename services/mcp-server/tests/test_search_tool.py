@@ -14,7 +14,7 @@ class SearchToolTests(unittest.IsolatedAsyncioTestCase):
         self.tool = await self.mcp.get_tool("search")
         self.token = SimpleNamespace(
             token="jwt",
-            claims={"agent_name": "protocol", "space_id": "space-1"},
+            claims={"agent_name": "protocol", "space_id": "space-1", "agent_id": "agent-test"},
         )
         self.request = SimpleNamespace(headers={})
 

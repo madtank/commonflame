@@ -12,13 +12,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from fastmcp_server.api_client import (
-    _configured_mcp_audiences,
-    _normalize_mcp_resource,
-    extract_agent_context,
-    api_request,
-    wait_for_reply,
-)
+from fastmcp_server.api_client import extract_agent_context, api_request, wait_for_reply
 
 
 class DummyProgress:
@@ -32,13 +26,6 @@ class DummyProgress:
 class ExtractAgentContextTests(unittest.TestCase):
     """Test extract_agent_context() resolves identity correctly."""
 
-    def setUp(self):
-        # Several tests patch MCP audience env vars; keep the startup cache isolated.
-        _configured_mcp_audiences.cache_clear()
-
-    def tearDown(self):
-        # Future env-patching tests in this class rely on cache isolation too.
-        _configured_mcp_audiences.cache_clear()
 
     def test_backend_jwt_returns_agent_jwt_as_auth_token(self):
         """Backend-issued agent JWT must be forwarded — never substituted."""
@@ -71,28 +58,12 @@ class ExtractAgentContextTests(unittest.TestCase):
             },
         )
         request = SimpleNamespace(headers={"x-agent-name": "worker", "x-space-id": "selected-space"})
-        with patch("fastmcp_server.api_client._FRONTEND_CLIENT_IDS", frozenset()):
-            ctx = extract_agent_context(token, request)
+        ctx = extract_agent_context(token, request)
         self.assertEqual(ctx["principal_type"], "user")
         self.assertIsNone(ctx["agent_name"])
         self.assertEqual(ctx["user_id"], "user-1")
         self.assertEqual(ctx["space_id"], "selected-space")
 
-    def test_normalize_mcp_resource_handles_empty_root_and_nested_paths(self):
-        """Audience normalization should always collapse to the MCP resource."""
-        self.assertEqual(_normalize_mcp_resource(""), "")
-        self.assertEqual(
-            _normalize_mcp_resource("https://example.com/api/mcp"),
-            "https://example.com/api/mcp",
-        )
-        self.assertEqual(
-            _normalize_mcp_resource("https://example.com/mcp/agents/orion/"),
-            "https://example.com/mcp",
-        )
-        self.assertEqual(
-            _normalize_mcp_resource("https://example.com/mcp/extra/path"),
-            "https://example.com/mcp",
-        )
 
     def test_user_jwt_with_route_header_stays_user_session(self):
         """User quick-launch tokens must not inherit the route's X-Agent-Name."""
@@ -104,15 +75,12 @@ class ExtractAgentContextTests(unittest.TestCase):
                 "username": "GitHub_48119320",
                 "scope": "openid profile",
                 "client_id": "frontend-client",
+                "typ": "local-user",
             },
         )
         request = SimpleNamespace(headers={"x-agent-name": "protocol_sage_738"})
 
-        with patch(
-            "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-            frozenset({"frontend-client"}),
-        ):
-            ctx = extract_agent_context(token, request)
+        ctx = extract_agent_context(token, request)
 
         self.assertEqual(ctx["jwt"], cognito_jwt)
         self.assertEqual(ctx["principal_type"], "user")
@@ -129,143 +97,54 @@ class ExtractAgentContextTests(unittest.TestCase):
                 "username": "GitHub_48119320",
                 "scope": "openid profile",
                 "client_id": "frontend-client",
+                "typ": "local-user",
             },
         )
         request = SimpleNamespace(headers={"x-agent-name": "protocol_sage_738"})
 
-        with (
-            patch("fastmcp_server.api_client._FRONTEND_CLIENT_IDS", frozenset()),
-            patch(
-                "fastmcp_server.api_client._MCP_CLIENT_IDS",
-                frozenset({"mcp-interactive-client", "mcp-m2m-client"}),
-            ),
-        ):
-            ctx = extract_agent_context(token, request)
+        ctx = extract_agent_context(token, request)
 
         self.assertEqual(ctx["principal_type"], "user")
         self.assertIsNone(ctx["agent_name"])
         self.assertEqual(ctx["route_agent_name"], "protocol_sage_738")
         self.assertEqual(ctx["user_id"], "user-12345")
 
-    def test_mcp_oauth_proxy_token_with_route_header_resolves_agent_session(self):
-        """MCP Inspector/OAuth sessions use /mcp/agents/{name} as the binding."""
-        token = SimpleNamespace(
-            token="fastmcp-proxy-jwt",
-            claims={
-                "sub": "oauth-user-subject",
-                "client_id": "mcp-interactive-client",
-                "scope": "openid",
-                "username": "GitHub_48119320",
-            },
-        )
-        request = SimpleNamespace(headers={"x-agent-name": "agentx2"})
-
-        with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
-            patch(
-                "fastmcp_server.api_client._MCP_CLIENT_IDS",
-                frozenset({"mcp-interactive-client"}),
-            ),
-        ):
+    def test_mcp_oauth_proxy_token_with_route_header_cannot_promote_user_session(self):
+        """Route labels and OAuth metadata cannot create an unsigned agent identity."""
+        token = SimpleNamespace(token='fastmcp-proxy-jwt', claims={'sub': 'oauth-user-subject', 'client_id': 'mcp-interactive-client', 'scope': 'openid', 'username': 'GitHub_48119320'})
+        request = SimpleNamespace(headers={'x-agent-name': 'agentx2'})
+        ctx = extract_agent_context(token, request)
+        self.assertEqual(ctx['principal_type'], 'user')
+        self.assertIsNone(ctx['agent_name'])
+        self.assertEqual(ctx['route_agent_name'], 'agentx2')
+        self.assertEqual(ctx['user_id'], 'oauth-user-subject')
+    def test_pat_exchanged_mcp_token_with_route_header_cannot_promote_user_session(self):
+        """Route labels and OAuth metadata cannot create an unsigned agent identity."""
+        token = SimpleNamespace(token='pat-exchanged-mcp-jwt', claims={'sub': 'user-12345', 'user_id': 'user-12345', 'username': 'GitHub_48119320', 'token_class': 'user_access', 'audience': 'ax-mcp', 'scope': 'messages tasks context agents spaces search'})
+        request = SimpleNamespace(headers={'x-agent-name': 'agentx2'})
+        ctx = extract_agent_context(token, request)
+        self.assertEqual(ctx['principal_type'], 'user')
+        self.assertIsNone(ctx['agent_name'])
+        self.assertEqual(ctx['route_agent_name'], 'agentx2')
+        self.assertEqual(ctx['user_id'], 'user-12345')
+    def test_ax_as_resource_audience_token_with_route_header_cannot_promote_user_session(self):
+        """Route labels and OAuth metadata cannot create an unsigned agent identity."""
+        token = SimpleNamespace(token='ax-as-device-jwt', claims={'sub': 'user-12345', 'owner_user_id': 'user-12345', 'username': 'GitHub_48119320', 'token_class': 'user_access', 'aud': 'http://localhost:3000/mcp', 'scope': 'messages.read messages.write'})
+        request = SimpleNamespace(headers={'x-agent-name': 'lantern'})
+        ctx = extract_agent_context(token, request)
+        self.assertEqual(ctx['principal_type'], 'user')
+        self.assertIsNone(ctx['agent_name'])
+        self.assertEqual(ctx['route_agent_name'], 'lantern')
+        self.assertEqual(ctx['user_id'], 'user-12345')
+    def test_full_agent_url_config_does_not_promote_unsigned_agent_identity(self):
+        """Route labels and OAuth metadata cannot create an unsigned agent identity."""
+        token = SimpleNamespace(token='ax-as-device-jwt', claims={'sub': 'user-12345', 'owner_user_id': 'user-12345', 'username': 'GitHub_48119320', 'token_class': 'user_access', 'aud': 'http://localhost:3000/mcp', 'scope': 'messages.read messages.write'})
+        request = SimpleNamespace(headers={'x-agent-name': 'lantern'})
+        with patch.dict('os.environ', {'MCP_SERVER_URL': 'http://localhost:3000/mcp/agents/lantern'}):
             ctx = extract_agent_context(token, request)
-
-        self.assertEqual(ctx["principal_type"], "agent")
-        self.assertEqual(ctx["agent_name"], "agentx2")
-        self.assertEqual(ctx["route_agent_name"], "agentx2")
-        self.assertEqual(ctx["user_id"], "oauth-user-subject")
-
-    def test_pat_exchanged_mcp_token_with_route_header_resolves_agent_session(self):
-        """PAT-exchanged headless MCP tokens use the route as the agent binding."""
-        token = SimpleNamespace(
-            token="pat-exchanged-mcp-jwt",
-            claims={
-                "sub": "user-12345",
-                "user_id": "user-12345",
-                "username": "GitHub_48119320",
-                "token_class": "user_access",
-                "audience": "ax-mcp",
-                "scope": "messages tasks context agents spaces search",
-            },
-        )
-        request = SimpleNamespace(headers={"x-agent-name": "agentx2"})
-
-        with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
-            patch("fastmcp_server.api_client._MCP_CLIENT_IDS", frozenset()),
-        ):
-            ctx = extract_agent_context(token, request)
-
-        self.assertEqual(ctx["principal_type"], "agent")
-        self.assertEqual(ctx["agent_name"], "agentx2")
-        self.assertEqual(ctx["route_agent_name"], "agentx2")
-        self.assertEqual(ctx["user_id"], "user-12345")
-
-    def test_ax_as_resource_audience_token_with_route_header_resolves_agent_session(self):
-        """Waystation AS remote OAuth tokens use the protected resource URL as audience."""
-        token = SimpleNamespace(
-            token="ax-as-device-jwt",
-            claims={
-                "sub": "user-12345",
-                "owner_user_id": "user-12345",
-                "username": "GitHub_48119320",
-                "token_class": "user_access",
-                "aud": "http://localhost:3000/mcp",
-                "scope": "messages.read messages.write",
-            },
-        )
-        request = SimpleNamespace(headers={"x-agent-name": "lantern"})
-
-        with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
-            patch("fastmcp_server.api_client._MCP_CLIENT_IDS", frozenset()),
-        ):
-            ctx = extract_agent_context(token, request)
-
-        self.assertEqual(ctx["principal_type"], "agent")
-        self.assertEqual(ctx["agent_name"], "lantern")
-        self.assertEqual(ctx["route_agent_name"], "lantern")
-        self.assertEqual(ctx["user_id"], "user-12345")
-
-    def test_full_agent_url_config_still_matches_mcp_resource_audience(self):
-        """Pasted /mcp/agents/{name} config should normalize to the MCP resource."""
-        token = SimpleNamespace(
-            token="ax-as-device-jwt",
-            claims={
-                "sub": "user-12345",
-                "owner_user_id": "user-12345",
-                "username": "GitHub_48119320",
-                "token_class": "user_access",
-                "aud": "http://localhost:3000/mcp",
-                "scope": "messages.read messages.write",
-            },
-        )
-        request = SimpleNamespace(headers={"x-agent-name": "lantern"})
-
-        with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
-            patch("fastmcp_server.api_client._MCP_CLIENT_IDS", frozenset()),
-            patch.dict(
-                "os.environ",
-                {"MCP_SERVER_URL": "http://localhost:3000/mcp/agents/lantern"},
-            ),
-        ):
-            ctx = extract_agent_context(token, request)
-
-        self.assertEqual(ctx["principal_type"], "agent")
-        self.assertEqual(ctx["agent_name"], "lantern")
-        self.assertEqual(ctx["route_agent_name"], "lantern")
+        self.assertEqual(ctx['principal_type'], 'user')
+        self.assertIsNone(ctx['agent_name'])
+        self.assertEqual(ctx['route_agent_name'], 'lantern')
 
     def test_ax_as_token_for_other_mcp_resource_stays_user_session(self):
         """Remote OAuth audience matching must not accept another MCP resource."""
@@ -283,11 +162,6 @@ class ExtractAgentContextTests(unittest.TestCase):
         request = SimpleNamespace(headers={"x-agent-name": "lantern"})
 
         with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
-            patch("fastmcp_server.api_client._MCP_CLIENT_IDS", frozenset()),
             patch.dict("os.environ", {"MCP_SERVER_URL": "http://localhost:3000"}),
         ):
             ctx = extract_agent_context(token, request)
@@ -312,8 +186,7 @@ class ExtractAgentContextTests(unittest.TestCase):
         )
         request = SimpleNamespace(headers={"x-agent-name": "agentx2"})
 
-        with patch("fastmcp_server.api_client._MCP_CLIENT_IDS", frozenset()):
-            ctx = extract_agent_context(token, request)
+        ctx = extract_agent_context(token, request)
 
         self.assertEqual(ctx["principal_type"], "user")
         self.assertIsNone(ctx["agent_name"])
@@ -335,49 +208,22 @@ class ExtractAgentContextTests(unittest.TestCase):
         )
         request = SimpleNamespace(headers={"x-agent-name": "agentx2"})
 
-        with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
-            patch("fastmcp_server.api_client._MCP_CLIENT_IDS", frozenset()),
-        ):
-            ctx = extract_agent_context(token, request)
+        ctx = extract_agent_context(token, request)
 
         self.assertEqual(ctx["principal_type"], "user")
         self.assertIsNone(ctx["agent_name"])
         self.assertEqual(ctx["route_agent_name"], "agentx2")
         self.assertEqual(ctx["user_id"], "admin-user-123")
 
-    def test_legacy_mcp_scoped_token_with_route_header_resolves_agent_session(self):
-        """Legacy MCP OAuth tokens can route-bind when only the resource scope is present."""
-        token = SimpleNamespace(
-            token="legacy-mcp-oauth-jwt",
-            claims={
-                "sub": "legacy-mcp-subject",
-                "client_id": "legacy-mcp-client",
-                "scope": "openid ax-api/mcp:read",
-                "username": "GitHub_48119320",
-            },
-        )
-        request = SimpleNamespace(headers={"x-agent-name": "agentx2"})
-
-        with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
-            patch(
-                "fastmcp_server.api_client._MCP_CLIENT_IDS",
-                frozenset({"known-mcp-client"}),
-            ),
-        ):
-            ctx = extract_agent_context(token, request)
-
-        self.assertEqual(ctx["principal_type"], "agent")
-        self.assertEqual(ctx["agent_name"], "agentx2")
-        self.assertEqual(ctx["route_agent_name"], "agentx2")
-        self.assertEqual(ctx["user_id"], "legacy-mcp-subject")
+    def test_legacy_mcp_scoped_token_with_route_header_cannot_promote_user_session(self):
+        """Route labels and OAuth metadata cannot create an unsigned agent identity."""
+        token = SimpleNamespace(token='legacy-mcp-oauth-jwt', claims={'sub': 'legacy-mcp-subject', 'client_id': 'legacy-mcp-client', 'scope': 'openid ax-api/mcp:read', 'username': 'GitHub_48119320'})
+        request = SimpleNamespace(headers={'x-agent-name': 'agentx2'})
+        ctx = extract_agent_context(token, request)
+        self.assertEqual(ctx['principal_type'], 'user')
+        self.assertIsNone(ctx['agent_name'])
+        self.assertEqual(ctx['route_agent_name'], 'agentx2')
+        self.assertEqual(ctx['user_id'], 'legacy-mcp-subject')
 
 
 class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
@@ -419,31 +265,17 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
             progress.messages,
         )
 
-    def test_cognito_m2m_token_with_route_header_resolves_agent_session(self):
-        """MCP M2M tokens use the route/header as the reviewed agent binding."""
-        cognito_m2m_jwt = "eyJhbGciOiJSUzI1NiJ9.cognito-m2m-payload"
-        token = SimpleNamespace(
-            token=cognito_m2m_jwt,
-            claims={
-                "sub": "m2m-client-subject",
-                "token_use": "access",
-                "client_id": "mcp-m2m-client",
-                "scope": "ax-api/mcp:read",
-            },
-        )
-        request = SimpleNamespace(headers={"x-agent-name": "protocol_sage_738"})
-
-        with patch(
-            "fastmcp_server.api_client._MCP_CLIENT_IDS",
-            frozenset({"mcp-m2m-client"}),
-        ):
-            ctx = extract_agent_context(token, request)
-
-        self.assertEqual(ctx["jwt"], cognito_m2m_jwt)
-        self.assertEqual(ctx["principal_type"], "agent")
-        self.assertEqual(ctx["agent_name"], "protocol_sage_738")
-        self.assertEqual(ctx["route_agent_name"], "protocol_sage_738")
-        self.assertEqual(ctx["user_id"], "m2m-client-subject")
+    def test_cognito_m2m_token_with_route_header_cannot_promote_user_session(self):
+        """Route labels and OAuth metadata cannot create an unsigned agent identity."""
+        cognito_m2m_jwt = 'eyJhbGciOiJSUzI1NiJ9.cognito-m2m-payload'
+        token = SimpleNamespace(token=cognito_m2m_jwt, claims={'sub': 'm2m-client-subject', 'token_use': 'access', 'client_id': 'mcp-m2m-client', 'scope': 'ax-api/mcp:read'})
+        request = SimpleNamespace(headers={'x-agent-name': 'protocol_sage_738'})
+        ctx = extract_agent_context(token, request)
+        self.assertEqual(ctx['jwt'], cognito_m2m_jwt)
+        self.assertEqual(ctx['principal_type'], 'user')
+        self.assertIsNone(ctx['agent_name'])
+        self.assertEqual(ctx['route_agent_name'], 'protocol_sage_738')
+        self.assertEqual(ctx['user_id'], 'm2m-client-subject')
 
     def test_cognito_m2m_token_without_route_header_does_not_guess_agent(self):
         """MCP M2M needs an explicit route/header binding to pick an agent."""
@@ -486,6 +318,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
                 "scope": "openid profile",
                 "client_id": "frontend-client",
                 "space_id": "stale-session-space",
+                "typ": "local-user",
             },
         )
         request = SimpleNamespace(
@@ -495,11 +328,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
             }
         )
 
-        with patch(
-            "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-            frozenset({"frontend-client"}),
-        ):
-            ctx = extract_agent_context(token, request)
+        ctx = extract_agent_context(token, request)
 
         self.assertEqual(ctx["principal_type"], "user")
         self.assertIsNone(ctx["agent_name"])
@@ -509,7 +338,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
         """Agent identity in token claims beats X-Agent-Name header."""
         token = SimpleNamespace(
             token="agent-jwt",
-            claims={"agent_name": "Waystation", "space_id": "space-from-claims"},
+            claims={"agent_name": "Waystation", "space_id": "space-from-claims", "agent_id": "agent-test"},
         )
         request = SimpleNamespace(
             headers={"x-agent-name": "wrong_agent", "x-space-id": "space-from-header"}
@@ -588,7 +417,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
         """Space ID falls back to X-Space-Id header when not in claims."""
         token = SimpleNamespace(
             token="jwt",
-            claims={"agent_name": "test_agent"},
+            claims={"agent_name": "test_agent", "agent_id": "agent-test"},
         )
         request = SimpleNamespace(headers={"x-space-id": "header-space-id"})
 

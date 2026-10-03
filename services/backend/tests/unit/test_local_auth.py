@@ -121,3 +121,19 @@ def test_signing_key_file_preserves_jwks_across_reload(tmp_path, monkeypatch):
     ax_jwt._get_signing_key.cache_clear()
     assert ax_jwt.get_jwks() == first
     ax_jwt._get_signing_key.cache_clear()
+
+
+def test_configured_public_issuer_is_used_by_signer_and_verifier(session, monkeypatch):
+    from app.core.jwt_verify import _decode_backend_token
+    client, _, user = session
+    monkeypatch.setenv('AX_JWT_ISSUER', 'https://waystation.example')
+    response = client.post('/auth/local/login', json={'username':'tester','password':'correct-test-password'})
+    assert response.status_code == 200
+    token = response.json()['access_token']
+    claims = _decode_backend_token(token)
+    assert claims['iss'] == 'https://waystation.example'
+    monkeypatch.setenv('AX_JWT_ISSUER', 'https://another.example')
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc:
+        _decode_backend_token(token)
+    assert exc.value.status_code == 401

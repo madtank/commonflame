@@ -54,6 +54,11 @@ PROTECTED_MCP_METHODS_NEEDING_AUTH_CHALLENGE = frozenset(
         "prompts/list",
         "prompts/get",
         "completion/complete",
+        "server/discover",
+        "tasks/get",
+        "tasks/update",
+        "tasks/cancel",
+        "subscriptions/listen",
     }
 )
 
@@ -119,10 +124,9 @@ def rewrite_agent_route(path: str) -> tuple[str | None, str]:
 def normalize_authorize_resource_query(query_string: bytes, base_url: str) -> bytes:
     """Normalize agent-path OAuth resource indicators to the canonical MCP resource.
 
-    FastMCP 3.2.x validates the RFC 8707 `resource` authorization parameter
-    against the configured server resource URL. Our public agent aliases are
-    transport routes, not separate OAuth resources, so `/mcp/agents/{name}` must
-    authorize against `/mcp`.
+    Public agent aliases are transport routes, not separate OAuth resources.
+    Older clients visiting the MCP-side authorize alias use the canonical
+    resource. Native backend authorization retains requested agent bindings.
     """
     if not query_string:
         return query_string
@@ -186,6 +190,11 @@ def create_server() -> FastMCP:
         kwargs["auth"] = auth
 
     mcp = FastMCP(**kwargs)
+    # MCP 2026 background tasks are a negotiated extension. Legacy clients
+    # keep synchronous messages.check; capable clients may run it in the task
+    # engine. Redis shares task state across stateless Uvicorn workers.
+    from fastmcp_tasks import TasksExtension
+    mcp.add_extension(TasksExtension(url=os.getenv("REDIS_URL") or None))
 
     # Tool filtering: backend-issued tokens carry tools_allowed claim.
     # AuthMiddleware filters tools/list and rejects tools/call accordingly.
@@ -238,7 +247,8 @@ def create_app():
     from starlette.routing import Route, Mount
     from starlette.requests import Request
 
-    from fastmcp_server.apps_endpoint import apps_get, apps_list
+    from fastmcp_server.apps_endpoint import apps_bridge, apps_d3, apps_get, apps_list
+    from fastmcp_server.mcp_ui import D3_ASSET_PATH, MCP_APPS_BRIDGE_PATH
     from fastmcp_server.auth_checks import (
         EarlyBearerAuthValidationMiddleware,
         MCPProtectedMethodAuthChallengeMiddleware,
@@ -419,6 +429,16 @@ def create_app():
                     await self.app(scope, receive, send)
                     return
 
+            # Sessionless-era requests must reach SDK v2 so it validates
+            # Mcp-Method/Mcp-Name and serves server/discover correctly. The
+            # inner auth/body-size gate still protects all data operations.
+            if any(
+                key.lower() == b"mcp-protocol-version" and value >= b"2026-07-28"
+                for key, value in scope.get("headers", [])
+            ):
+                await self.app(scope, receive, send)
+                return
+
             chunks: list[bytes] = []
             buffered = 0
             more_body = True
@@ -581,6 +601,8 @@ def create_app():
         Route("/mcp/health", health),
         Route("/auth/diagnostics", auth_diagnostics),
         Route("/.well-known/glama.json", glama_ownership),
+        Route(MCP_APPS_BRIDGE_PATH, apps_bridge),
+        Route(D3_ASSET_PATH, apps_d3),
         # MCP Apps: REST endpoints for frontend widget HTML serving.
         # No auth — HTML is static. Widgets call tools via /mcp (authenticated).
         Route("/apps", apps_list),

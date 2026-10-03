@@ -7,7 +7,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-import httpx
+import httpx2 as httpx
 from starlette.testclient import TestClient
 
 
@@ -24,7 +24,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_INTERNAL_URL": "http://backend:8080",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_remote_auth_mode_uses_ax_as_authorization_server(self):
         """Remote mode makes MCP a resource server and advertises the backend as AS."""
@@ -42,7 +42,7 @@ class CreateAuthTests(unittest.TestCase):
             auth.token_verifier.jwks_uri,
             "http://localhost:3000/.well-known/jwks.json",
         )
-        self.assertEqual(auth.token_verifier.issuer, "ax-backend")
+        self.assertEqual(auth.token_verifier.issuer, "http://localhost:3000")
         self.assertEqual(auth.token_verifier.audience, "http://localhost:3000/mcp")
         self.assertEqual(auth.auth_server_internal_url, "http://backend:8080")
 
@@ -51,7 +51,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_URL": "http://localhost:3000",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_remote_auth_routes_include_prm_and_ax_as_metadata_forwarder(self):
         """Clients can discover protected-resource metadata and AS metadata."""
@@ -69,7 +69,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_INTERNAL_URL": "http://backend:8080",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_protected_resource_metadata_is_not_publicly_cached(self):
         """Browsers must not use stale MCP OAuth metadata after deploys."""
@@ -90,7 +90,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_INTERNAL_URL": "http://backend:8080",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
         "GLAMA_MAINTAINER_EMAILS": "owner@example.com, ops@example.com",
     })
     def test_glama_ownership_file_is_served_at_well_known_path(self):
@@ -119,7 +119,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_INTERNAL_URL": "http://backend:8080",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_remote_auth_metadata_forwarder_returns_503_when_backend_unavailable(self):
         """AS metadata forwarding should fail as structured OAuth JSON."""
@@ -155,7 +155,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_INTERNAL_URL": "http://backend:8080",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_remote_auth_metadata_forwarder_passes_through_valid_json(self):
         """AS metadata forwarding should return backend JSON unchanged."""
@@ -196,7 +196,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_INTERNAL_URL": "http://backend:8080",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_remote_auth_metadata_forwarder_returns_503_for_non_json_body(self):
         """AS metadata forwarding should not leak non-JSON upstream failures."""
@@ -235,7 +235,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_URL": "http://localhost:3000",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_remote_auth_requires_backend_jwks_uri(self):
         """Remote mode must know where to verify Waystation-issued access tokens."""
@@ -250,7 +250,7 @@ class CreateAuthTests(unittest.TestCase):
         "AX_AUTH_SERVER_URL": "http://localhost:3000",
         "MCP_SERVER_URL": "http://localhost:3000",
         "BACKEND_JWKS_URI": "http://localhost:3000/.well-known/jwks.json",
-        "BACKEND_ISSUER": "ax-backend",
+        "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_remote_auth_requires_backend_issuer(self):
         """Remote mode must know which issuer to trust for backend access tokens."""

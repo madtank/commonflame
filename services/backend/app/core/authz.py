@@ -1,26 +1,19 @@
-"""Audience/scope authorization guards (AUTH-001).
-
-Simple FastAPI dependencies to restrict endpoints by Cognito client audience.
-"""
+"""Provider-independent audience guards for Waystation-signed tokens."""
+import os
 from fastapi import Depends, HTTPException, Request
-
-from .auth_config import FRONTEND_AUDIENCE, MCP_AUDIENCE
-from .jwt_verify import get_current_user_from_token, oauth2_scheme, _decode_token
+from .jwt_verify import _claim_values, _decode_backend_token, oauth2_scheme
 
 
 async def require_frontend_audience(request: Request, token: str = Depends(oauth2_scheme)) -> dict:
-    """Dependency that ensures the JWT was issued for the frontend client."""
-    claims = await _decode_token(token)
-    aud = claims.get("aud") or claims.get("client_id")
-    if aud != FRONTEND_AUDIENCE:
-        raise HTTPException(status_code=403, detail="Token not authorized for frontend access")
+    claims = _decode_backend_token(token)
+    if "ax-api" not in _claim_values(claims.get("aud")) or claims.get("agent_id"):
+        raise HTTPException(status_code=403, detail="Human API session required")
     return claims
 
 
 async def require_mcp_audience(request: Request, token: str = Depends(oauth2_scheme)) -> dict:
-    """Dependency that ensures the JWT was issued for the MCP client."""
-    claims = await _decode_token(token)
-    aud = claims.get("aud") or claims.get("client_id")
-    if aud != MCP_AUDIENCE:
-        raise HTTPException(status_code=403, detail="Token not authorized for MCP access")
+    claims = _decode_backend_token(token)
+    resource = os.getenv("AX_MCP_RESOURCE_URL", "http://localhost:3000/mcp")
+    if resource not in _claim_values(claims.get("aud")):
+        raise HTTPException(status_code=403, detail="Token not authorized for MCP")
     return claims

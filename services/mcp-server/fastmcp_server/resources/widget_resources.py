@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from fastmcp_server.mcp_ui import (
     get_widget_specs,
     get_widget_html_path,
+    load_widget_html,
     get_legacy_widget_resource_uri,
     resource_app_config,
     resource_meta,
@@ -25,7 +26,7 @@ def _register_widget_resource(mcp: FastMCP, widget_name: str) -> None:
         meta=resource_meta(widget_name),
     )
     async def _resource() -> str:
-        return html_path.read_text(encoding="utf-8")
+        return load_widget_html(html_path)
 
 
 def _register_legacy_widget_resource(mcp: FastMCP, widget_name: str, legacy_uri: str) -> None:
@@ -40,7 +41,7 @@ def _register_legacy_widget_resource(mcp: FastMCP, widget_name: str, legacy_uri:
         meta=resource_meta(widget_name),
     )
     async def _legacy_resource() -> str:
-        return html_path.read_text(encoding="utf-8")
+        return load_widget_html(html_path)
 
 
 def register_widget_resources(mcp: FastMCP):

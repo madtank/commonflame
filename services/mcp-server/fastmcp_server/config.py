@@ -21,5 +21,5 @@ AX_AUTH_SERVER_URL = os.getenv("AX_AUTH_SERVER_URL", "http://localhost:3000")
 AX_AUTH_SERVER_INTERNAL_URL = os.getenv("AX_AUTH_SERVER_INTERNAL_URL", "http://backend:8080")
 MCP_STATELESS_HTTP = env_bool("MCP_STATELESS_HTTP", True)
 BACKEND_JWKS_URI = os.getenv("BACKEND_JWKS_URI", "http://backend:8080/.well-known/jwks.json")
-# Legacy protocol identity retained so backend-issued tokens remain compatible.
-BACKEND_ISSUER = os.getenv("BACKEND_ISSUER", "ax-backend")
+# JWT and OAuth metadata issuer share the configured public AS origin.
+BACKEND_ISSUER = os.getenv("BACKEND_ISSUER", AX_AUTH_SERVER_URL)

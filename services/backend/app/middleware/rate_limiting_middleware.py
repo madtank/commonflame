@@ -221,6 +221,9 @@ class RateLimitConfig:
             # Authentication endpoints - moderate restrictions
             # NOTE: Our auth router is mounted at '/auth', not '/api/v1/auth'
             "/auth/local/login": {"requests": 5, "window": 60, "burst": 2},
+            "/auth/local/setup": {"requests": 5, "window": 60, "burst": 2},
+            "/auth/local/signup": {"requests": 5, "window": 60, "burst": 2},
+            "/auth/local/invites": {"requests": 20, "window": 60, "burst": 5},
             "/auth/local/refresh": {"requests": 40, "window": 60, "burst": 15},
             "/auth/login": {"requests": 5, "window": 60, "burst": 2},
             "/auth/register": {"requests": 3, "window": 300, "burst": 1},
@@ -462,7 +465,8 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             # Handles cases like raw IPv4/IPv6 (e.g., 2601:...)
             request_key = f"ip:{request_key}"
 
-        # Scope-isolate MCP vs API buckets even when using helper-derived keys
+        # Isolate server-defined auth operations after selecting the trusted IP,
+        # as well as MCP vs API traffic when using helper-derived keys.
         request_key = self._apply_scope_namespace(request_key, request.url.path)
 
         attribution["rate_limit_key"] = request_key
@@ -753,9 +757,17 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         return base_key
 
     def _apply_scope_namespace(self, key: str | None, path: str) -> str | None:
-        """Namespace keys so MCP traffic cannot exhaust API buckets and vice versa."""
+        """Keep builtin auth operations and MCP/API traffic in separate buckets."""
         if not key:
             return key
+        if path.startswith("/auth/local/"):
+            operation = path.split("/", 4)[3]
+            if operation not in {"status", "login", "setup", "signup", "refresh", "invites", "logout"}:
+                operation = "other"
+            # Only a fixed route namespace is added to the already-selected IP.
+            # Caller headers, token claims, and query parameters cannot mint
+            # alternative login buckets; status/refresh cannot consume them.
+            return f"{key}:builtin-auth:{operation}"
         if key.startswith("mcp:") or key.startswith("api:"):
             return key
         if path.startswith("/mcp"):

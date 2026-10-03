@@ -195,21 +195,6 @@ async def issue_pkce_refresh_token(
     return client_id, token_response.json()["refresh_token"]
 
 
-def test_authorization_server_metadata_supports_optional_cognito_contract(monkeypatch):
-    monkeypatch.setenv("AX_AUTH_SERVER_METADATA_MODE", "cognito")
-    response = client.get("/.well-known/oauth-authorization-server")
-
-    assert response.status_code == 200
-    data = response.json()
-
-    assert data["issuer"] == "http://localhost:8001"
-    assert data["authorization_endpoint"] == "http://localhost:8001/authorize"
-    assert data["token_endpoint"] == "http://localhost:8001/token"
-    assert data["registration_endpoint"] == "http://localhost:8001/register"
-    assert data["revocation_endpoint"] == "http://localhost:8001/revoke"
-    assert data["scopes_supported"] == ["openid"]
-    assert data["grant_types_supported"] == ["authorization_code", "refresh_token"]
-    assert data["code_challenge_methods_supported"] == ["S256"]
 
 
 def test_authorization_server_metadata_advertises_headless_ax_as_contract(monkeypatch):

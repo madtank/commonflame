@@ -1,6 +1,5 @@
 """Regression tests for agent inbox resource notifications."""
 
-from __future__ import annotations
 
 import asyncio
 import os
@@ -11,9 +10,8 @@ from unittest.mock import patch
 import mcp.types
 from fastmcp import FastMCP
 from mcp.server.lowlevel.server import NotificationOptions
-from mcp.server.lowlevel.server import request_ctx
-from mcp.shared.context import RequestContext
-from mcp.shared.exceptions import McpError
+from mcp.server.context import ServerRequestContext
+from fastmcp.exceptions import McpError
 
 from fastmcp_server.resources import inbox_notifications
 from fastmcp_server.resources.inbox_notifications import _resolve_subscription
@@ -52,14 +50,8 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
 
         components = getattr(server.local_provider, "_components", {})
         self.assertIn("resource:ax://inbox/me@", components)
-        self.assertIn(
-            mcp.types.SubscribeRequest,
-            server._mcp_server.request_handlers,
-        )
-        self.assertIn(
-            mcp.types.UnsubscribeRequest,
-            server._mcp_server.request_handlers,
-        )
+        self.assertIsNotNone(server._mcp_server.get_request_handler('resources/subscribe'))
+        self.assertIsNotNone(server._mcp_server.get_request_handler('resources/unsubscribe'))
         capabilities = server._mcp_server.get_capabilities(NotificationOptions(), {})
         self.assertIsNotNone(capabilities.resources)
         self.assertTrue(capabilities.resources.subscribe)
@@ -80,10 +72,7 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
         ):
             server = create_server()
 
-        self.assertNotIn(
-            mcp.types.SubscribeRequest,
-            server._mcp_server.request_handlers,
-        )
+        self.assertIsNone(server._mcp_server.get_request_handler('resources/subscribe'))
         capabilities = server._mcp_server.get_capabilities(NotificationOptions(), {})
         if capabilities.resources is not None:
             self.assertIsNot(capabilities.resources.subscribe, True)
@@ -95,21 +84,17 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
         ):
             server = create_server()
 
-        subscribe_handler = server._mcp_server.request_handlers[
-            mcp.types.SubscribeRequest
-        ]
-        unsubscribe_handler = server._mcp_server.request_handlers[
-            mcp.types.UnsubscribeRequest
-        ]
+        subscribe_handler = server._mcp_server.get_request_handler('resources/subscribe').handler
+        unsubscribe_handler = server._mcp_server.get_request_handler('resources/unsubscribe').handler
 
         register_inbox_notifications(server)
 
         self.assertIs(
-            server._mcp_server.request_handlers[mcp.types.SubscribeRequest],
+            server._mcp_server.get_request_handler('resources/subscribe').handler,
             subscribe_handler,
         )
         self.assertIs(
-            server._mcp_server.request_handlers[mcp.types.UnsubscribeRequest],
+            server._mcp_server.get_request_handler('resources/unsubscribe').handler,
             unsubscribe_handler,
         )
 
@@ -161,7 +146,7 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
             _resolve_subscription_with_claims_for_test(
                 "ax://inbox/me",
                 SimpleNamespace(headers={"x-agent-name": "cipher"}),
-                token_claims={"client_id": "frontend-client"},
+                token_claims={"client_id": "frontend-client", "typ": "local-user"},
             )
 
         self.assertIn("Agent token is required", str(error.exception))
@@ -246,27 +231,13 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
                 server = create_server()
 
             session = FakeSession()
-            token = request_ctx.set(
-                RequestContext(
-                    request_id="subscribe-inbox-broken-token-context",
-                    meta=None,
-                    session=session,
-                    lifespan_context={},
-                    request=SimpleNamespace(headers={"x-agent-name": "test_agent"}),
-                )
-            )
+            token = ServerRequestContext(request_id='subscribe-inbox-broken-token-context', meta=None, session=session, lifespan_context={}, request=SimpleNamespace(headers={'x-agent-name': 'test_agent'}), protocol_version='2025-11-25', method='resources/subscribe')
             try:
-                subscribe = server._mcp_server.request_handlers[
-                    mcp.types.SubscribeRequest
-                ]
-                with self.assertRaises(McpError) as error:
-                    await subscribe(
-                        mcp.types.SubscribeRequest(
-                            params=mcp.types.SubscribeRequestParams(uri="ax://inbox/me")
-                        )
-                    )
+                subscribe = server._mcp_server.get_request_handler('resources/subscribe').handler
+                with patch('fastmcp_server.resources.inbox_notifications.get_access_token', side_effect=RuntimeError('broken context')), self.assertRaises(McpError) as error:
+                    await subscribe(token, mcp.types.SubscribeRequest(params=mcp.types.SubscribeRequestParams(uri='ax://inbox/me')).params)
             finally:
-                request_ctx.reset(token)
+                None
 
             self.assertIn("token context", str(error.exception))
 
@@ -479,22 +450,10 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
                 server = create_server()
 
             session = FakeSession()
-            token = request_ctx.set(
-                RequestContext(
-                    request_id="unsubscribe-inbox",
-                    meta=None,
-                    session=session,
-                    lifespan_context={},
-                    request=SimpleNamespace(headers={"x-agent-name": "test_agent"}),
-                )
-            )
+            token = ServerRequestContext(request_id='unsubscribe-inbox', meta=None, session=session, lifespan_context={}, request=SimpleNamespace(headers={'x-agent-name': 'test_agent'}), protocol_version='2025-11-25', method='resources/subscribe')
             try:
-                subscribe = server._mcp_server.request_handlers[
-                    mcp.types.SubscribeRequest
-                ]
-                unsubscribe = server._mcp_server.request_handlers[
-                    mcp.types.UnsubscribeRequest
-                ]
+                subscribe = server._mcp_server.get_request_handler('resources/subscribe').handler
+                unsubscribe = server._mcp_server.get_request_handler('resources/unsubscribe').handler
                 with patch(
                     "fastmcp_server.resources.inbox_notifications._current_token_claims",
                     return_value={
@@ -505,16 +464,10 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
                     request = mcp.types.SubscribeRequest(
                         params=mcp.types.SubscribeRequestParams(uri="ax://inbox/me")
                     )
-                    await subscribe(request)
-                    await unsubscribe(
-                        mcp.types.UnsubscribeRequest(
-                            params=mcp.types.UnsubscribeRequestParams(
-                                uri="ax://inbox/me"
-                            )
-                        )
-                    )
+                    await subscribe(token, request.params)
+                    await unsubscribe(token, mcp.types.UnsubscribeRequest(params=mcp.types.UnsubscribeRequestParams(uri='ax://inbox/me')).params)
             finally:
-                request_ctx.reset(token)
+                None
 
             delivered = await inbox_notifications.notify_inbox_updated(
                 "test_agent",
@@ -535,19 +488,9 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
                 server = create_server()
 
             session = FakeSession()
-            token = request_ctx.set(
-                RequestContext(
-                    request_id="subscribe-inbox",
-                    meta=None,
-                    session=session,
-                    lifespan_context={},
-                    request=SimpleNamespace(headers={"x-agent-name": "test_agent"}),
-                )
-            )
+            token = ServerRequestContext(request_id='subscribe-inbox', meta=None, session=session, lifespan_context={}, request=SimpleNamespace(headers={'x-agent-name': 'test_agent'}), protocol_version='2025-11-25', method='resources/subscribe')
             try:
-                subscribe = server._mcp_server.request_handlers[
-                    mcp.types.SubscribeRequest
-                ]
+                subscribe = server._mcp_server.get_request_handler('resources/subscribe').handler
                 with patch(
                     "fastmcp_server.resources.inbox_notifications._current_token_claims",
                     return_value={
@@ -555,13 +498,9 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
                         "agent_id": "agent-test",
                     },
                 ):
-                    await subscribe(
-                        mcp.types.SubscribeRequest(
-                            params=mcp.types.SubscribeRequestParams(uri="ax://inbox/me")
-                        )
-                    )
+                    await subscribe(token, mcp.types.SubscribeRequest(params=mcp.types.SubscribeRequestParams(uri='ax://inbox/me')).params)
             finally:
-                request_ctx.reset(token)
+                None
 
             delivered = await inbox_notifications.notify_inbox_updated(
                 "test_agent",
@@ -582,27 +521,13 @@ class InboxNotificationRegistrationTests(unittest.TestCase):
                 server = create_server()
 
             session = FakeSession()
-            token = request_ctx.set(
-                RequestContext(
-                    request_id="subscribe-inbox-missing-agent",
-                    meta=None,
-                    session=session,
-                    lifespan_context={},
-                    request=SimpleNamespace(headers={}),
-                )
-            )
+            token = ServerRequestContext(request_id='subscribe-inbox-missing-agent', meta=None, session=session, lifespan_context={}, request=SimpleNamespace(headers={}), protocol_version='2025-11-25', method='resources/subscribe')
             try:
-                subscribe = server._mcp_server.request_handlers[
-                    mcp.types.SubscribeRequest
-                ]
+                subscribe = server._mcp_server.get_request_handler('resources/subscribe').handler
                 with self.assertRaises(McpError) as error:
-                    await subscribe(
-                        mcp.types.SubscribeRequest(
-                            params=mcp.types.SubscribeRequestParams(uri="ax://inbox/me")
-                        )
-                    )
+                    await subscribe(token, mcp.types.SubscribeRequest(params=mcp.types.SubscribeRequestParams(uri='ax://inbox/me')).params)
             finally:
-                request_ctx.reset(token)
+                None
 
             self.assertIn("Agent identity is required", str(error.exception))
 

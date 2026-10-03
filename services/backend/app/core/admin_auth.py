@@ -15,7 +15,7 @@ from jose import jwt as jose_jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .ax_jwt import get_jwks
+from .ax_jwt import get_jwks, get_issuer
 from .database import get_db_session
 from ..models.user import User
 
@@ -36,7 +36,7 @@ async def _resolve_admin_jwt(request: Request, db: AsyncSession) -> AdminPrincip
     """Validate a user_admin JWT from the Authorization header.
 
     Only accepts backend-issued JWTs with token_class=user_admin.
-    Cognito JWTs, PATs, and other token types are rejected.
+    upstream JWTs, PATs, and other token types are rejected.
     """
     auth_header = request.headers.get("authorization", "")
     if not auth_header.lower().startswith("bearer "):
@@ -73,7 +73,7 @@ async def _resolve_admin_jwt(request: Request, db: AsyncSession) -> AdminPrincip
 
         claims = jose_jwt.decode(
             token, key, algorithms=["RS256"],
-            issuer="ax-backend",
+            issuer=get_issuer(),
             options={"verify_aud": False},
         )
     except HTTPException:

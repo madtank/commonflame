@@ -5,7 +5,6 @@ describe('portable browser configuration', () => {
     expect(config.apiUrl).toBe('');
     expect(config.directApiUrl).toBe(window.location.origin);
     expect(config.mcpUrl).toBe(window.location.origin);
-    expect(config).not.toHaveProperty('cognitoDomain');
-    expect(config).not.toHaveProperty('cognitoClientId');
+    expect(Object.keys(config)).toEqual(['apiUrl', 'directApiUrl', 'mcpUrl', 'wsUrl', 'environment', 'features']);
   });
 });

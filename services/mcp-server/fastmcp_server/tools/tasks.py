@@ -13,7 +13,7 @@ from pydantic import Field
 from fastmcp import FastMCP
 from fastmcp.server.auth import AccessToken
 from fastmcp.server.dependencies import CurrentAccessToken, CurrentRequest
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 from starlette.requests import Request
 
 from fastmcp_server.api_client import (

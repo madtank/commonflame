@@ -20,8 +20,7 @@ afterAll(() => {
   server.close();
 });
 
-// Node 18 + jsdom does not reliably expose Web Crypto SubtleCrypto.
-// Cognito PKCE helpers use crypto.getRandomValues and crypto.subtle.digest.
+// jsdom does not consistently expose the Web Crypto API used by the app.
 if (!globalThis.crypto || !globalThis.crypto.subtle) {
   Object.defineProperty(globalThis, "crypto", {
     configurable: true,

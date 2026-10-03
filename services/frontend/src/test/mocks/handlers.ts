@@ -155,6 +155,7 @@ const buildMessagesListResponse = (request: Request) => {
 };
 
 export const handlers = [
+  http.get('/auth/local/invites', () => HttpResponse.json({ can_invite: false })),
   // Authentication endpoints
   http.post("/auth/login", async ({ request }) => {
     const body = (await request.json()) as any;

@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.connection_pools import get_redis_client
 from ...core.database import get_db_session
-from ...core.rls import SecureSession, get_secure_session, SystemSession, get_system_session
+from ...core.rls import SecureSession, get_human_session as get_secure_session, SystemSession, get_system_session
 from ...core.agent_space import grant_space_access
 from ...core.security import create_access_token as _legacy_create_access_token
 from ...models.agent import Agent
@@ -50,7 +50,8 @@ VIS_LIMITS = {"private": 10, "invite_only": 5, "public": 3}
 
 
 def create_access_token(user_id: str, space_id: str, token_version: int, extra_claims: dict | None = None) -> str:
-    if os.getenv("AUTH_MODE", "local").lower() != "local":
+    from app.core.auth_config import builtin_auth_enabled
+    if not builtin_auth_enabled():
         return _legacy_create_access_token(user_id, space_id, token_version, extra_claims=extra_claims)
     from .local_auth import mint_local_access_token
     claims = extra_claims or {}

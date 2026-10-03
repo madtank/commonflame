@@ -23,7 +23,7 @@ class MessagesToolTests(unittest.IsolatedAsyncioTestCase):
         self.tool = await self.mcp.get_tool("messages")
         self.token = SimpleNamespace(
             token="jwt",
-            claims={"agent_name": "sender", "space_id": "space-1"},
+            claims={"agent_name": "sender", "space_id": "space-1", "agent_id": "agent-test"},
         )
         self.request = SimpleNamespace(headers={})
         self.progress = DummyProgress()
@@ -301,7 +301,7 @@ class MessagesToolTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_send_rejects_scoped_agent_without_space_id(self) -> None:
-        self.token.claims = {"agent_name": "sender", "tools_allowed": ["messages"]}
+        self.token.claims = {"agent_name": "sender", "tools_allowed": ["messages"], "agent_id": "agent-test"}
         result = await self._call_tool(
             action="send",
             content="@pong_agent PING 123",

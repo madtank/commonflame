@@ -13,7 +13,7 @@ import json
 from typing import Any, Literal, Optional
 from urllib.parse import quote
 
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 
 from fastmcp_server.api_client import api_request_with_context
 from fastmcp_server.mcp_ui import (

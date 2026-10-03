@@ -12,7 +12,6 @@ import os
 import re
 import time
 from datetime import datetime
-from functools import cache
 from typing import Any, Dict, Optional
 
 import httpx
@@ -33,144 +32,11 @@ def _csv_env_values(name: str) -> frozenset[str]:
 # Empty by default is intentional: mutable x-on-behalf-of headers are ignored
 # unless deployment config names immutable, vetted concierge/space-agent IDs.
 _TRUSTED_CONCIERGE_AGENT_IDS = _csv_env_values("AX_TRUSTED_CONCIERGE_AGENT_IDS")
-_FRONTEND_CLIENT_IDS = _csv_env_values("COGNITO_FRONTEND_CLIENT_ID")
-_MCP_CLIENT_IDS = (
-    _csv_env_values("COGNITO_MCP_CLIENT_ID")
-    | _csv_env_values("COGNITO_MCP_M2M_CLIENT_ID")
-)
-
-
-def _claim_scopes(claims: dict[str, Any]) -> set[str]:
-    scope = claims.get("scope")
-    if isinstance(scope, str):
-        return {item for item in scope.split() if item}
-    if isinstance(scope, list):
-        return {str(item) for item in scope if item}
-    return set()
-
-
-def _claim_values(value: Any) -> set[str]:
-    if isinstance(value, str):
-        return {value} if value else set()
-    if isinstance(value, list):
-        return {str(item) for item in value if item}
-    return set()
-
-
-def _claim_client_ids(claims: dict[str, Any]) -> set[str]:
-    claim_client_ids = set()
-    claim_client_ids.update(_claim_values(claims.get("client_id")))
-    claim_client_ids.update(_claim_values(claims.get("azp")))
-    # Cognito and backend PAT-exchange tokens are not perfectly consistent:
-    # `aud` can carry a resource audience or the OAuth client identifier.
-    # Treat it as a possible client ID only for route-binding classification;
-    # audience/resource validation remains separate in _claim_audiences().
-    claim_client_ids.update(_claim_values(claims.get("aud")))
-    return claim_client_ids
-
-
-def _claim_audiences(claims: dict[str, Any]) -> set[str]:
-    audiences = set()
-    audiences.update(_claim_values(claims.get("aud")))
-    audiences.update(_claim_values(claims.get("audience")))
-    audiences.update(_claim_values(claims.get("resource")))
-    return audiences
-
-
-def _normalize_mcp_resource(value: str) -> str:
-    stripped = value.strip().rstrip("/")
-    if not stripped:
-        return ""
-    if "/mcp/" in stripped:
-        # Operators sometimes paste a named-agent or subresource URL; the OAuth
-        # resource is still the MCP server root, not the individual path.
-        stripped = stripped.split("/mcp/", 1)[0] + "/mcp"
-    return stripped if stripped.endswith("/mcp") else f"{stripped}/mcp"
-
-
-@cache
-def _configured_mcp_audiences() -> frozenset[str]:
-    # Env is read once per process. Tests that patch MCP audience env vars must
-    # call _configured_mcp_audiences.cache_clear() around the patched block.
-    audiences = {"ax-mcp"}
-    mcp_server_url = os.getenv("MCP_SERVER_URL", "http://localhost:3000")
-    for value in (
-        os.getenv("AX_MCP_RESOURCE_URL", ""),
-        os.getenv("MCP_RESOURCE_URL", ""),
-        mcp_server_url,
-    ):
-        normalized = _normalize_mcp_resource(value)
-        if normalized:
-            audiences.add(normalized)
-    return frozenset(audiences)
-
-
-def _is_mcp_audience(value: str) -> bool:
-    audiences = _configured_mcp_audiences()
-    # Direct matching keeps the legacy "ax-mcp" string audience valid without
-    # pretending it is URL-shaped.
-    if value in audiences:
-        return True
-    return _normalize_mcp_resource(value) in audiences
-
-
-def _is_pat_exchange_mcp_token(claims: dict[str, Any]) -> bool:
-    """Return whether claims are from the backend PAT→JWT MCP exchange path.
-
-    Headless MCP clients and MCP Jam exchange a user/agent PAT for a backend
-    JWT with `token_class` and an MCP resource audience. Older exchange tokens
-    used `audience=ax-mcp`; Waystation-AS remote OAuth tokens use the protected resource
-    URL such as `https://waystation.example/mcp`. That token is not a browser frontend
-    JWT, so a named `/mcp/agents/{name}` route is the reviewed agent binding
-    while the original user remains requester context.
-    """
-    token_class = str(claims.get("token_class") or "").strip()
-    return bool(
-        token_class in {"user_access", "agent_access"}
-        and any(_is_mcp_audience(value) for value in _claim_audiences(claims))
-    )
 
 
 def _is_frontend_user_session_token(claims: dict[str, Any]) -> bool:
-    """Return whether claims belong to the browser/frontend user-session path.
-
-    Frontend quick-launch widgets call MCP tools with the viewer's raw Cognito
-    JWT. Those tokens must remain user principals even when the request passes
-    through a named agent route/header. MCP OAuth proxy sessions are different:
-    the route is the reviewed agent binding.
-    """
-    return bool(
-        claims.get("typ") == "local-user"
-        or (_FRONTEND_CLIENT_IDS and _claim_client_ids(claims) & _FRONTEND_CLIENT_IDS)
-    )
-
-
-def _is_route_bound_agent_session(claims: dict[str, Any], header_agent_name: Any) -> bool:
-    """Return whether a named MCP route may bind this token to an agent.
-
-    Browser/frontend Cognito tokens fail closed: if the deployment does not
-    configure known frontend client IDs, route labels are not allowed to turn a
-    user token into an agent principal. MCP OAuth and M2M clients are explicitly
-    route-bound because the reviewed route/header carries the target agent.
-    """
-    if not header_agent_name:
-        return False
-
-    claim_client_ids = _claim_client_ids(claims)
-    if _is_frontend_user_session_token(claims):
-        return False
-    if claim_client_ids & _MCP_CLIENT_IDS:
-        return True
-    if _is_pat_exchange_mcp_token(claims):
-        return True
-
-    # Transitional compatibility for older MCP OAuth tokens that carry the
-    # resource scope but predate stable MCP client-id configuration. This still
-    # fails closed for browser tokens: they either match _FRONTEND_CLIENT_IDS
-    # above or, with no known client config, lack the MCP resource scope.
-    # TODO(MCPJAM-TOKENS-001): remove after legacy MCP OAuth tokens are cycled
-    # out and all environments set COGNITO_MCP_CLIENT_ID / M2M client IDs.
-    return bool(claim_client_ids and "ax-api/mcp:read" in _claim_scopes(claims))
+    """Browser tokens are explicitly signed as local users by our native AS."""
+    return claims.get("typ") == "local-user"
 
 
 def _is_trusted_concierge_principal(*, agent_id: Any) -> bool:
@@ -291,23 +157,20 @@ def extract_agent_context(token, request) -> Dict[str, Any]:
     header_agent_name = headers.get("x-agent-name")
     user_id = claims.get("user_id") or claims.get("sub")
 
-    route_bound_agent_session = _is_route_bound_agent_session(claims, header_agent_name)
-    # Frontend widget user JWTs can arrive through named MCP routes when
-    # widgets run viewer-private quick actions. Those route labels must not
-    # convert the viewer into an agent. MCP OAuth/proxy and headless sessions
-    # on /mcp/agents/{name} are route-bound agent sessions; the backend still
-    # verifies that the token holder may resolve/use that agent.
+    # Signed agent identity determines authorship. Route names, client IDs,
+    # scope and audience never turn a human session into an agent session.
     principal_type = (
         "agent"
-        if (agent_id or claimed_agent_name or route_bound_agent_session)
+        if (agent_id and not _is_frontend_user_session_token(claims))
         else "user"
     )
     agent_name = claimed_agent_name if principal_type == "agent" else None
+    if principal_type == "user":
+        agent_id = None
     if principal_type == "agent" and not agent_name:
         agent_name = header_agent_name
     username = (
         claims.get("username")
-        or claims.get("cognito:username")
         or claims.get("preferred_username")
     )
     email = claims.get("email")
@@ -356,9 +219,8 @@ def extract_agent_context(token, request) -> Dict[str, Any]:
 
     if principal_type == "agent" and not agent_name:
         logger.warning(
-            "No agent identity resolved — client should connect via "
-            "/mcp/agents/{name} or include X-Agent-Name header. "
-            "Requests will use the JWT owner's identity (user impersonation risk)."
+            "Signed agent %s has no display name; backend authorization uses its agent_id",
+            agent_id,
         )
     return {
         "jwt": jwt,

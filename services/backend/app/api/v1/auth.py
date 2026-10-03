@@ -1,9 +1,4 @@
-"""
-Authentication endpoints (AUTH-001 Cognito era).
-
-Cognito handles login/register/refresh/GitHub federation.
-This router keeps only endpoints the frontend still calls directly.
-"""
+"""Waystation identity, scoped credential exchange, and authenticated messages."""
 import logging
 import os
 import re
@@ -22,7 +17,6 @@ from ...core.beta_config import get_beta_config
 from ...core.config import get_settings
 from ...core.database import get_db_session
 from ...core.jwt_verify import (
-    _sanitize_username_candidate,
     get_current_user_from_token,
 )
 from ...core.rls import SecureSession, get_secure_session, SystemSession, get_system_session
@@ -96,91 +90,12 @@ class ExchangeResponse(BaseModel):
     agent_name: str | None = None
 
 
-class CognitoProfileSyncRequest(BaseModel):
-    email: str | None = None
-    preferred_username: str | None = None
-    full_name: str | None = None
-    avatar_url: str | None = None
 
 
-GENERATED_USERNAME_RE = re.compile(r"^user_[a-z0-9]{8}$", re.IGNORECASE)
 
 
-def _is_generated_username(value: str | None) -> bool:
-    return bool(value) and bool(GENERATED_USERNAME_RE.match(value))
 
 
-async def _sync_cognito_profile(
-    db: AsyncSession,
-    user: User,
-    payload: CognitoProfileSyncRequest,
-) -> bool:
-    changed = False
-
-    candidate_username = _sanitize_username_candidate(payload.preferred_username)
-    if candidate_username is None:
-        candidate_username = _sanitize_username_candidate(
-            payload.email,
-            allow_email_local_part=True,
-        )
-
-    if payload.full_name and payload.full_name != user.full_name:
-        user.full_name = payload.full_name
-        changed = True
-
-    if payload.avatar_url and payload.avatar_url != user.github_avatar_url:
-        user.github_avatar_url = payload.avatar_url
-        changed = True
-
-    if payload.email and payload.email != user.email:
-        conflict_result = await db.execute(
-            select(User)
-            .where(User.email == payload.email)
-            .where(User.id != user.id)
-            .limit(1)
-        )
-        if conflict_result.scalar_one_or_none() is None:
-            user.email = payload.email
-            changed = True
-
-    if candidate_username and candidate_username != user.github_username:
-        user.github_username = candidate_username
-        changed = True
-
-    should_repair_username = (
-        candidate_username
-        and candidate_username != user.username
-        and (_is_generated_username(user.username) or user.username == user.github_username)
-    )
-    if should_repair_username:
-        conflict_result = await db.execute(
-            select(User)
-            .where(User.username == candidate_username)
-            .where(User.id != user.id)
-            .limit(1)
-        )
-        if conflict_result.scalar_one_or_none() is None:
-            user.username = candidate_username
-            changed = True
-
-    # Repair home workspace name if it has the fallback user_### pattern
-    if candidate_username and user.space_id:
-        from ...models.space import Space
-        home_result = await db.execute(
-            select(Space).where(Space.id == user.space_id)
-        )
-        home_space = home_result.scalar_one_or_none()
-        if home_space and home_space.name.startswith("user_") and home_space.name.endswith("'s Workspace"):
-            correct_name = f"{candidate_username}'s Workspace"
-            logger.info(f"profile-sync: fixing workspace name {home_space.name!r} → {correct_name!r}")
-            home_space.name = correct_name
-            changed = True
-
-    if changed:
-        await db.commit()
-        await db.refresh(user)
-
-    return changed
 
 
 # ---------------------------------------------------------------------------
@@ -545,15 +460,6 @@ async def get_current_user(
     )
 
 
-@router.post("/cognito/profile-sync", status_code=status.HTTP_204_NO_CONTENT)
-async def sync_cognito_profile(
-    payload: CognitoProfileSyncRequest,
-    current_user: User = Depends(get_current_user_from_token),
-    db: AsyncSession = Depends(get_db_session),
-):
-    """Repair thin access-token user records using richer ID-token claims."""
-    await _sync_cognito_profile(db, current_user, payload)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/messages")

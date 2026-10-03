@@ -9,6 +9,8 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import text
 
 from app.core.config import get_settings, validate_security_settings
@@ -38,6 +40,16 @@ from app.middleware.rate_limiting_middleware import RateLimitingMiddleware
 
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(RateLimitingMiddleware, enabled=True)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_without_credentials(request, exc):
+    # Pydantic includes the submitted value by default; never echo passwords,
+    # setup/invite capabilities, or OAuth credentials in validation responses.
+    return JSONResponse(status_code=422, content={"detail": [
+        {"loc": error["loc"], "msg": error["msg"], "type": error["type"]}
+        for error in exc.errors()
+    ]})
 
 # Imports intentionally fail startup instead of leaving a healthy-looking API
 # with missing routes. Route dependencies own authentication and authorization.
@@ -78,5 +90,7 @@ async def health():
 @app.get("/auth.md", include_in_schema=False)
 async def auth_md():
     path = Path(__file__).resolve().parents[1] / "auth.md"
-    return PlainTextResponse(path.read_text(), media_type="text/markdown; charset=utf-8",
+    origin = (os.getenv("AX_AUTH_PUBLIC_BASE_URL") or os.getenv("PUBLIC_URL")
+              or os.getenv("FRONTEND_URL") or "http://localhost:3000").rstrip("/")
+    return PlainTextResponse(path.read_text().replace("{{ORIGIN}}", origin), media_type="text/markdown; charset=utf-8",
                              headers={"Cache-Control": "public, max-age=300"})

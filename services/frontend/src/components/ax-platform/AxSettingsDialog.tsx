@@ -43,6 +43,7 @@ import {
 } from "@/lib/api-clean";
 import { copyToClipboard } from "@/lib/clipboard-utils";
 import { PresenceDot } from "@/components/ax-platform/shell/PresenceDot";
+import { WorkspaceInvitation } from "./WorkspaceInvitation";
 import { cn } from "@/lib/utils";
 import { getAgentRuntimeDisplay } from "@/lib/agent-utils";
 import { usePresence } from "@/hooks/usePresence";
@@ -915,6 +916,8 @@ export function AxSettingsDialog({
                   </p>
                 </CardContent>
               </Card>
+
+              {open ? <WorkspaceInvitation key={currentSpaceId} /> : null}
 
               <Card className="border-border bg-card shadow-none">
                 <CardHeader className="pb-3">

@@ -21,10 +21,10 @@ from typing import Any
 
 from fastmcp.server.dependencies import get_access_token, get_http_request
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 import mcp.types as mt
 
-from fastmcp_server.api_client import _is_route_bound_agent_session, api_request
+from fastmcp_server.api_client import _is_frontend_user_session_token, api_request
 from fastmcp_server.mcp_ui import get_widget_specs
 
 logger = logging.getLogger(__name__)
@@ -267,19 +267,10 @@ class ToolCallNotificationMiddleware(Middleware):
 
         header_agent_name = request.headers.get("x-agent-name") if request else None
 
-        # ATTR-001: only a token can bind agent identity. Audit + broadcast fire
-        # for token-asserted agents AND route-bound MCP sessions (MCP OAuth /
-        # M2M / PAT-exchange tokens that carry x-agent-name) — using the SAME
-        # classifier api_client uses to resolve the principal, so headless /
-        # MCPJam agents whose identity rides the named route keep auditing.
-        # Frontend/user (viewer) tokens fail closed even with an x-agent-name
-        # header → viewer-private: no shared audit, no broadcast, no 403.
-        # TODO(ATTR-001): `_is_route_bound_agent_session` is private to
-        # api_client; promote it (or a shared principals helper) so this reuse
-        # is explicit and can't quietly diverge.
-        principal_is_agent = bool(agent_id or agent_name) or (
-            token is not None
-            and _is_route_bound_agent_session(token.claims, header_agent_name)
+        # Audit only independently issued, signed agent identities. Browser
+        # credentials and mutable route labels never become agent authorship.
+        principal_is_agent = bool(
+            token and agent_id and not _is_frontend_user_session_token(token.claims)
         )
 
         if not principal_is_agent:

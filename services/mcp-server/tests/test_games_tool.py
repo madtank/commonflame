@@ -19,7 +19,7 @@ class GamesToolTests(unittest.IsolatedAsyncioTestCase):
         self.tool = await self.mcp.get_tool("games")
         self.token = SimpleNamespace(
             token="jwt",
-            claims={"agent_name": "orion", "space_id": "space-1"},
+            claims={"agent_name": "orion", "space_id": "space-1", "agent_id": "agent-test"},
         )
         self.request = SimpleNamespace(headers={})
 
@@ -259,6 +259,7 @@ class GamesToolTests(unittest.IsolatedAsyncioTestCase):
             "sub": "user-1",
             "client_id": "frontend-client",
             "space_id": "stale-space",
+            "typ": "local-user",
         }
         self.request = SimpleNamespace(
             headers={
@@ -267,10 +268,6 @@ class GamesToolTests(unittest.IsolatedAsyncioTestCase):
             }
         )
         with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
             patch(
                 "fastmcp_server.tools.games.api_request_with_context",
                 new=AsyncMock(return_value={"status": "ok"}),

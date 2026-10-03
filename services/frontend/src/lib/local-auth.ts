@@ -14,6 +14,75 @@ export type LocalSession = {
   space_id?: string;
 };
 
+export type AccountStatus = {
+  auth_mode: 'builtin';
+  setup_required: boolean;
+  signup: 'invite_only';
+};
+export type AccountDetails = {
+  token: string;
+  username: string;
+  password: string;
+  full_name?: string;
+};
+
+export async function getAccountStatus(): Promise<AccountStatus> {
+  const response = await fetch('/auth/local/status', { credentials: 'include', cache: 'no-store' });
+  if (!response.ok) throw new Error('Could not check account setup. Please try again.');
+  const data = await response.json();
+  if (data.auth_mode !== 'builtin' || typeof data.setup_required !== 'boolean' || data.signup !== 'invite_only') {
+    throw new Error('Account setup is not available on this Waystation.');
+  }
+  return data;
+}
+
+function acceptSession(data: LocalSession): LocalSession {
+  if (!data.access_token || !data.user?.username) throw new Error('The server returned an incomplete session.');
+  if (storage.getUsername() && storage.getUsername() !== data.user.username) storage.clearSpace();
+  storage.setUserToken(data.access_token);
+  storage.setUsername(data.user.username);
+  storage.setUserMetadata(data.user);
+  storage.markSessionActive();
+  window.dispatchEvent(new CustomEvent('auth:token-refreshed'));
+  return data;
+}
+
+export async function createAccount(details: AccountDetails, kind: 'setup' | 'invite'): Promise<LocalSession> {
+  const response = await fetch(kind === 'setup' ? '/auth/local/setup' : '/auth/local/signup', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify(details),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not create your account. Check the token and try again.');
+  return acceptSession(data);
+}
+
+export type WorkspaceInvitation = { token: string; expires_at: string };
+export async function canInviteToWorkspace(): Promise<boolean> {
+  const bearer = storage.getUserToken();
+  if (!bearer) return false;
+  const response = await fetch('/auth/local/invites', {
+    credentials: 'include', cache: 'no-store',
+    headers: { Authorization: `Bearer ${bearer}` },
+  });
+  if (!response.ok) return false;
+  const data = await response.json();
+  return data.can_invite === true;
+}
+export async function createWorkspaceInvitation(): Promise<WorkspaceInvitation> {
+  const bearer = storage.getUserToken();
+  if (!bearer) throw new Error('Sign in again before creating an invitation.');
+  const response = await fetch('/auth/local/invites', {
+    method: 'POST', credentials: 'include', cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
+    body: JSON.stringify({ expires_in_hours: 24 }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not create an invitation. You must be a workspace owner.');
+  if (typeof data.token !== 'string' || !data.token || typeof data.expires_at !== 'string') throw new Error('The server returned an incomplete invitation. Please try again.');
+  return data;
+}
+
 export async function loginLocal(username: string, password: string): Promise<LocalSession> {
   const response = await fetch('/auth/local/login', {
     method: 'POST',
@@ -35,14 +104,7 @@ export async function loginLocal(username: string, password: string): Promise<Lo
   if (!response.ok) {
     throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not sign in. Check your username and password.');
   }
-  if (!data.access_token || !data.user?.username) throw new Error('The server returned an incomplete session.');
-  if (storage.getUsername() && storage.getUsername() !== data.user.username) storage.clearSpace();
-  storage.setUserToken(data.access_token);
-  storage.setUsername(data.user.username);
-  storage.setUserMetadata(data.user);
-  storage.markSessionActive();
-  window.dispatchEvent(new CustomEvent('auth:token-refreshed'));
-  return data;
+  return acceptSession(data);
 }
 
 export async function logoutLocal(): Promise<void> {
@@ -55,5 +117,5 @@ export async function logoutLocal(): Promise<void> {
     const channel = new BroadcastChannel(`waystation-auth-${config.environment}`);
     channel.postMessage({ type: 'logout' });
     channel.close();
-  } catch { /* local sign-out remains valid if channel access is blocked */ }
+  } catch { /* sign-out remains valid if channel access is blocked */ }
 }

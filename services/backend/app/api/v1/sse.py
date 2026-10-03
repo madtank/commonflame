@@ -453,7 +453,7 @@ async def sse_messages_stream(
             detail="Authentication required for SSE connection"
         )
 
-    # Authenticate via unified Cognito/legacy path (same as all other endpoints)
+    # Authenticate via unified upstream/legacy path (same as all other endpoints)
     try:
         async with system_session_context() as system_ctx:
             current_user = await _resolve_user_from_bearer_token(

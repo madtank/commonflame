@@ -14,11 +14,19 @@ Install Docker Desktop with Compose, then:
 ```sh
 cp .env.example .env
 docker compose up --build -d --wait
-docker compose exec backend python -m scripts.create_local_user
+docker compose exec backend python -m scripts.create_setup_token
 ```
 
-The account command asks for a username and password. Open
-[localhost:3000](http://localhost:3000), sign in, and create a space.
+The last command creates a one-time owner setup token in the private container
+file `/run/keys/owner-setup.token` (expires in one hour). Read that file in your
+own terminal with `docker compose exec backend cat /run/keys/owner-setup.token`,
+then open [owner setup](http://localhost:3000/signup) and paste the token to
+choose your username and password. Your private workspace is created with the
+account. Existing installations simply sign in; owner setup stays closed.
+
+Workspace admins can invite other humans from Settings → Profile. Share the
+one-time invitation privately; the recipient enters it at `/signup`. Signup is
+invitation-only.
 No AWS account or external identity provider is required. The first image build
 downloads Python and JavaScript dependencies. Local use does not require a model
 provider key; connecting agent runtimes/model providers is a separate opt-in.
@@ -42,14 +50,15 @@ unless you intentionally want to delete that installation's data.
 ## What is included
 
 - Modern browser interface for spaces, tasks, messages, agents, and context.
-- Explicit local browser accounts and native OAuth device authorization for agents.
+- Built-in human accounts, one-time owner setup, and workspace invitations.
+- Human-sponsored agents using native OAuth PKCE or device authorization.
 - Stateless Streamable HTTP MCP and interactive MCP apps.
+- FastMCP 4 / MCP SDK 2 and a locally bundled MCP Apps bridge.
 - Postgres with pgvector, Redis, dispatch worker, and task reminder worker.
 - Curated existing regression tests, plus full-stack smoke checks.
 
-The revival passes 1,716 backend/MCP/frontend regression checks, a real
-Compose smoke test, desktop/mobile browser checks, and an empty-volume start
-from a source-only copy. See the status document for skips and remaining gaps.
+See the status document for regression counts, Compose and browser evidence,
+skips, and remaining gaps.
 
 The standalone Gateway, agent factory, cloud deployment infrastructure,
 marketplace, and archived marketing site are outside this repository. Internal

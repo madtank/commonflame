@@ -12,9 +12,30 @@ Routes:
 from __future__ import annotations
 
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse
 
-from fastmcp_server.mcp_ui import WIDGET_STATIC_DIR, get_widget_manifest, get_widget_specs
+from fastmcp_server.mcp_ui import (
+    D3_VERSION, MCP_APPS_BRIDGE_VERSION, WIDGET_STATIC_DIR,
+    get_widget_manifest, get_widget_specs, load_widget_html,
+)
+
+
+async def apps_bridge(_request: Request) -> FileResponse:
+    """Serve the immutable, integrity-verified MCP Apps browser bundle."""
+    bundle = WIDGET_STATIC_DIR.parent / "vendor" / "ext-apps" / MCP_APPS_BRIDGE_VERSION / "app-with-deps.js"
+    return FileResponse(bundle, media_type="text/javascript", headers={
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+    })
+
+
+async def apps_d3(_request: Request) -> FileResponse:
+    """Serve the pinned standalone D3 bundle used by the context graph."""
+    bundle = WIDGET_STATIC_DIR.parent / "vendor" / "d3" / D3_VERSION / "d3.min.js"
+    return FileResponse(bundle, media_type="text/javascript", headers={
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
 def _widget_registry_item_contract(item: dict) -> dict | None:
@@ -88,7 +109,7 @@ async def apps_get(request: Request) -> HTMLResponse | JSONResponse:
             status_code=404,
         )
 
-    html = html_path.read_text()
+    html = load_widget_html(html_path)
     response = HTMLResponse(
         content=html,
         media_type="text/html;profile=mcp-app",

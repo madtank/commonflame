@@ -1,7 +1,7 @@
 """
 JWT Authentication and Security utilities (legacy self-signed JWTs).
 
-Cognito handles all new auth (AUTH-001). These remain for:
+upstream handles all new auth (AUTH-001). These remain for:
 - Legacy JWT verification (rls.py, sse.py fallbacks during transition)
 - Space-switch access tokens (organizations.py, guest_space.py)
 - Password hashing (agent_keys.py)

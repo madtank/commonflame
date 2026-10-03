@@ -1066,7 +1066,7 @@ export const api = {
     return response.data;
   },
 
-  // Logout function - clear client-side tokens (Cognito manages sessions)
+  // Compatibility helper for callers clearing their client-side session.
   async logout() {
     storage.clearTokens();
     storage.clearAll();

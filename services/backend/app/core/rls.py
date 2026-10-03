@@ -54,54 +54,6 @@ def _claim_values(value: Any) -> set[str]:
     return set()
 
 
-def _configured_client_ids(raw: str | None) -> set[str]:
-    return {
-        client_id.strip()
-        for client_id in (raw or "").split(",")
-        if client_id.strip()
-    }
-
-
-def _claims_client_ids(claims: dict[str, Any]) -> set[str]:
-    values: set[str] = set()
-    values.update(_claim_values(claims.get("client_id")))
-    values.update(_claim_values(claims.get("azp")))
-    values.update(_claim_values(claims.get("aud")))
-    return values
-
-
-def _is_mcp_route_agent_session(
-    *,
-    claims: dict[str, Any],
-    request: Request | None,
-    targeted_agent_id: str | None,
-) -> bool:
-    """Return whether a Cognito session should author as the route agent.
-
-    The browser SPA and MCP OAuth both use Cognito user tokens, but they are
-    different security paths:
-    - frontend quick-action widgets are viewer-private and remain user-authored;
-    - `/mcp/agents/{agent}` OAuth sessions are explicit agent-route sessions
-      after `_apply_owned_agent_target` verifies the user can target that agent.
-    """
-    if not targeted_agent_id or request is None:
-        return False
-    if not (request.headers.get("x-agent-id") or request.headers.get("x-agent-name")):
-        return False
-
-    from ..core.auth_config import FRONTEND_AUDIENCE, MCP_AUDIENCE, MCP_M2M_AUDIENCE
-
-    client_ids = _claims_client_ids(claims)
-    frontend_ids = _configured_client_ids(FRONTEND_AUDIENCE)
-    mcp_ids = _configured_client_ids(MCP_AUDIENCE) | _configured_client_ids(
-        MCP_M2M_AUDIENCE
-    )
-
-    if client_ids & frontend_ids:
-        return False
-    return bool(client_ids & mcp_ids)
-
-
 @dataclass
 class RLSSession:
     """
@@ -363,73 +315,12 @@ async def get_secure_session(
             principal_id=str(principal.user.id),
         )
 
-    # Try Cognito JWT first (AUTH-001)
-    from ..core.auth_config import COGNITO_USER_POOL_ID
-    if COGNITO_USER_POOL_ID:
-        try:
-            from app.core.jwt_verify import (
-                _apply_owned_agent_target,
-                _decode_token,
-                _resolve_user,
-            )
-            claims = await _decode_token(token)
-            # Valid Cognito token — resolve user (pass the raw access token so the
-            # waitlist gate can fetch the email for brand-new users; access tokens
-            # carry no `email` claim).
-            user = await _resolve_user(claims, db, access_token=token)
-            user = await _apply_owned_agent_target(user, db, request)
-            space_id = str(
-                getattr(user, "_effective_space_id", None)
-                or user.current_space_id
-                or user.space_id
-            )
-            targeted_agent_id = getattr(user, "_agent_id", None)
-            targeted_agent_name = getattr(user, "_agent_name", None)
-            route_agent_session = _is_mcp_route_agent_session(
-                claims=claims,
-                request=request,
-                targeted_agent_id=targeted_agent_id,
-            )
-            await set_rls_context(
-                db,
-                user_id=str(user.id),
-                space_id=space_id,
-                agent_id=targeted_agent_id,
-            )
-            logger.debug(
-                "SecureSession (Cognito) initialized: user=%s targeted_agent=%s space=%s principal=%s",
-                user.id,
-                targeted_agent_id,
-                space_id,
-                "agent" if route_agent_session else "user",
-            )
-            return SecureSession(
-                db=db,
-                user=user,
-                space_id=space_id,
-                # Frontend widget user JWTs may target an agent for UI flows
-                # but remain user-authored. MCP OAuth sessions entered through
-                # /mcp/agents/{name} are route-bound agent sessions after the
-                # owned-agent target is verified above.
-                agent_id=targeted_agent_id if route_agent_session else None,
-                agent_name=targeted_agent_name if route_agent_session else None,
-                is_agent=route_agent_session,
-                principal_type="agent" if route_agent_session else "user",
-                principal_id=targeted_agent_id if route_agent_session else str(user.id),
-            )
-        except HTTPException as e:
-            if "Invalid token" in str(e.detail) or "Token key not found" in str(e.detail):
-                logger.debug(f"Not a Cognito token, trying legacy: {e.detail}")
-            else:
-                raise
-        except Exception as e:
-            logger.debug(f"Cognito JWT check failed, trying legacy: {e}")
-
     # Backend-minted RS256 token path (aX agent auth)
     try:
         from jose import jwt as jose_jwt
         unverified = jose_jwt.get_unverified_claims(token)
-        if unverified.get("iss") == "ax-backend":
+        from app.core.ax_jwt import get_issuer
+        if unverified.get("iss") == get_issuer():
             from app.core.jwt_verify import _resolve_ax_agent_user
             from app.core.ax_jwt import get_jwks
             jwks = get_jwks()
@@ -441,11 +332,9 @@ async def get_secure_session(
                     key = k
                     break
             if key:
-                claims = jose_jwt.decode(
-                    token, key, algorithms=["RS256"],
-                    issuer="ax-backend",
-                    options={"verify_aud": False},
-                )
+                from app.core.jwt_verify import _decode_backend_token, _enforce_oauth_request_scope
+                claims = _decode_backend_token(token)
+                _enforce_oauth_request_scope(claims, request)
                 # Dev-login RS256 tokens carry user_id (not agent_id)
                 if claims.get("user_id") and not claims.get("agent_id"):
                     from app.core.jwt_verify import _resolve_dev_rs256_user
@@ -463,20 +352,11 @@ async def get_secure_session(
                 # Exchange-issued JWTs carry src_credential_id + token_class (AUTH-SPEC-001)
                 if claims.get("src_credential_id") and claims.get("token_class") in ("user_access", "user_admin", "agent_access"):
                     from app.core.jwt_verify import (
-                        _apply_owned_agent_target,
-                        _is_exchange_mcp_route_agent_session,
                         _resolve_exchange_jwt_user,
                     )
                     user = await _resolve_exchange_jwt_user(claims, db)
-                    if claims.get("token_class") in ("user_access", "user_admin"):
-                        user = await _apply_owned_agent_target(user, db, request)
                     space_id = str(getattr(user, "_effective_space_id", None) or user.current_space_id or user.space_id)
-                    route_agent_session = _is_exchange_mcp_route_agent_session(
-                        claims=claims,
-                        request=request,
-                        targeted_agent_id=getattr(user, "_agent_id", None),
-                    )
-                    is_agent = claims.get("token_class") == "agent_access" or route_agent_session
+                    is_agent = claims.get("token_class") == "agent_access"
                     agent_id = getattr(user, "_agent_id", None) if is_agent else None
                     agent_name = getattr(user, "_agent_name", None) if is_agent else None
                     await set_rls_context(db, user_id=str(user.id), space_id=space_id, agent_id=agent_id)
@@ -586,6 +466,13 @@ async def get_secure_session(
 
 # Type alias for cleaner endpoint signatures
 SecureSessionDep = Annotated[SecureSession, Depends(get_secure_session)]
+
+
+async def get_human_session(session: SecureSession = Depends(get_secure_session)) -> SecureSession:
+    from fastapi import HTTPException
+    if session.is_agent:
+        raise HTTPException(status_code=403, detail="Human sign-in required")
+    return session
 
 
 # =============================================================================

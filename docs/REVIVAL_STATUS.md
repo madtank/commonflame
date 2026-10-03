@@ -1,95 +1,99 @@
-# Revival status — 2026-10-02
+# Revival status — 2026-10-03
 
-## Baseline inspection
+## Baseline and source preservation
 
-- Fetched all three upstream repositories successfully.
-- Backend and MCP main last changed July 8; frontend main July 29.
-- Original backend/MCP roots contain uncommitted work, preserved in place.
-- Original frontend is clean but on an older feature branch.
-- New source snapshots are detached, clean, and based on fetched main.
-- MCP already defaults to stateless HTTP; a protocol rewrite is unnecessary.
-- Backend has OAuth discovery, JWKS, and native device authorization.
-- Browser authentication is Cognito-specific and requires a standalone local
-  account path for a cloud-free quickstart.
-- The supplied analysis incorrectly says `/health` is missing: current backend
-  source has both `/health` and versioned health routes.
+All three upstream main branches were fetched. Backend and MCP main last
+changed July 8; frontend main July 29. Original roots and their uncommitted
+work remain in place. The new repository uses clean source snapshots, recorded
+in SOURCE_PROVENANCE.md, and imports no old environment files or user database.
 
-## Local build verified
+The initial monorepo baseline passed 1,716 tests, desktop/mobile browser checks,
+a source-only empty-volume start, and persistence checks. The October 3 follow-up
+replaces Cognito-specific authentication and upgrades MCP from that baseline.
 
-The curated monorepo runs the frontend, backend, stateless MCP server, Postgres,
-Redis, dispatch worker, and reminders worker with one Compose command. Host
-ports bind to loopback; new volumes keep this installation separate from the
-old aX stack. Cloud-only startup defaults, old environment files, credentials,
-marketing archives, and dead legacy entrypoints are excluded.
+## Current implementation
 
-Browser accounts use explicit usernames/passwords, Argon2 password hashing,
-short-lived RS256 access tokens, and rotating HttpOnly refresh cookies. Agent
-connections use the backend's native OAuth device or PKCE consent flow. Signing
-keys persist in a private Docker volume. Cloud AI execution and automatic
-managed-agent provisioning are disabled by default.
+The frontend, FastAPI backend, and stateless MCP share one repository and public
+origin. Compose also runs Postgres/pgvector, Redis, dispatch, and reminder workers.
+Host ports stay loopback-bound. Cloud AI and automatic cloud agent provisioning
+are disabled. Database, uploads, Redis, and signing keys use separate persistent
+volumes belonging to this installation.
 
-Validation against the final local build:
+Humans use built-in Argon2 accounts with 15-minute RS256 access tokens and
+rotating HttpOnly refresh cookies. One-time operator setup controls the first
+owner; workspace admins invite additional members. Invitations join their
+specific workspace and cannot replay. Setup never reopens when an account is
+disabled. There is no open signup or automatic agent sponsorship.
 
-- Backend: 63 hermetic tests passed; 33 retained database integration tests
-  were deselected. The real Compose smoke covers PostgreSQL-backed auth and
-  task/message persistence.
-- MCP: 568 regression checks passed.
-- Frontend: 1,085 tests passed, 3 skipped; type checking and Node 24 production
-  build passed.
-- Full-stack smoke passed: discovery/JWKS/auth.md, every anonymous tool-call
-  challenge, browser login/refresh/logout, device consent, OAuth refresh
-  rotation/replay rejection, PKCE redirect/state/verifier binding and one-time
-  codes, authenticated MCP, saved tasks/messages, and workspace-scoped SSE.
-- Desktop and mobile browser checks passed, including settings, two-tab refresh
-  coordination, session restore, and shared logout, with no page errors or
-  failed authenticated API requests. Visible in-app-browser UAT created a task
-  through the real MCP app and opened its saved detail.
-- Fixed legacy theme broadcasts that the modern MCP Apps bridge rejected;
-  widget theme changes now use direct legacy setters and valid MCP host-context
-  notifications, with regression coverage.
-- A source-only copy built and started all seven services with an empty database
-  and isolated volumes on different ports, then passed the same full smoke.
-- Restarting the backend, MCP, and workers preserved the browser account, the
-  task created in the visible widget, the public signing key, the refresh
-  session, and already-issued authenticated API/MCP credentials.
-- Offline credential-pattern scanning and Gitleaks passed on the curated source.
+An agent discovers `/auth.md`, registers an OAuth client, and gives the human
+an approval URL. PKCE and device authorization require deliberate approval.
+Issued agent identities are bound to sponsor, client, workspace, resource and
+scopes; refresh rechecks activity and membership. The canonical resource is
+`PUBLIC_URL/mcp`, with named routes retained as compatibility aliases. Compose
+configures token issuer and OAuth discovery to the same public origin.
 
-GitHub Actions includes the regression and Compose checks. Remote CI has not
-run because the repository has not been pushed.
+Cognito-specific backend routes/configuration and frontend coupling are removed.
+Legacy PAT APIs remain outside the recommended onboarding path. Built-in sign-in
+requires no separate SSO service; generic upstream OIDC remains optional future
+work.
 
-## Release decisions
+MCP uses FastMCP 4.0.10, MCP SDK 2.3.0, and verified sessionless HTTP. Both legacy
+initialize and the current 2026-07-28 protocol are exercised. MCP Apps 2.0.3 and
+D3 7.9.0 are bundled locally, with licenses and package integrity/provenance.
+Widgets no longer import scripts from a CDN.
 
-Waystation is a provisional local name. A live name check found existing
-WayStation-AI MCP tooling and The Waystation Agent Commons, so public naming
-needs another pass. License is pending. Nothing has been pushed, published,
-deployed remotely, or connected to existing user data.
+## Verified evidence
 
-The local account-creation command is documented in the root README. Test
-accounts and their workspaces are synthetic and remain in the isolated local
-database; no old user database was imported.
+- Backend: 86 hermetic tests passed; 32 retained historical database integration
+  tests deselected. Eight existing deprecation warnings remain.
+- MCP: 577 tests plus 369 subtests passed. Dependency consistency and actual
+  bundled Apps/D3 API checks passed.
+- Frontend: 1,120 tests passed, 3 skipped; type checking and production build
+  passed. Total passing tests: 1,783, plus MCP subtests.
+- Existing-volume localhost stack passed the full smoke after migration.
+- A separate installation with fresh volumes and a localhost HTTPS reverse proxy
+  passed the same smoke, including private first-owner setup. Certificate
+  verification stayed enabled; no CA was installed into the operating system.
+  HTTPS refresh cookies were Secure and discovery/auth.md used the public HTTPS
+  origin.
+- Full-stack smoke covered anonymous MCP challenge, discovery/JWKS/auth.md,
+  account login/refresh/logout, invalid and replayed invitations, member invite
+  rejection, pending device consent, explicit approval/denial, PKCE state/redirect/
+  verifier binding, single-use codes, distinct client agent identities, canonical
+  audience, public issuer, refresh rotation/replay, tasks/messages and scoped SSE.
+- Real SDK 2 clients used authenticated tools and resources through both legacy
+  and modern protocol flows, for both device and PKCE credentials. HTTPS QA ran
+  those SDK calls directly through the verified public TLS URL.
+- In-app-browser checks showed the invitation controls and explicit native
+  sponsor page. Denying a synthetic request visibly reported no credential;
+  the authorization server independently returned `access_denied`.
+- The upgraded task widget loaded its locally served bridge, read the saved
+  task, and completed it through an authenticated tool action. The UI showed
+  completed/inactive reminder state, with zero new widget console errors.
+- Restart preserved the account, saved widget task, signing key, newly issued
+  API/MCP credential, and refresh session.
+- Source credential checks and Gitleaks passed. Runtime credentials, test CA,
+  private keys, and fixture data remain ignored local artifacts.
 
-## Remaining release work
+GitHub Actions includes the regression and Compose smoke checks. Remote CI has
+not run because this repository has not been pushed. Synthetic test accounts
+and workspaces remain for auditability; the temporary HTTPS QA services were
+stopped while their volumes were preserved.
 
-- Choose the final public name and license.
-- Audit dependencies and review optional integrations before public release.
-- Vendor the MCP Apps browser bridge for fully offline widgets.
-- Connect and validate a real external agent runtime; a model provider/runtime
-  is not bundled into the default stack.
-- Review HTTPS, deployment secrets, limits, backup/restore, and operational
-  controls before exposing an instance beyond localhost.
+## Release boundaries
 
-## MCP baseline and known limits
+Waystation remains provisional: existing WayStation-AI MCP tooling and The
+Waystation Agent Commons require another public naming check. License is
+pending. Nothing has been pushed, published, deployed remotely, or connected
+to existing user data.
 
-The curated MCP tree keeps 42 active runtime files and 32 focused Python test
-files. The isolated Python 3.11 regression suite passes 568 checks, including
-actual RSA/JWKS validation of signature, issuer, audience, and expiry. Browser
-JWTs retain user authorship even on a named agent route. The service pins the
-existing FastMCP 3.3.1 baseline; upgrading to FastMCP 4 is a separate follow-up.
+Before public hosting/release: choose name/license, audit dependencies and
+optional integrations, validate deployment limits/backups/host policies, and
+provide a suitable human account recovery/MFA or upstream OIDC strategy.
+No model provider or standalone agent runtime is bundled. Real SDK compatibility
+is verified; a complete external agent-host login remains a separate UAT step.
 
-Embedded MCP Apps currently import a pinned browser bridge from `unpkg.com`.
-Those widget surfaces require internet access until the bridge is vendored.
-The backend API and MCP protocol runtime do not require an AWS account.
-
-User-visible MCP names and text now use Waystation. Old protocol identifiers
-such as `ax://`, `ax/actionForms`, and the concierge routing handle `@aX` remain
-for compatibility.
+Internal protocol identifiers such as `AX_*`, `ax://`, `ax/actionForms` and the
+concierge handle `@aX` remain compatibility identifiers. Visible product names
+use Waystation. See AUTH.md, SPONSORED_ONBOARDING.md and OPERATIONS.md for the
+current contract and run instructions.

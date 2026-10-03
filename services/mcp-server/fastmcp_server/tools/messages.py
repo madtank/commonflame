@@ -27,9 +27,9 @@ from typing import Annotated, Any, Literal, Optional
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import CurrentAccessToken, CurrentRequest
 from fastmcp.server.auth import AccessToken
-from fastmcp.server.tasks import TaskConfig
+from fastmcp.utilities.tasks import TaskConfig
 from fastmcp.dependencies import Progress
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 from pydantic import Field
 from starlette.requests import Request
 

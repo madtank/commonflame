@@ -209,10 +209,10 @@ class ViewerPrincipalAuditTests(unittest.IsolatedAsyncioTestCase):
         mock_post = self._fire(claims={"agent_id": "uuid-123"})
         mock_post.assert_called_once()
 
-    async def test_agent_name_in_token_claims_audits(self):
+    async def test_agent_name_without_signed_id_does_not_audit(self):
         # Symmetric to agent_id: an agent_name claim also asserts a principal.
         mock_post = self._fire(claims={"agent_name": "relay"})
-        mock_post.assert_called_once()
+        mock_post.assert_not_called()
 
     async def test_no_token_does_not_audit(self):
         # Auth disabled or token extraction failed — treat as viewer-private
@@ -225,7 +225,7 @@ class ViewerPrincipalAuditTests(unittest.IsolatedAsyncioTestCase):
         mock_post = self._fire(claims={}, has_token=False)
         mock_post.assert_not_called()
 
-    async def test_route_bound_mcp_token_without_agent_claims_audits(self):
+    async def test_route_label_without_signed_agent_id_does_not_audit(self):
         # Headless/MCPJam: a PAT-exchanged MCP token carries no agent_id/
         # agent_name claim but is a legitimate agent via the named route
         # (token_class + ax-mcp audience + x-agent-name). It MUST still audit —
@@ -234,8 +234,4 @@ class ViewerPrincipalAuditTests(unittest.IsolatedAsyncioTestCase):
             claims={"token_class": "user_access", "audience": "ax-mcp"},
             header_agent_name="protocol",
         )
-        mock_post.assert_called_once()
-
-
-if __name__ == "__main__":
-    unittest.main()
+        mock_post.assert_not_called()

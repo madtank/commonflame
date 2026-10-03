@@ -4,7 +4,6 @@ These checks keep ChatGPT Apps discovery compatible while failing fast when a
 request already presents a stale or invalid bearer token.
 """
 
-from __future__ import annotations
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -102,6 +101,7 @@ class AuthDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
                 "client_id": "frontend-client",
                 "scope": "openid profile",
                 "tools_allowed": ["whoami"],
+                "typ": "local-user",
             }
         )
 
@@ -150,6 +150,7 @@ class AuthDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
                 "username": "madtank",
                 "client_id": "frontend-client",
                 "scope": "openid ax-api/mcp:read",
+                "typ": "local-user",
             }
         )
 
@@ -169,6 +170,7 @@ class AuthDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
             claims={
                 "sub": "user-123",
                 "client_id": "frontend-client",
+                "typ": "local-user",
             }
         )
 
@@ -189,6 +191,7 @@ class AuthDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
                 "sub": "user-123",
                 "client_id": "frontend-client",
                 "scope": "",
+                "typ": "local-user",
             }
         )
 
@@ -209,6 +212,7 @@ class AuthDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
                 "sub": "user-123",
                 "client_id": "frontend-client",
                 "scope": [],
+                "typ": "local-user",
             }
         )
 

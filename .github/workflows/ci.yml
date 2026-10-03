@@ -15,7 +15,7 @@ jobs:
         working-directory: services/backend
     env:
       ENVIRONMENT: test
-      AUTH_MODE: local
+      AUTH_MODE: builtin
       JWT_SECRET_KEY: unit-test-only-session-secret
     steps:
       - uses: actions/checkout@v4

@@ -9,26 +9,31 @@ import base64
 import hashlib
 import http.cookiejar
 import json
+from pathlib import Path
 import secrets
+import ssl
 import subprocess
 import sys
 import time
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlencode, urlparse
-from urllib.request import Request, build_opener, HTTPCookieProcessor
+from urllib.request import Request, build_opener, HTTPCookieProcessor, HTTPSHandler
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://localhost:3000")
     parser.add_argument("--health-only", action="store_true")
+    parser.add_argument("--ca-file", help="Trust this test CA for HTTPS; certificate verification stays enabled")
+    parser.add_argument("--sdk-python", help="Optional MCP SDK v2 Python runtime for testing the public URL directly")
     args = parser.parse_args()
     base = args.url.rstrip("/")
     public_mcp = f"{base}/mcp"
     cookies = http.cookiejar.CookieJar()
-    client = build_opener(HTTPCookieProcessor(cookies))
+    tls = ssl.create_default_context(cafile=args.ca_file)
+    client = build_opener(HTTPCookieProcessor(cookies), HTTPSHandler(context=tls))
 
-    def request(path, payload=None, *, token=None, form=False, expected=200, method=None):
+    def request(path, payload=None, *, token=None, form=False, expected=200, method=None, opener=client):
         headers = {"Accept": "application/json, text/event-stream", "Origin": base}
         if token:
             headers["Authorization"] = f"Bearer {token}"
@@ -38,7 +43,7 @@ def main():
             headers["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
         req = Request(base + path, data=body, headers=headers, method=method)
         try:
-            response = client.open(req, timeout=25)
+            response = opener.open(req, timeout=25)
         except HTTPError as error:
             response = error
         data = response.read().decode()
@@ -74,7 +79,10 @@ def main():
         assert "resource_metadata" in challenge.get("WWW-Authenticate", ""), "MCP must advertise auth discovery"
     request("/mcp", {"jsonrpc": "2.0", "id": 3, "method": "resources/read",
                      "params": {"uri": "ax://mission-briefing"}}, expected=401)
-    request("/auth.md")
+    auth_guide, _ = request("/auth.md")
+    assert "{{ORIGIN}}" not in auth_guide and base + "/mcp" in auth_guide
+    bridge, _ = request("/mcp/assets/ext-apps-2.0.3.js")
+    assert len(bridge) > 100000, "MCP Apps bridge must be available locally"
     print("PASS health, native OAuth discovery, JWKS, auth.md, unauthenticated MCP challenge")
     if args.health_only:
         return
@@ -87,20 +95,59 @@ data=json.load(sys.stdin)
 asyncio.run(create_user(data['username'],data['password']))
 print('Synthetic account created')
 """
-    subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-c", create_script],
-                   input=json.dumps({"username": username, "password": password}), text=True,
-                   check=True, capture_output=True)
-    login, headers = request("/auth/local/login", {"username": username, "password": password})
+    status, _ = request("/auth/local/status")
+    assert status["auth_mode"] == "builtin" and status["signup"] == "invite_only"
+    if status["setup_required"]:
+        # Operator capability is captured directly into memory, never a URL,
+        # shell argument, source file, or test log.
+        setup_file = "/run/keys/smoke-owner-" + secrets.token_hex(6) + ".token"
+        subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-m",
+                        "scripts.create_setup_token", "--output", setup_file],
+                       text=True, check=True, capture_output=True)
+        read_setup = "from pathlib import Path; import sys; p=Path(sys.argv[1]); assert p.stat().st_mode & 0o777 == 0o600; print(p.read_text().strip())"
+        owner_token = subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-c",
+                                      read_setup, setup_file], text=True, check=True, capture_output=True).stdout.strip()
+        owner_body = {"token": owner_token, "username": username, "password": password}
+        request("/auth/local/setup", {**owner_body, "token": secrets.token_urlsafe(32)}, expected=400)
+        login, headers = request("/auth/local/setup", owner_body)
+        time.sleep(5.1)  # Respect the setup endpoint's two-attempt burst window.
+        request("/auth/local/setup", owner_body, expected=409)
+        status, _ = request("/auth/local/status")
+        assert not status["setup_required"], "Owner setup must stay closed"
+        print("PASS private one-time owner setup, invalid capability rejection, setup closure")
+    else:
+        subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-c", create_script],
+                       input=json.dumps({"username": username, "password": password}), text=True,
+                       check=True, capture_output=True)
+        login, headers = request("/auth/local/login", {"username": username, "password": password})
     access = login["access_token"]
     space_id = login["space_id"]
     assert "HttpOnly" in headers.get("Set-Cookie", ""), "Refresh cookie must be HttpOnly"
+    if base.startswith("https://"):
+        assert "Secure" in headers.get("Set-Cookie", ""), "Hosted refresh cookie must be Secure"
     request("/auth/me", token=access)
     request("/api/v1/spaces", token=access)
     request("/auth/local/login", {"username": username, "password": "incorrect-password"}, expected=401)
     refreshed, _ = request("/auth/local/refresh", {})
     access = refreshed["access_token"]
     request("/auth/me", token=access)
-    print("PASS explicit local account, login, wrong-password rejection, authenticated API, refresh")
+    print("PASS built-in account, login, wrong-password rejection, authenticated API, refresh")
+
+    invite_cookies = http.cookiejar.CookieJar()
+    invite_client = build_opener(HTTPCookieProcessor(invite_cookies), HTTPSHandler(context=tls))
+    invite_body = {"username": "invited_" + secrets.token_hex(5), "password": secrets.token_urlsafe(32)}
+    request("/auth/local/invites", {}, expected=401)
+    request("/auth/local/signup", {**invite_body, "token": secrets.token_urlsafe(32)},
+            expected=400, opener=invite_client)
+    invitation, _ = request("/auth/local/invites", {}, token=access, expected=201)
+    invited, _ = request("/auth/local/signup", {**invite_body, "token": invitation["token"]}, opener=invite_client)
+    assert invited["space_id"] == space_id, "Invite must join only its sponsoring workspace"
+    time.sleep(5.1)  # Respect the signup endpoint's two-attempt burst window.
+    request("/auth/local/signup", {**invite_body, "token": invitation["token"]}, expected=400, opener=invite_client)
+    request("/auth/local/invites", {}, token=invited["access_token"], expected=403, opener=invite_client)
+    request("/auth/local/logout", {}, opener=invite_client)
+    request("/auth/local/refresh", {}, expected=401, opener=invite_client)
+    print("PASS one-time workspace invitation, invalid/replayed invite rejection, member cannot invite")
 
     scopes = "openid offline_access ax-api/mcp:read ax-api/mcp:write agents.read spaces.read tasks.read tasks.write messages.read messages.write"
     registration, _ = request("/oauth/register", {
@@ -109,7 +156,7 @@ print('Synthetic account created')
         "scope": scopes,
     }, expected=201)
     client_id = registration["client_id"]
-    agent_resource = public_mcp + "/agents/" + username
+    agent_resource = public_mcp
     device, _ = request("/oauth/device/code", {
         "client_id": client_id, "scope": scopes, "resource": agent_resource,
     }, form=True)
@@ -130,6 +177,8 @@ print('Synthetic account created')
         return json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
 
     original_claims = token_claims(agent_access)
+    assert original_claims["iss"] == metadata["issuer"] == base, "JWT issuer must match OAuth discovery"
+    assert original_claims["aud"] == public_mcp
     rotated, _ = request("/oauth/token", {
         "grant_type": "refresh_token", "client_id": client_id,
         "refresh_token": pair["refresh_token"], "resource": agent_resource,
@@ -158,11 +207,17 @@ print('Synthetic account created')
         "resource": agent_resource, "code_challenge": challenge, "code_challenge_method": "S256",
     }
     consent_page, _ = request("/oauth/authorize?" + urlencode(pkce_params))
-    assert "Approve this connection" in consent_page, "Unauthenticated OAuth entry must show human consent"
+    assert "Approve this agent connection" in consent_page, "Unauthenticated OAuth entry must show human consent"
     request("/oauth/authorize", pkce_params, expected=401)
-    request("/oauth/authorize", {**pkce_params, "redirect_uri": "https://invalid.example/callback"},
+    request("/oauth/authorize", pkce_params, token=access, expected=400)
+    request("/oauth/authorize", {**pkce_params, "approved": True, "redirect_uri": "https://invalid.example/callback"},
             token=access, expected=400)
-    approval, _ = request("/oauth/authorize", pkce_params, token=access)
+    denied, _ = request("/oauth/authorize", {**pkce_params, "approved": False}, token=access)
+    denied_callback = parse_qs(urlparse(denied["redirect_uri"]).query)
+    assert denied_callback.get("error") == ["access_denied"] and "code" not in denied_callback
+    assert denied_callback.get("state") == [pkce_params["state"]]
+    time.sleep(5.1)  # Keep adversarial checks within the normal consent burst limit.
+    approval, _ = request("/oauth/authorize", {**pkce_params, "approved": True}, token=access)
     callback = parse_qs(urlparse(approval["redirect_uri"]).query)
     assert callback.get("state") == [pkce_params["state"]], "OAuth state must survive approval"
     code_params = {
@@ -175,11 +230,28 @@ print('Synthetic account created')
     assert wrong_pkce.get("error") == "invalid_grant", "Incorrect PKCE verifier must fail"
     pkce_pair, _ = request("/oauth/token", code_params, form=True)
     pkce_claims = token_claims(pkce_pair["access_token"])
-    assert pkce_claims["agent_id"] == original_claims["agent_id"]
+    assert pkce_claims["agent_id"] != original_claims["agent_id"], "Different clients must have distinct sponsored identities"
+    assert pkce_claims["authorized_space_id"] == original_claims["authorized_space_id"] == space_id
     assert pkce_claims["aud"] == public_mcp, "Named routes must use the canonical protected-resource audience"
     consumed, _ = request("/oauth/token", code_params, form=True, expected=400)
     assert consumed.get("error") == "invalid_grant", "Authorization codes must be single use"
-    print("PASS native PKCE consent, redirect/state binding, verifier rejection, code exchange and replay rejection")
+    print("PASS explicit native PKCE approval/denial, redirect/state binding, verifier rejection, code replay rejection")
+
+    # Real SDK negotiation, separate from the low-level wire checks below.
+    # CI uses the built MCP image; local HTTPS QA can use its isolated SDK venv.
+    if args.sdk_python:
+        sdk_command = [args.sdk_python, "-m", "fastmcp_server.sdk_smoke", "--url", public_mcp]
+        if args.ca_file:
+            sdk_command += ["--ca-file", str(Path(args.ca_file).resolve())]
+        sdk_cwd = "services/mcp-server"
+    else:
+        sdk_command = ["docker", "compose", "exec", "-T", "mcp", "python", "-m",
+                       "fastmcp_server.sdk_smoke", "--url", "http://frontend:3000/mcp"]
+        sdk_cwd = None
+    for credential in (agent_access, pkce_pair["access_token"]):
+        subprocess.run(sdk_command, input=json.dumps({"access_token": credential}),
+                       text=True, check=True, capture_output=True, cwd=sdk_cwd)
+    print("PASS real MCP SDK2 legacy and current protocol, authenticated tools/resources for both sponsored clients")
 
     sequence = 0
 
@@ -257,5 +329,5 @@ if __name__ == "__main__":
         main()
     except (AssertionError, subprocess.CalledProcessError, OSError, KeyError) as error:
         # Do not echo subprocess output, request headers, or token responses.
-        print(f"Smoke check failed: {type(error).__name__}: {str(error) if not isinstance(error, subprocess.CalledProcessError) else 'account creation command failed'}", file=sys.stderr)
+        print(f"Smoke check failed: {type(error).__name__}: {str(error) if not isinstance(error, subprocess.CalledProcessError) else 'Docker setup or SDK command failed'}", file=sys.stderr)
         sys.exit(1)

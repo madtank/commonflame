@@ -14,7 +14,7 @@ path.
 import logging
 from typing import Any, Literal, Optional
 
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 
 from fastmcp_server.api_client import (
     api_request_with_context as _api_request_with_ctx,

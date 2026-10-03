@@ -15,7 +15,7 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
         self.tool = await self.mcp.get_tool("context")
         self.token = SimpleNamespace(
             token="jwt",
-            claims={"agent_name": "protocol", "space_id": "space-1"},
+            claims={"agent_name": "protocol", "space_id": "space-1", "agent_id": "agent-test"},
         )
         self.request = SimpleNamespace(headers={})
         self.private_permissions = {
@@ -198,6 +198,7 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             "sub": "user-1",
             "client_id": "frontend-client",
             "space_id": "stale-space",
+            "typ": "local-user",
         }
         self.request = SimpleNamespace(
             headers={
@@ -206,10 +207,6 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             }
         )
         with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
             patch(
                 "fastmcp_server.tools.context.api_request",
                 new=AsyncMock(return_value={"items": [], "count": 0}),
@@ -251,6 +248,7 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             "sub": "user-1",
             "client_id": "frontend-client",
             "space_id": "stale-space",
+            "typ": "local-user",
         }
         self.request = SimpleNamespace(
             headers={
@@ -259,10 +257,6 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             }
         )
         with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
             patch(
                 "fastmcp_server.tools.context.api_request",
                 new=AsyncMock(
@@ -928,6 +922,7 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             "sub": "user-1",
             "client_id": "frontend-client",
             "space_id": "stale-space",
+            "typ": "local-user",
         }
         self.request = SimpleNamespace(
             headers={
@@ -936,10 +931,6 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             }
         )
         with (
-            patch(
-                "fastmcp_server.api_client._FRONTEND_CLIENT_IDS",
-                frozenset({"frontend-client"}),
-            ),
             patch(
                 "fastmcp_server.tools.context.api_request",
                 new=AsyncMock(
@@ -967,6 +958,8 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             "client_id": "mcp-client",
             "aud": "ax-mcp",
             "scope": "ax-api/mcp:read ax-api/mcp:write",
+            "agent_id": "agent-test",
+            "agent_name": "cipher",
         }
         self.request = SimpleNamespace(headers={"x-agent-name": "cipher"})
         with (
@@ -1009,6 +1002,8 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             "client_id": "mcp-client",
             "aud": "ax-mcp",
             "scope": "ax-api/mcp:read ax-api/mcp:write",
+            "agent_id": "agent-test",
+            "agent_name": "cipher",
         }
         self.request = SimpleNamespace(headers={"x-agent-name": "cipher"})
         with (
@@ -1046,6 +1041,7 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
         self.token.claims = {
             "agent_name": "protocol",
             "space_id": "team-space",
+            "agent_id": "agent-test",
         }
         shared_permissions = {
             "space_context": {
@@ -1103,6 +1099,8 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             "client_id": "mcp-client",
             "aud": "ax-mcp",
             "scope": "ax-api/mcp:read ax-api/mcp:write",
+            "agent_id": "agent-test",
+            "agent_name": "cipher",
         }
         self.request = SimpleNamespace(headers={"x-agent-name": "cipher"})
         with (
@@ -1138,6 +1136,8 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             "client_id": "mcp-client",
             "aud": "ax-mcp",
             "scope": "ax-api/mcp:read ax-api/mcp:write",
+            "agent_id": "agent-test",
+            "agent_name": "cipher",
         }
         self.request = SimpleNamespace(headers={"x-agent-name": "cipher"})
         with (
@@ -1170,6 +1170,8 @@ class ContextToolTests(unittest.IsolatedAsyncioTestCase):
             "client_id": "mcp-client",
             "aud": "ax-mcp",
             "scope": "ax-api/mcp:read ax-api/mcp:write",
+            "agent_id": "agent-test",
+            "agent_name": "cipher",
         }
         self.request = SimpleNamespace(headers={"x-agent-name": "cipher"})
         with (
@@ -2090,7 +2092,7 @@ class ContextCatalogDispatchTests(unittest.IsolatedAsyncioTestCase):
         register_context_tool(self.mcp)
         self.tool = await self.mcp.get_tool("context")
         # Token WITHOUT a space_id claim — space must be resolved from the bundle.
-        self.token = SimpleNamespace(token="jwt", claims={"agent_name": "protocol"})
+        self.token = SimpleNamespace(token="jwt", claims={"agent_name": "protocol", "agent_id": "agent-test"})
         self.request = SimpleNamespace(headers={})
         self.permissions = {
             "space_context": {"id": "space-1", "name": "WS", "role": "admin"},

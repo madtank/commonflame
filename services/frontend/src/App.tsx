@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTokenRefresh } from '@/hooks/useTokenRefresh';
 import { applyThemePreference, getStoredThemeState } from '@/lib/theme';
 import { storage } from '@/lib/storage';
+import { getApprovalReturnPath } from '@/lib/approval-navigation';
 
 const Workspace = lazy(() => import('@/pages/AxPlatformPage'));
 const DeviceVerify = lazy(() => import('@/pages/DeviceVerifyPage'));
@@ -22,6 +23,7 @@ export default function App() {
   const [path, setPath] = useState(window.location.pathname);
   useTokenRefresh();
   const lastIdentity = useRef<string | null>(null);
+  const returningToApproval = useRef(false);
   useEffect(() => {
     const identity = auth.user?.attributes?.id || auth.user?.username || null;
     if (identity !== lastIdentity.current) queryClient.clear();
@@ -33,13 +35,23 @@ export default function App() {
     window.addEventListener('popstate', changed);
     return () => window.removeEventListener('popstate', changed);
   }, []);
+  useEffect(() => {
+    const target = getApprovalReturnPath();
+    if (auth.isAuthenticated && target && ['/login', '/auth/login', '/signup', '/setup'].includes(path) && !returningToApproval.current) {
+      returningToApproval.current = true;
+      window.location.assign(target);
+    }
+  }, [auth.isAuthenticated, path]);
   const onLogin = (token: string, username: string) => {
     queryClient.clear();
     auth.signIn(token, username);
-    const pending = sessionStorage.getItem('ax_device_verify_redirect');
-    const target = pending && /^\/(?:auth|oauth)\/device\/verify(?:\?|$)/.test(pending) ? pending : '/app';
-    sessionStorage.removeItem('ax_device_verify_redirect');
-    window.history.replaceState({}, '', target);
+    const target = getApprovalReturnPath();
+    if (target) {
+      returningToApproval.current = true;
+      window.location.assign(target);
+      return;
+    }
+    window.history.replaceState({}, '', '/app');
     setPath(window.location.pathname);
   };
   const onLogout = async () => {
@@ -55,7 +67,7 @@ export default function App() {
   let page;
   if (auth.isLoading) page = <Loading />;
   else if (/^\/(auth|oauth)\/device\/verify/.test(path)) page = <DeviceVerify userToken={auth.token} username={auth.user?.username || null} />;
-  else if (!auth.isAuthenticated) page = <UserLogin onLogin={onLogin} />;
+  else if (!auth.isAuthenticated) page = <UserLogin onLogin={onLogin} initialMode={['/signup', '/setup'].includes(path) ? 'account' : 'login'} />;
   else if (path === '/admin') {
     const admin = ['admin', 'super_admin'].includes(auth.user?.attributes?.role);
     page = <Admin username={auth.user?.username} onLogout={onLogout} isAdminUser={admin} isAdminValidated={true} />;

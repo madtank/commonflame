@@ -1,7 +1,7 @@
 """AccessRequest — invite-only waitlist gate (IP-protection lockdown Phase 2).
 
 A single row per email address requesting access to aX. New (unknown) emails
-arriving on the Cognito human auth path are recorded as ``pending`` and Jacob is
+arriving on the upstream human auth path are recorded as ``pending`` and Jacob is
 emailed once with a one-click approve link. Status flips to ``approved`` when the
 link is clicked; the user's next sign-in then provisions normally.
 

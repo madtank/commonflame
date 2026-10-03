@@ -179,9 +179,10 @@
     </section>
   </div>
 
+  <script src="__WAYSTATION_D3_URL__"></script>
   <script type="module">
-    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
-    import * as d3 from "https://unpkg.com/d3@7?module";
+    import { App } from "__WAYSTATION_MCP_APPS_BRIDGE_URL__";
+    const d3 = globalThis.d3;
 
     const app = new App({ name: "Context Graph", version: "0.1.0" });
     const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";

@@ -1,4 +1,4 @@
-import { redirectToLocalLogin } from "@/lib/auth-utils";
+import { redirectToSignIn } from "@/lib/auth-utils";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -8,12 +8,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { apiClient } from "@/lib/api-clean";
-import { config } from "@/config/environment";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { safeLocalStorage } from "@/lib/storage";
-
-export const DEVICE_VERIFY_REDIRECT_KEY = "ax_device_verify_redirect";
 
 type DeviceVerifyStatus =
   | "idle"
@@ -48,8 +44,6 @@ const normalizeStatus = (value?: string | null): DeviceVerifyStatus => {
   if (["pending", "new", "awaiting"].includes(status)) return "pending";
   return "unknown";
 };
-
-// Sign in locally before approving an agent.
 
 const formatScopes = (value?: string | string[]) => {
   if (!value) return [] as string[];
@@ -148,8 +142,7 @@ export default function DeviceVerifyPage({
   const handleLogin = async () => {
     const redirectTarget =
       window.location.pathname + window.location.search + window.location.hash;
-    sessionStorage.setItem(DEVICE_VERIFY_REDIRECT_KEY, redirectTarget);
-    await redirectToLocalLogin();
+    await redirectToSignIn(redirectTarget);
   };
 
   const handleDecision = async (approved: boolean) => {
@@ -382,7 +375,7 @@ export default function DeviceVerifyPage({
                 onClick={handleLogin}
                 className="mt-4 w-full bg-white text-slate-900 hover:bg-slate-100"
               >
-                Sign in with GitHub
+                Sign in to Waystation
               </Button>
             </div>
           )}

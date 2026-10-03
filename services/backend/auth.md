@@ -1,145 +1,183 @@
-# auth.md
+# Connect an agent to Waystation
 
-Waystation is a self-hosted workspace for people and agents. Connect agents
-through MCP OAuth; a human sponsor approves each first connection in the
-browser. The MCP host stores refreshable credentials outside the agent prompt.
+This document is the agent onboarding guide for **{{ORIGIN}}**. It describes
+what you can discover and prepare yourself, and the one step a human sponsor
+must complete: signing in and approving your connection.
 
-Use the same public origin for the UI, authorization server and MCP endpoint.
-The default local origin is `http://localhost:3000`. In the examples below,
-`<origin>` means the origin configured by the deployment's `PUBLIC_URL`.
-Protected Resource Metadata is the runtime source of truth for URLs and scopes.
+The public MCP endpoint is **{{ORIGIN}}/mcp**. The interface, authorization
+server, and MCP server use this public origin. Use live OAuth metadata as the
+source of truth for endpoints and scopes; this guide is not a credential.
 
-This follows the [WorkOS agent-auth pattern](https://github.com/workos/auth.md)
-with explicit human sponsorship. Anonymous agent authorization is not supported.
+## Start here
 
-## Human setup
+1. Read this guide and discover the server's OAuth configuration.
+2. Have your MCP host register a public OAuth client and start authorization.
+3. Give the returned sign-in/approval URL to the human who is sponsoring you.
+4. Wait for their explicit approval. Signing in or creating an account alone
+   does not approve the connection.
+5. Let the MCP host exchange the approved grant and save its own credentials.
+6. Connect, call `whoami`, and check the approved workspace before working.
 
-The operator creates each local user from the container:
+Before approval, you may discover public connection metadata and tool schemas.
+You cannot read private workspace content or invoke workspace tools.
+Never ask the sponsor to paste a password, browser token, or PAT into agent chat.
 
-```sh
-docker compose exec backend python -m scripts.create_local_user
+## Discover the server
+
+Make an unauthenticated MCP request to `{{ORIGIN}}/mcp`. A protected operation
+returns `401` with a `WWW-Authenticate` header containing `resource_metadata`.
+Fetch that metadata document, then follow its `authorization_servers` entry to
+the authorization server's discovery document.
+
+Public discovery starts at:
+
+- `{{ORIGIN}}/.well-known/oauth-protected-resource`
+- `{{ORIGIN}}/.well-known/oauth-authorization-server`
+
+Use the metadata's `resource`, endpoints, supported grants, registration
+mechanism, and scope information. Request the scopes required by the operation;
+a `WWW-Authenticate` scope challenge is authoritative. The normal canonical
+resource is `{{ORIGIN}}/mcp`.
+
+Named connection URLs such as `{{ORIGIN}}/mcp/agents/my_agent` are compatibility
+aliases of this same resource server. They do not grant an identity or extra
+permissions. Standard clients can connect through the canonical endpoint;
+Waystation creates a distinct sponsored agent identity for their registered
+client. The signed credential and approved grant establish the caller's identity.
+
+## Browser-capable MCP hosts: authorization code with PKCE
+
+Use your MCP host's built-in OAuth support when available. It should perform
+these steps without exposing credentials to the model:
+
+1. Obtain a client ID using a registration mechanism advertised by the server.
+   Register a public client with `token_endpoint_auth_method: "none"`, the
+   host's exact callback URI, and `authorization_code` / `refresh_token` grants.
+2. Generate a high-entropy PKCE verifier, its S256 challenge, and random `state`.
+3. Open the discovered authorization endpoint with `response_type=code`, the
+   client ID, exact redirect URI, canonical resource, requested scopes, state,
+   `code_challenge`, and `code_challenge_method=S256`.
+4. Present that URL to the sponsor. The browser displays the client, agent,
+   workspace, and requested permissions. The sponsor signs in and deliberately
+   approves or denies the connection.
+5. At the registered callback, validate state and any advertised issuer binding.
+   Stop on denial. Exchange an approved code at the token endpoint with the same
+   client, resource, redirect URI, and original PKCE verifier.
+6. Store the resulting credential pair in the host's private credential store.
+   Authorization codes are short-lived and single use.
+
+The sponsor's sign-in and approval happen in their browser. The agent host owns
+its PKCE verifier, callback handling, token exchange, and refresh credentials.
+
+## Headless agents: device authorization
+
+Use this path when the agent has no browser callback. Discover the device
+endpoint and supported grants first.
+
+Register a public client without a client secret or redirect URI:
+
+```http
+POST {{ORIGIN}}/oauth/register
+Content-Type: application/json
+
+{
+  "client_name": "My agent host",
+  "redirect_uris": [],
+  "grant_types": ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
+  "response_types": [],
+  "token_endpoint_auth_method": "none",
+  "scope": "openid offline_access ax-api/mcp:read ax-api/mcp:write"
+}
 ```
 
-Enter a username and a password of at least 12 characters. Passwords are hashed
-with Argon2; they are not printed or stored as plaintext. Sign in at
-`<origin>/auth/login`. There is no default administrator password or public
-signup endpoint. Each user gets a private workspace and its owner membership.
-The browser uses 15-minute access tokens and rotating 7-day HttpOnly refresh
-cookies. HTTPS deployments mark refresh cookies Secure; cookies are host-only
-and SameSite=Strict. Never share a browser token with an agent.
+The example requests general MCP read/write permissions. Choose narrower
+permissions from discovery when they suffice for the intended work.
 
-## Discover the authorization server
+Request a device code using the returned client ID and form-encoded resource:
 
-Pick a clear, unique agent handle. Use the named route:
+```http
+POST {{ORIGIN}}/oauth/device/code
+Content-Type: application/x-www-form-urlencoded
 
-```text
-<origin>/mcp/agents/{agent_name}
+client_id=<client_id>&resource=<form-encoded {{ORIGIN}}/mcp>&scope=<form-encoded scopes>
 ```
 
-An unauthenticated MCP request returns `401` with a `WWW-Authenticate` header.
-Follow its `resource_metadata` URL, then the metadata's
-`authorization_servers` URL to `/.well-known/oauth-authorization-server`.
+Give `verification_uri_complete` and `user_code` to the sponsor. They open the
+URL, sign in or redeem an operator-issued invitation, review the connection,
+and approve or deny it. An invitation creates a human account; it does not
+approve an agent automatically.
 
-For this distribution, native discovery advertises:
+Poll the discovered token endpoint no faster than the returned `interval`:
 
-- `/oauth/register`: public OAuth client registration
-- `/oauth/authorize`: authorization code flow with S256 PKCE
-- `/oauth/device/code`: headless device code flow
-- `/oauth/token`: token exchange and refresh
-- `/.well-known/jwks.json`: public token verification keys
+```http
+POST {{ORIGIN}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
 
-Use the returned metadata rather than assuming any endpoint or scope exists.
-The base MCP resource is `<origin>/mcp`; agent device requests must target the
-named route instead of the base resource.
+grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=<client_id>&device_code=<device_code>&resource=<form-encoded {{ORIGIN}}/mcp>
+```
 
-## Recommended agent flow: device code
+Handle `authorization_pending` by waiting, `slow_down` by increasing the
+interval, and `access_denied` or `expired_token` by stopping. Ask the sponsor to
+start a new connection when needed. Never retry a denied grant as a different
+identity.
 
-1. Register a public client with no client secret and no redirect URI:
+## Use and refresh your own credentials
 
-   ```http
-   POST <origin>/oauth/register
-   Content-Type: application/json
+Send the agent access token in `Authorization: Bearer <access_token>` on every
+MCP request. Never place an access token in a URL. Call `whoami` first and verify
+that the returned agent and workspace match the approved connection.
 
-   {
-     "client_name": "My agent host",
-     "redirect_uris": [],
-     "grant_types": ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
-     "response_types": [],
-     "token_endpoint_auth_method": "none",
-     "scope": "openid offline_access ax-api/mcp:read ax-api/mcp:write"
-   }
-   ```
+Keep access tokens, refresh tokens, expiry, granted scopes, client metadata,
+and resource together in the host's vault or an OS credential store. Never
+commit them, log token responses, or paste them into prompts.
 
-2. Request a device code with the returned `client_id` and the agent resource:
+Refresh through the discovered token endpoint with `grant_type=refresh_token`,
+the same client ID and resource, and the current refresh token. Replace rotating
+refresh credentials atomically. Each independent agent host needs its own
+registration/grant; two processes must not race one rotating credential.
 
-   ```http
-   POST <origin>/oauth/device/code
-   Content-Type: application/x-www-form-urlencoded
+A refresh preserves the approved identity and permissions. Inactive sponsors,
+removed workspace membership, revoked grants, expired credentials, or invalid
+agent ownership can end access. Reauthorize through the sponsor when required.
+Do not substitute a human's credential for a revoked agent credential.
 
-   client_id=<client_id>&resource=<origin>/mcp/agents/{agent_name}&scope=openid%20offline_access%20ax-api/mcp:read%20ax-api/mcp:write
-   ```
+## Tools, apps, and live events
 
-   Form-encode the actual resource URL. Display `verification_uri_complete` and
-   `user_code` to the human sponsor. Never request their password in agent chat.
+Read tool descriptions and annotations before acting. Tool discovery describes
+capabilities; it does not authorize an action on behalf of the human. Backend
+membership and permission checks remain authoritative.
 
-3. The human opens the approval URL, signs in, reviews the client, agent,
-   resource and scopes, and presses **Approve Connection**. A pending device
-   code does not authorize an agent until this deliberate action.
+MCP uses stateless Streamable HTTP. Credentials accompany each request; no
+sticky MCP session is required. Interactive MCP Apps use the same verified
+identity and record human actions separately from agent-authored results.
 
-4. Poll `/oauth/token` no faster than the returned `interval`:
+A host that needs live activity can connect to
+`GET {{ORIGIN}}/api/sse/messages` with a Bearer header. Events are scoped to the
+authorized workspace. Filter for the intended agent and relevant mentions,
+refresh proactively, and reconnect with bounded backoff. Keep the listener's
+credential ownership coordinated with the MCP host.
 
-   ```http
-   POST <origin>/oauth/token
-   Content-Type: application/x-www-form-urlencoded
+## For the human sponsor and operator
 
-   grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=<client_id>&device_code=<device_code>&resource=<origin>/mcp/agents/{agent_name}
-   ```
+Sign in at **{{ORIGIN}}/auth/login**. Built-in Waystation accounts work on a
+laptop or a hosted installation; no external identity provider is required.
 
-   `authorization_pending` means continue waiting; `slow_down` means increase
-   the interval. Stop on denial or expiry and ask the sponsor to start again.
+The operator controls one-time owner setup and invitations. Use the setup or
+invitation token in the browser account form at **{{ORIGIN}}/signup**. There is
+no default administrator password, open public signup, or automatic sponsorship.
+The operator can also create an account using the documented container command.
 
-5. Save the returned access token, refresh token, expiry, token type, scopes
-   and OAuth client metadata in the MCP host's vault or an OS credential store.
-   Never commit them to git, paste them into prompts, or log token responses.
+Passwords are hashed with Argon2. Browser access tokens expire after 15 minutes;
+rotating refresh credentials are HttpOnly, host-only cookies, Secure when HTTPS
+is configured. Human sessions and agent credentials stay separate.
 
-6. Connect to the named MCP route with `Authorization: Bearer <access_token>`.
-   Refresh before expiry through `/oauth/token` with `grant_type=refresh_token`
-   and the same client and resource. Replace the stored refresh token whenever
-   it rotates. Two independent refresh owners require two independent mints.
+Configure `PUBLIC_URL` consistently before authorizing remote clients. Use HTTPS
+for hosted deployments. Persist the database, signing keys, and uploads; a
+routine container rebuild must not replace the installation's signing key.
+The internal compatibility identifiers `ax-api` and `ax-backend` do not require
+an aX cloud account. Legacy PAT APIs are outside the recommended onboarding flow.
 
-## Browser-capable MCP hosts
-
-Register a public client with the host's exact callback URI and
-`authorization_code` plus `refresh_token` grants. Generate a high-entropy PKCE
-verifier, use S256, bind a random `state`, and open the discovered authorization
-endpoint with the client, resource, redirect URI, scope and challenge.
-
-Waystation shows a browser sign-in and approval page before issuing a code.
-Check `state` at the callback. Exchange the code at `/oauth/token` with the
-original `redirect_uri`, `client_id`, resource and `code_verifier`.
-Never accept an authorization code from an unexpected callback.
-
-## Tool behavior and live events
-
-Read `ToolAnnotations` before invoking tools. Tool descriptions and annotations
-describe reads, writes and destructive operations; they do not replace the
-human's authorization for the underlying task. Identity and space authorization
-are checked by the backend and MCP server, not inferred from client text.
-
-Use separate OAuth credentials for long-lived SSE listeners. Connect to
-`GET <origin>/api/sse/messages` with a Bearer header and the authorized space.
-Events are space-scoped, so filter for the intended agent and wake on relevant
-mentions. Run listeners under the host's process monitor, refresh proactively,
-and reconnect with bounded backoff. Do not store tokens in the MCP server.
-
-## Operator boundaries
-
-Signing keys persist in the private `signing-keys` Docker volume and are never
-included in the repository. Losing or replacing that volume invalidates current
-access tokens. Database, Redis and uploads have separate persistent volumes.
-Configure `PUBLIC_URL` consistently before authorizing remote clients.
-
-The compatibility audience/scope identifiers `ax-api`, `ax-mcp` and `ax-backend`
-remain internal protocol names. They do not require an aX cloud account.
-Legacy PAT management remains available for compatibility; prefer OAuth for new
-agent connections. This first release has no cloud identity dependency.
+This is a Waystation OAuth onboarding profile inspired by the
+[auth.md discovery pattern](https://github.com/workos/auth.md). It does not
+implement the WorkOS identity-assertion/ID-JAG exchange protocol. Optional
+upstream OIDC SSO for humans can be added independently of the agent flow.

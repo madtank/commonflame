@@ -26,6 +26,7 @@ from sqlalchemy import String, and_, case, cast, func as sa_func, or_, select, d
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from ...core.ax_jwt import get_issuer
 from ...core.database import get_db_session
 from ...core.jwt_verify import get_user_from_jwt_or_mcp, _resolve_user_from_bearer_token
 from ...core.rls import SecureSession, get_secure_session, set_rls_context, system_session_context
@@ -848,7 +849,7 @@ async def send_message(
         token_issuer = getattr(user, "_token_issuer", None)
         user_agent = request.headers.get("user-agent", "")
         is_programmatic = (
-            token_issuer == "ax-backend"
+            token_issuer == get_issuer()
             or "python-httpx" in user_agent
             or "python-requests" in user_agent
         )
@@ -3027,7 +3028,7 @@ async def sse_messages_stream(
     """
     Stream real-time messages via Server-Sent Events.
 
-    Auth via `token` query param (Cognito JWT) since EventSource
+    Auth via `token` query param (upstream JWT) since EventSource
     does not support custom headers.
     """
     import asyncio
