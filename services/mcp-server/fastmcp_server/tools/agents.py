@@ -2020,6 +2020,10 @@ def register_agents_tool(mcp: FastMCP):
             # backend auth remains the enforcement boundary for this endpoint.
             if active_space_id and not include_owned_cross_space:
                 params["space_id"] = active_space_id
+            if not include_owned_cross_space:
+                # The widget's All/Offline filters need the full visible roster,
+                # not the API's default online-only subset.
+                params["view_scope"] = "in_space"
 
             if include_owned_cross_space:
                 spaces_task = asyncio.create_task(_fetch_visible_spaces(ctx))

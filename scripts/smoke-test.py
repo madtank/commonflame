@@ -215,6 +215,8 @@ print('Synthetic account created')
         return json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
 
     original_claims = token_claims(agent_access)
+    assert original_claims.get("agent_name"), "Canonical OAuth resource must carry its signed agent name"
+    assert original_claims.get("space_id") == original_claims["authorized_space_id"] == space_id
     assert original_claims["iss"] == metadata["issuer"] == base, "JWT issuer must match OAuth discovery"
     assert original_claims["aud"] == public_mcp
     rotated, _ = request("/oauth/token", {
@@ -313,6 +315,38 @@ print('Synthetic account created')
     rpc("tools/call", {"name": "whoami", "arguments": {}})
     rpc("tools/call", {"name": "agents", "arguments": {"action": "list", "space_id": space_id}})
     print("PASS stateless MCP initialize, tool discovery, whoami, authenticated agents tool")
+
+    # Do not accept an MCP wrapper's success flag as evidence of delivery. Some
+    # legacy widgets wrap backend errors as ordinary structured tool results.
+    roster, _ = request("/api/v1/agents?view_scope=all", token=access)
+    assert original_claims["agent_id"] in {str(row["id"]) for row in roster["agents"]}
+    widget_roster, _ = request("/mcp", {
+        "jsonrpc": "2.0", "id": 900, "method": "tools/call",
+        "params": {"name": "agents", "arguments": {"action": "list", "view_scope": "space"}},
+    }, token=access)
+    widget_items = widget_roster["result"]["structuredContent"]["data"]["items"]
+    assert original_claims["agent_id"] in {str(row["id"]) for row in widget_items}
+    agent_title = "Agent MCP task " + secrets.token_hex(6)
+    rpc("tools/call", {"name": "tasks", "arguments": {
+        "action": "create", "title": agent_title, "description": "Sponsored MCP task roundtrip",
+    }})
+    saved_tasks, _ = request("/api/v1/tasks", token=access)
+    task_rows = saved_tasks if isinstance(saved_tasks, list) else saved_tasks.get("tasks", [])
+    agent_task = next(row for row in task_rows if row["title"] == agent_title)
+    rpc("tools/call", {"name": "tasks", "arguments": {"action": "get", "task_id": agent_task["id"]}})
+    agent_content = "Sponsored MCP message roundtrip " + secrets.token_hex(6)
+    rpc("tools/call", {"name": "messages", "arguments": {
+        "action": "send", "content": agent_content, "bypass": True,
+    }})
+    saved_messages, _ = request("/api/messages", token=access)
+    agent_message = next(row for row in saved_messages["messages"] if row["content"] == agent_content)
+    assert agent_message["sender_type"] == "agent"
+    assert agent_message["author_id"] == original_claims["agent_id"]
+    assert str(agent_message["space_id"]) == space_id
+    rpc("tools/call", {"name": "messages", "arguments": {
+        "action": "check", "reason": "Verify sponsored message persistence", "show_own_messages": True,
+    }})
+    print("PASS sponsored agent in roster, MCP task create/read, durable agent-authored message visible to human")
 
     task_title = "Waystation smoke task"
     task, _ = request("/api/v1/tasks", {"title": task_title, "description": "Synthetic integration check",

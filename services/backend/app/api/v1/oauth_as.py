@@ -567,6 +567,7 @@ def _mint_agent_access_token(
     *,
     owner_user_id: str,
     agent_id: str,
+    agent_name: str,
     scope: str,
     audience: str,
     src_credential_id: str,
@@ -581,6 +582,7 @@ def _mint_agent_access_token(
         src_credential_id=src_credential_id,
         owner_user_id=owner_user_id,
         agent_id=agent_id,
+        agent_name=agent_name,
         authorized_space_id=authorized_space_id,
     )
 
@@ -797,6 +799,7 @@ async def _issue_oauth_token_response(
     token = _mint_agent_access_token(
             owner_user_id=owner_user_id,
             agent_id=str(agent.id),
+            agent_name=agent.name,
             scope=scope,
             audience=audience,
             src_credential_id=src_credential_id,

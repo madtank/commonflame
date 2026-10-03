@@ -154,6 +154,7 @@ def mint_exchange_jwt(
     src_credential_id: str,
     owner_user_id: str,
     agent_id: str | None = None,
+    agent_name: str | None = None,
     delegated_by: str | None = None,
     authorized_space_id: str | None = None,
 ) -> str:
@@ -179,10 +180,14 @@ def mint_exchange_jwt(
     }
     if agent_id is not None:
         payload["agent_id"] = agent_id
+    if agent_name is not None:
+        payload["agent_name"] = agent_name
     if delegated_by is not None:
         payload["delegated_by"] = delegated_by
     if authorized_space_id is not None:
         payload["authorized_space_id"] = authorized_space_id
+        # MCP tools consume space_id; both names carry the same approved binding.
+        payload["space_id"] = authorized_space_id
 
     return jwt.encode(
         payload,
