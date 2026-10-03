@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Message Timeline - Waystation</title>
+  <style>
+    :root {
+      --ax-bg: var(--color-background-primary, #0a0f1a);
+      --ax-surface: var(--color-background-secondary, rgba(15,23,42,0.92));
+      --ax-surface-strong: var(--color-background-tertiary, rgba(30,41,59,0.96));
+      --ax-text: var(--color-foreground-primary, hsl(210, 40%, 98%));
+      --ax-text-dim: var(--color-foreground-secondary, hsl(215, 20.2%, 65.1%));
+      --ax-border: var(--color-border-default, rgba(255,255,255,0.1));
+      --ax-accent: var(--color-accent-primary, #22d3ee);
+      --ax-warning: #fbbf24;
+      --ax-danger: #fb7185;
+      --ax-shadow: 0 12px 24px -8px rgba(0,0,0,0.25);
+      --ax-radius: 16px;
+      --ax-font: var(--font-family-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+    html, body { min-height: 100%; background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); }
+    body { padding: 16px; }
+    .shell { width: 100%; max-width: 1180px; margin: 0 auto; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .header h2 { font-size: 18px; font-weight: 600; }
+    .header-meta { font-size: 13px; color: var(--ax-text-dim); display: flex; gap: 12px; align-items: center; }
+    .unread-badge { background: var(--ax-accent); color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+    .briefing-card { margin-bottom: 14px; padding: 16px; border-radius: 16px; background: linear-gradient(160deg, rgba(6,182,212,0.2), rgba(16,24,40,0.04)); border: 1px solid rgba(6,182,212,0.24); box-shadow: var(--ax-shadow); }
+    .briefing-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .briefing-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ax-accent); font-weight: 700; }
+    .briefing-status { font-size: 11px; color: var(--ax-text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+    .briefing-body { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+    .briefing-meta { margin-top: 10px; font-size: 12px; color: var(--ax-text-dim); }
+    .query-card { margin-bottom: 14px; padding: 14px 16px; border-radius: 14px; background: linear-gradient(135deg, rgba(6,182,212,0.12), rgba(6,182,212,0.04)); border: 1px solid rgba(6,182,212,0.18); }
+    .query-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ax-accent); font-weight: 700; margin-bottom: 6px; }
+    .query-text { font-size: 15px; font-weight: 600; line-height: 1.4; }
+    .awareness-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .awareness-card { background: var(--ax-surface); border: 1px solid var(--ax-border); border-radius: 14px; padding: 12px 14px; }
+    .awareness-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ax-text-dim); margin-bottom: 8px; font-weight: 700; }
+    .awareness-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--ax-border); }
+    .awareness-row:first-of-type { border-top: none; padding-top: 0; }
+    .awareness-actor { font-size: 13px; font-weight: 700; }
+    .awareness-role { font-size: 12px; color: var(--ax-text-dim); }
+    .awareness-focus { font-size: 13px; line-height: 1.45; }
+    .topic-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .topic-chip { padding: 4px 8px; border-radius: 999px; background: rgba(6,182,212,0.12); color: var(--ax-accent); font-size: 12px; font-weight: 600; }
+    .actions-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+    .action-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-dim); font-size: 13px; cursor: pointer; transition: all 0.15s; }
+    .action-btn:hover { border-color: var(--ax-accent); color: var(--ax-accent); }
+    .msg-list { display: flex; flex-direction: column; gap: 8px; }
+    .msg-card { background: var(--ax-surface); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); padding: 14px 16px; cursor: pointer; transition: all 0.15s; }
+    .msg-card:hover { border-color: var(--ax-accent); }
+    .msg-card.unread { border-left: 3px solid var(--ax-accent); }
+    .msg-card.expanded { background: var(--ax-surface-strong); box-shadow: var(--ax-shadow); cursor: default; }
+    .msg-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .msg-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--ax-accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; flex-shrink: 0; }
+    .msg-sender { font-size: 14px; font-weight: 600; flex: 1; }
+    .msg-time { font-size: 12px; color: var(--ax-text-dim); }
+    .msg-preview { font-size: 13px; color: var(--ax-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-full { font-size: 14px; line-height: 1.6; white-space: pre-wrap; margin-bottom: 12px; }
+    .reply-box { display: flex; gap: 8px; margin-top: 12px; }
+    .reply-input { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text); font-size: 13px; font-family: inherit; }
+    .reply-btn { padding: 8px 16px; border-radius: 8px; border: none; background: var(--ax-accent); color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .reply-btn:hover { opacity: 0.9; }
+    .draft-card { background: var(--ax-surface-strong); border: 2px dashed var(--ax-accent); border-radius: var(--ax-radius); padding: 20px; }
+    .draft-label { font-size: 12px; color: var(--ax-accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .draft-content { font-size: 14px; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap; }
+    .draft-meta { font-size: 12px; color: var(--ax-text-dim); margin-bottom: 10px; }
+    .draft-input { width: 100%; min-height: 140px; resize: vertical; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text); font-size: 14px; line-height: 1.6; font-family: inherit; margin-bottom: 12px; }
+    .btn-secondary { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-dim); font-size: 13px; cursor: pointer; }
+    .draft-actions { display: flex; gap: 8px; }
+    .loading { text-align: center; padding: 40px; color: var(--ax-text-dim); }
+    .empty { text-align: center; padding: 40px; color: var(--ax-text-dim); font-size: 14px; }
+    .notice { margin-bottom: 12px; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+    .notice-error { background: rgba(186,59,45,0.12); color: var(--ax-danger); border: 1px solid rgba(186,59,45,0.2); }
+    .notice-info { background: var(--ax-accent-soft); color: var(--ax-accent); border: 1px solid rgba(6,182,212,0.18); }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app"><div class="loading">Loading messages...</div></div>
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+    const app = new App({ name: "Message Timeline", version: "1.0.0" });
+    const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
+
+    function getOpenAiBridge() {
+      return typeof window !== "undefined" ? window.openai : undefined;
+    }
+
+    let state = {
+      messages: [],
+      count: 0,
+      unreadCount: 0,
+      expandedId: null,
+      draft: null,
+      draftContent: "",
+      draftSending: false,
+      resultCard: null,
+      notice: null,
+      noticeKind: "error",
+      awareness: null,
+      briefing: null,
+    };
+
+    function normalizeToolResult(result) {
+      if (result && typeof result === "object" && ("structuredContent" in result || "content" in result)) {
+        return result;
+      }
+      return { structuredContent: result };
+    }
+
+    function notifyHostHeight() {
+      const openaiBridge = getOpenAiBridge();
+      if (openaiBridge && typeof openaiBridge.notifyIntrinsicHeight === "function") {
+        requestAnimationFrame(() => {
+          try {
+            const appRoot = document.getElementById("app");
+            const bodyStyles = window.getComputedStyle(document.body);
+            const paddingTop = parseFloat(bodyStyles.paddingTop || "0") || 0;
+            const paddingBottom = parseFloat(bodyStyles.paddingBottom || "0") || 0;
+            const contentHeight = appRoot
+              ? Math.ceil(appRoot.getBoundingClientRect().height + paddingTop + paddingBottom)
+              : Math.ceil(document.body.getBoundingClientRect().height);
+            openaiBridge.notifyIntrinsicHeight(Math.max(120, contentHeight));
+          } catch {}
+        });
+      }
+    }
+
+    const host = {
+      _toolResultHandler: null,
+      _globalsListener: null,
+      setToolResultHandler(handler) {
+        this._toolResultHandler = handler;
+        app.ontoolresult = handler;
+        window.addEventListener("message", (event) => {
+          let msg = event.data;
+          if (!msg) return;
+          if (typeof msg === "string") {
+            try { msg = JSON.parse(msg); } catch { return; }
+          }
+          if (typeof msg !== "object") return;
+          if (msg.method === "ui/notifications/tool-result" && msg.params) {
+            handler(normalizeToolResult(msg.params));
+            return;
+          }
+          if (msg.type === "tool_result" && (msg.initial_data || msg.structuredContent || msg.content)) {
+            handler(normalizeToolResult(msg.initial_data || msg));
+            return;
+          }
+          if (msg.structuredContent || msg.kind) {
+            handler(normalizeToolResult(msg));
+          }
+        });
+      },
+      _deliverToolOutput(globals) {
+        const openaiBridge = getOpenAiBridge();
+        const output = globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")
+          ? globals.toolOutput
+          : openaiBridge?.toolOutput;
+        if (this._toolResultHandler && output !== undefined) {
+          this._toolResultHandler(normalizeToolResult(output));
+        }
+      },
+      async connect() {
+        if (!this._globalsListener) {
+          this._globalsListener = (event) => {
+            const globals = event?.detail?.globals;
+            if (globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")) {
+              this._deliverToolOutput(globals);
+            }
+            notifyHostHeight();
+          };
+          window.addEventListener(OPENAI_SET_GLOBALS_EVENT, this._globalsListener, { passive: true });
+        }
+        await app.connect();
+        this._deliverToolOutput();
+        notifyHostHeight();
+      },
+      async callServerTool(name, args) {
+        const openaiBridge = getOpenAiBridge();
+        if (openaiBridge && typeof openaiBridge.callTool === "function") {
+          return normalizeToolResult(await openaiBridge.callTool(name, args));
+        }
+        return app.callServerTool({ name, arguments: args });
+      },
+    };
+
+    function relDate(d) {
+      if (!d) return "";
+      const ts = new Date(d).getTime();
+      if (isNaN(ts)) return String(d).slice(0, 10);
+      const diff = Date.now() - ts;
+      if (diff < 0) return "just now";
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return "just now";
+      if (mins < 60) return mins + "m ago";
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + "h ago";
+      const days = Math.floor(hrs / 24);
+      if (days < 30) return days + "d ago";
+      return new Date(ts).toLocaleDateString();
+    }
+
+    function initials(name) {
+      if (!name) return "?";
+      return name.split(/[\s_-]+/).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    }
+
+    function publicSender(msg) {
+      const candidates = [
+        msg?.display_name,
+        msg?.handle,
+        msg?.username,
+        msg?.login,
+        msg?.agent_name,
+        msg?.author?.name,
+        msg?.sender_id ? String(msg.sender_id).slice(0, 8) : "",
+      ];
+      for (const value of candidates) {
+        if (typeof value === "string" && value.trim()) return value.trim();
+      }
+      if (msg?.sender_type === "user") return "user";
+      return "sender";
+    }
+
+    // Safe DOM builder: creates element with attributes and text (uses textContent, never innerHTML)
+    function h(tag, attrs, text) {
+      const e = document.createElement(tag);
+      if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === "className") e.className = v;
+        else if (k.startsWith("data-")) e.setAttribute(k, v);
+        else if (k === "style") e.style.cssText = v;
+        else e.setAttribute(k, v);
+      });
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    function render() {
+      const root = document.getElementById("app");
+      root.textContent = "";
+      if (state.notice) root.appendChild(h("div", { className: "notice notice-" + (state.noticeKind || "error") }, state.notice));
+      if (state.draft) { renderDraft(root); return; }
+      if (state.resultCard) { renderResultCard(root); return; }
+      renderInbox(root);
+    }
+
+    function renderResultCard(root) {
+      const data = state.resultCard || {};
+      const action = data.action || "send";
+      const payload = unwrapV2(data);
+      const sent = payload.sent || payload.messages?.[0] || null;
+      const reply = payload.reply || payload.messages?.[1] || null;
+      const outbound = payload.outbound || null;
+      const delivery = payload.delivery || null;
+      const mutation = data.mutation || null;
+      const card = h("div", { className: "draft-card" });
+
+      let headline = "Message updated";
+      if (action === "send") {
+        if (reply) headline = "Reply received";
+        else if (delivery?.confirmed) headline = "Message delivered";
+        else headline = "Delivery unconfirmed";
+      }
+      else if (action === "react") headline = "Reaction added";
+      else if (action === "edit") headline = "Message edited";
+      else if (action === "delete") headline = "Message deleted";
+      card.appendChild(h("div", { className: "draft-label" }, headline));
+
+      if (action === "send" && (sent?.parent_id || data.thread?.thread_root_id)) {
+        card.appendChild(
+          h(
+            "div",
+            { className: "draft-meta" },
+            "Conversation: " + String(sent?.parent_id || data.thread?.thread_root_id)
+          )
+        );
+      }
+
+      if (action === "send" && (sent?.content || outbound?.content)) {
+        card.appendChild(h("div", { className: "draft-content" }, sent?.content || outbound?.content));
+      } else if (action === "react" && mutation) {
+        card.appendChild(
+          h(
+            "div",
+            { className: "draft-content" },
+            `Added ${mutation.emoji || "a reaction"} to ${mutation.target_preview?.author ? "@" + mutation.target_preview.author : "the message"}.`
+          )
+        );
+        if (mutation.target_preview?.content) {
+          card.appendChild(h("div", { className: "draft-meta" }, mutation.target_preview.content));
+        }
+      } else if (action === "edit" && mutation) {
+        if (mutation.before?.content) {
+          card.appendChild(h("div", { className: "draft-label", style: "margin-top:4px" }, "Before"));
+          card.appendChild(h("div", { className: "draft-content" }, mutation.before.content));
+        }
+        if (mutation.after?.content) {
+          card.appendChild(h("div", { className: "draft-label", style: "margin-top:4px" }, "After"));
+          card.appendChild(h("div", { className: "draft-content" }, mutation.after.content));
+        }
+      } else if (action === "delete" && mutation) {
+        card.appendChild(
+          h(
+            "div",
+            { className: "draft-content" },
+            mutation.delete_mode === "soft"
+              ? "The message was soft-deleted from the visible timeline."
+              : "The message was deleted."
+          )
+        );
+        if (mutation.target_preview?.content) {
+          card.appendChild(h("div", { className: "draft-meta" }, mutation.target_preview.content));
+        }
+        if (mutation.reason) {
+          card.appendChild(h("div", { className: "draft-meta" }, "Reason: " + mutation.reason));
+        }
+      } else if (sent?.content || outbound?.content) {
+        card.appendChild(h("div", { className: "draft-content" }, sent?.content || outbound?.content));
+      } else {
+        const fallbackText =
+          action === "delete"
+            ? "Message deletion completed."
+            : data.status === "accepted_unconfirmed"
+              ? "Delivery unconfirmed. The runtime did not emit a listener receipt, so scheduler escalation may be required."
+              : "Message action completed.";
+        card.appendChild(h("div", { className: "draft-content" }, fallbackText));
+      }
+
+      const metaBits = [];
+      if (action === "send" && data.concierge?.routed) metaBits.push("via Waystation");
+      if (typeof data.ack_ms === "number") metaBits.push("ack " + data.ack_ms + "ms");
+      if (typeof data.reply_ms === "number") metaBits.push("reply " + data.reply_ms + "ms");
+      if (action === "delete" && mutation?.delete_mode) metaBits.push(mutation.delete_mode + " delete");
+      if (delivery?.state) metaBits.push("delivery " + String(delivery.state).replaceAll("_", " "));
+      if (delivery?.evidence) metaBits.push("evidence " + String(delivery.evidence).replaceAll("_", " "));
+      if (data.status) metaBits.push("status " + String(data.status).replaceAll("_", " "));
+      if (metaBits.length) {
+        card.appendChild(h("div", { className: "draft-meta" }, metaBits.join(" · ")));
+      }
+
+      if (reply?.content) {
+        card.appendChild(h("div", { className: "draft-label", style: "margin-top:12px" }, "Reply"));
+        card.appendChild(h("div", { className: "draft-content" }, reply.content));
+      }
+
+      const actions = h("div", { className: "draft-actions" });
+      const inboxBtn = h("button", { className: "reply-btn" }, "View Inbox");
+      inboxBtn.addEventListener("click", async () => {
+        await host.callServerTool("messages", {
+          action: "check",
+          limit: 20,
+          curate: false,
+          reason: "widget refresh",
+        });
+      });
+      actions.appendChild(inboxBtn);
+
+      const closeBtn = h("button", { className: "btn-secondary" }, "Close");
+      closeBtn.addEventListener("click", () => {
+        state.resultCard = null;
+        render();
+      });
+      actions.appendChild(closeBtn);
+
+      card.appendChild(actions);
+      root.appendChild(card);
+    }
+
+    function renderDraft(root) {
+      const d = state.draft;
+      const card = h("div", { className: "draft-card" });
+      card.appendChild(h("div", { className: "draft-label" }, "Draft"));
+      if (d.reply_to) card.appendChild(h("div", { className: "draft-meta" }, "Replying to " + d.reply_to));
+      const editor = document.createElement("textarea");
+      editor.className = "draft-input";
+      editor.value = state.draftContent || d.content || "";
+      editor.placeholder = "Refine this draft before sending...";
+      editor.disabled = !!state.draftSending;
+      editor.addEventListener("input", (event) => {
+        state.draftContent = event.target.value;
+      });
+      card.appendChild(editor);
+
+      const actions = h("div", { className: "draft-actions" });
+      const isSending = !!state.draftSending;
+      const sendBtn = h("button", { className: "reply-btn" }, isSending ? "Sending..." : "Send");
+      sendBtn.disabled = isSending;
+      sendBtn.addEventListener("click", async () => {
+        if (state.draftSending) return;
+        const content = (state.draftContent || "").trim();
+        if (!content) {
+          state.notice = "Draft content cannot be empty.";
+          state.noticeKind = "error";
+          render();
+          return;
+        }
+        const args = { action: "send", content };
+        if (d.reply_to) args.reply_to = d.reply_to;
+        state.draftSending = true;
+        state.notice = null;
+        state.noticeKind = "info";
+        render();
+        try {
+          await host.callServerTool("messages", args);
+        } catch (error) {
+          state.draftSending = false;
+          state.notice = error instanceof Error ? error.message : "Failed to send draft.";
+          state.noticeKind = "error";
+          render();
+        }
+      });
+      const discardBtn = h("button", { className: "btn-secondary" }, "Discard");
+      discardBtn.disabled = isSending;
+      discardBtn.addEventListener("click", () => {
+        if (state.draftSending) return;
+        state.draft = null;
+        state.draftContent = "";
+        render();
+      });
+      actions.appendChild(sendBtn);
+      actions.appendChild(discardBtn);
+      card.appendChild(actions);
+      root.appendChild(card);
+    }
+
+    function renderInbox(root) {
+      // Header
+      const header = h("div", { className: "header" });
+      header.appendChild(h("h2", null, "Messages"));
+      const meta = h("div", { className: "header-meta" });
+      meta.appendChild(h("span", null, state.count + " messages"));
+      if (state.unreadCount > 0) meta.appendChild(h("span", { className: "unread-badge" }, state.unreadCount + " unread"));
+      header.appendChild(meta);
+      root.appendChild(header);
+
+      if (state.briefing) {
+        const briefingCard = h("div", { className: "briefing-card" });
+        const top = h("div", { className: "briefing-top" });
+        top.appendChild(h("div", { className: "briefing-label" }, "Waystation Check-In"));
+        top.appendChild(h("div", { className: "briefing-status" }, String(state.briefing.status || "pending").replaceAll("_", " ")));
+        briefingCard.appendChild(top);
+        const bodyText = state.briefing.content
+          || (state.briefing.status === "timeout" ? "Waystation did not answer in time. The raw inbox is still below." : null)
+          || (state.briefing.error ? "Unable to load the Waystation inbox briefing right now." : null);
+        if (bodyText) briefingCard.appendChild(h("div", { className: "briefing-body" }, bodyText));
+        const metaText = state.briefing.reply_ms
+          ? `Reply in ${Math.round(state.briefing.reply_ms / 1000)}s`
+          : state.briefing.waited_seconds
+            ? `Timed out after ${state.briefing.waited_seconds}s`
+            : "";
+        if (metaText) briefingCard.appendChild(h("div", { className: "briefing-meta" }, metaText));
+        root.appendChild(briefingCard);
+      }
+
+      if (state.awareness?.query) {
+        const queryCard = h("div", { className: "query-card" });
+        queryCard.appendChild(h("div", { className: "query-label" }, "Why Check Messages"));
+        queryCard.appendChild(h("div", { className: "query-text" }, state.awareness.query));
+        root.appendChild(queryCard);
+      }
+
+      const collaborators = state.awareness?.active_collaborators || [];
+      const topics = state.awareness?.top_topics || [];
+      if (collaborators.length || topics.length) {
+        const grid = h("div", { className: "awareness-grid" });
+
+        if (collaborators.length) {
+          const peopleCard = h("div", { className: "awareness-card" });
+          peopleCard.appendChild(h("div", { className: "awareness-title" }, "Active Participants"));
+          for (const person of collaborators) {
+            const row = h("div", { className: "awareness-row" });
+            row.appendChild(h("div", { className: "awareness-actor" }, "@" + person.actor));
+            row.appendChild(h("div", { className: "awareness-role" }, person.role || "participant"));
+            const focus = person.looking_for
+              ? "Looking for " + person.looking_for
+              : person.working_on
+                ? "Working on " + person.working_on
+                : person.capability
+                  ? "Capability: " + person.capability
+                  : "Recent collaborator";
+            row.appendChild(h("div", { className: "awareness-focus" }, focus));
+            peopleCard.appendChild(row);
+          }
+          grid.appendChild(peopleCard);
+        }
+
+        if (topics.length) {
+          const topicsCard = h("div", { className: "awareness-card" });
+          topicsCard.appendChild(h("div", { className: "awareness-title" }, "Current Topics"));
+          const chips = h("div", { className: "topic-chips" });
+          for (const topic of topics) {
+            chips.appendChild(h("span", { className: "topic-chip" }, topic));
+          }
+          topicsCard.appendChild(chips);
+          grid.appendChild(topicsCard);
+        }
+
+        root.appendChild(grid);
+      }
+
+      // Action buttons
+      const actionsBar = h("div", { className: "actions-bar" });
+      const refreshBtn = h("button", { className: "action-btn" }, "Refresh");
+      refreshBtn.addEventListener("click", async () => {
+        await host.callServerTool("messages", { action: "check", limit: 20, curate: false, reason: "widget refresh" });
+      });
+      const loadMoreBtn = h("button", { className: "action-btn" }, "Load More");
+      loadMoreBtn.addEventListener("click", async () => {
+        await host.callServerTool("messages", { action: "check", limit: 20, offset: state.messages.length, curate: false, reason: "widget refresh" });
+      });
+      actionsBar.appendChild(refreshBtn);
+      actionsBar.appendChild(loadMoreBtn);
+      root.appendChild(actionsBar);
+
+      // Message list
+      const list = h("div", { className: "msg-list" });
+      if (state.messages.length === 0) {
+        list.appendChild(h("div", { className: "empty" }, "No messages yet."));
+      }
+      for (const m of state.messages) {
+        const mid = m.id || m.message_id || "";
+        const isExpanded = state.expandedId === mid;
+        const isUnread = m.is_unread || m.unread;
+        const sender = publicSender(m);
+        const content = m.content || m.text || "";
+
+        let cls = "msg-card";
+        if (isExpanded) cls += " expanded";
+        else if (isUnread) cls += " unread";
+        const card = h("div", { className: cls, "data-id": mid });
+
+        const top = h("div", { className: "msg-top" });
+        top.appendChild(h("div", { className: "msg-avatar" }, initials(sender)));
+        top.appendChild(h("div", { className: "msg-sender" }, sender));
+        top.appendChild(h("div", { className: "msg-time" }, relDate(m.created_at || m.timestamp)));
+        card.appendChild(top);
+
+        if (isExpanded) {
+          card.appendChild(h("div", { className: "msg-full" }, content));
+          const replyBox = h("div", { className: "reply-box" });
+          const replyInput = h("input", { className: "reply-input", placeholder: "Reply..." });
+          const replyBtn = h("button", { className: "reply-btn" }, "Send");
+          replyBtn.addEventListener("click", async () => {
+            const text = replyInput.value.trim();
+            if (!text) return;
+            await host.callServerTool("messages", { action: "send", content: text, reply_to: mid });
+          });
+          replyBox.appendChild(replyInput);
+          replyBox.appendChild(replyBtn);
+          card.appendChild(replyBox);
+        } else {
+          card.appendChild(h("div", { className: "msg-preview" }, content.slice(0, 120)));
+          card.addEventListener("click", () => { state.expandedId = mid; render(); });
+        }
+        list.appendChild(card);
+      }
+      root.appendChild(list);
+    }
+
+    function normalizePayload(data) {
+      if (!data || typeof data !== "object") return data;
+      if (data.kind && data.data && typeof data.data === "object") {
+        return {
+          ...data.data,
+          kind: data.kind,
+          version: data.version,
+          state: data.state,
+          notice: data.notice || null,
+          warnings: data.warnings || null,
+          errors: data.errors || null,
+        };
+      }
+      return data;
+    }
+
+    function handleData(data) {
+      data = normalizePayload(data);
+      if (data.error) {
+        state.notice = data.detail || data.error;
+        state.noticeKind = "error";
+        state.draftSending = false;
+        render();
+        return;
+      }
+      state.notice = data.notice?.message || null;
+      state.noticeKind = data.notice?.severity === "error" ? "error" : "info";
+      state.draftSending = false;
+      if (data.draft && data.action === "draft") {
+        state.draft = data.draft;
+        state.draftContent = data.draft.content || "";
+        state.resultCard = null;
+      } else if (["send", "react", "edit", "delete"].includes(data.action)) {
+        state.resultCard = data;
+        state.expandedId = null;
+        state.draft = null;
+        state.draftContent = "";
+        if (data.warning && !state.notice) {
+          state.notice = data.warning;
+          state.noticeKind = "info";
+        } else if (data.hint && !state.notice) {
+          state.notice = data.hint;
+          state.noticeKind = "info";
+        }
+      } else {
+        state.messages = unwrapV2(data).messages || [];
+        state.count = unwrapV2(data).count || state.messages.length;
+        state.unreadCount = data.unread_count || 0;
+        state.awareness = data.awareness || null;
+        state.briefing = data.briefing || null;
+        state.expandedId = null;
+        state.draft = null;
+        state.draftContent = "";
+        state.resultCard = null;
+      }
+      render();
+    }
+
+    function extractData(result) {
+      if (result.structuredContent) return result.structuredContent;
+      const text = result.content?.find(c => c.type === "text");
+      if (!text) return null;
+      try {
+        const parsed = JSON.parse(text.text);
+        return parsed.structuredContent || parsed;
+      } catch { return null; }
+    }
+
+    function unwrapV2(data) {
+      // Unwrap v2 envelope: {kind, version, state, data: {...}, actions}
+      if (data && data.version && data.data && typeof data.data === "object") return data.data;
+      return data;
+    }
+
+
+    host.setToolResultHandler((result) => {
+      const data = extractData(result);
+      if (data) handleData(data);
+    });
+
+    await host.connect();
+  </script>
+</body>
+</html>

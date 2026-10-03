@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Context Graph - Waystation</title>
+  <style>
+    :root {
+      --bg: var(--color-background-primary, #08111f);
+      --surface: var(--color-background-secondary, rgba(15, 23, 42, 0.94));
+      --surface-strong: var(--color-background-tertiary, rgba(30, 41, 59, 0.96));
+      --border: var(--color-border-default, rgba(148, 163, 184, 0.18));
+      --text: var(--color-foreground-primary, #e5eefb);
+      --text-dim: var(--color-foreground-secondary, #94a3b8);
+      --accent: var(--color-accent-primary, #22d3ee);
+      --accent-soft: rgba(34, 211, 238, 0.14);
+      --danger: #fb7185;
+      --shadow: 0 16px 40px rgba(0,0,0,0.28);
+      --radius: 22px;
+      --font: var(--font-family-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      --mono: var(--font-family-mono, "SF Mono", "Fira Code", monospace);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(34, 211, 238, 0.14), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.12), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+    }
+    body { padding: 16px; }
+    .shell { max-width: 1280px; margin: 0 auto; }
+    .hero, .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 20px 22px;
+      margin-bottom: 16px;
+      background:
+        linear-gradient(145deg, rgba(34, 211, 238, 0.12), transparent 40%),
+        linear-gradient(180deg, var(--surface-strong), var(--surface));
+    }
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .subtitle { margin: 0; color: var(--text-dim); font-size: 14px; line-height: 1.55; }
+    .stats { display: flex; flex-wrap: wrap; gap: 8px; }
+    .stat {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.03);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .stat strong { color: var(--text); margin-right: 6px; }
+    .notice {
+      display: none;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .notice.show { display: block; }
+    .notice.info { background: var(--accent-soft); color: var(--accent); border-color: rgba(34, 211, 238, 0.2); }
+    .notice.error { background: rgba(251, 113, 133, 0.12); color: #fecdd3; border-color: rgba(251, 113, 133, 0.2); }
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+      gap: 16px;
+    }
+    .panel { overflow: hidden; }
+    .graph-panel { min-height: 680px; position: relative; }
+    .panel-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 16px 18px 12px; }
+    .panel-title { font-size: 16px; font-weight: 700; }
+    .panel-subtitle { color: var(--text-dim); font-size: 12px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .legend-item {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 999px; padding: 6px 9px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      font-size: 11px; color: var(--text-dim);
+    }
+    .swatch { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+    #graph { width: 100%; height: 620px; display: block; }
+    .empty {
+      padding: 48px 24px; text-align: center; color: var(--text-dim); font-size: 14px; line-height: 1.6;
+    }
+    .detail { padding: 18px; position: sticky; top: 16px; }
+    .detail-key { font-family: var(--mono); color: var(--text-dim); font-size: 12px; margin-bottom: 8px; word-break: break-word; }
+    .detail-title { font-size: 22px; margin: 0 0 8px; }
+    .detail-summary { color: var(--text-dim); font-size: 14px; line-height: 1.6; margin-bottom: 14px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .meta-card { border: 1px solid var(--border); border-radius: 16px; padding: 10px 12px; background: rgba(255,255,255,0.03); }
+    .meta-card strong { display: block; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .meta-card span { font-size: 13px; line-height: 1.5; word-break: break-word; }
+    .tag-list, .link-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .tag, .link-pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.04); font-size: 12px;
+    }
+    .tag { color: var(--accent); background: var(--accent-soft); }
+    .link-pill { color: var(--text-dim); cursor: pointer; }
+    .link-pill:hover { color: var(--text); border-color: rgba(34, 211, 238, 0.34); }
+    .markdown {
+      border: 1px solid var(--border); border-radius: 18px; padding: 14px 16px; background: rgba(255,255,255,0.03);
+      font-size: 14px; line-height: 1.7; color: var(--text); overflow: auto; max-height: 360px;
+    }
+    .markdown h1, .markdown h2, .markdown h3 { margin: 18px 0 10px; line-height: 1.25; }
+    .markdown p { margin: 0 0 12px; }
+    .markdown ul { margin: 0 0 12px; padding-left: 20px; }
+    .markdown code { font-family: var(--mono); background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 6px; }
+    .markdown pre { overflow: auto; padding: 12px; border-radius: 12px; background: rgba(0,0,0,0.28); }
+    .markdown a { color: var(--accent); text-decoration: none; }
+    .hint { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+    .graph-footer {
+      display: flex; justify-content: space-between; gap: 12px; align-items: center;
+      padding: 0 18px 18px; color: var(--text-dim); font-size: 12px;
+    }
+    .node circle { stroke: rgba(8,17,31,0.85); stroke-width: 1.5px; }
+    .node.active circle { stroke: #f8fafc; stroke-width: 2.4px; }
+    .node text { fill: #e2e8f0; font-size: 11px; pointer-events: none; }
+    .edge { stroke: rgba(148, 163, 184, 0.22); stroke-width: 1.2px; }
+    .edge.active { stroke: rgba(34, 211, 238, 0.72); stroke-width: 2px; }
+    @media (max-width: 980px) {
+      .workspace { grid-template-columns: 1fr; }
+      .detail { position: static; }
+    }
+    @media (max-width: 720px) {
+      body { padding: 12px; }
+      .hero-top, .panel-header, .graph-footer { flex-direction: column; align-items: flex-start; }
+      .meta-grid { grid-template-columns: 1fr; }
+      #graph { height: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>Context Knowledge Graph</h1>
+          <p class="subtitle">Prototype: parse <code>[[wikilinks]]</code> and <code>#tags</code> from context markdown, build the graph client-side, and render it with D3 — no new backend or graph database required.</p>
+        </div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="notice info" id="notice"></div>
+    </section>
+
+    <section class="workspace">
+      <div class="panel graph-panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Graph</div>
+            <div class="panel-subtitle">Node size = link count · color = primary tag cluster</div>
+          </div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <svg id="graph" viewBox="0 0 900 620" role="img" aria-label="Context graph visualization"></svg>
+        <div class="graph-footer">
+          <div id="footer-summary">Loading graph…</div>
+          <div>Click a node to inspect the markdown entry.</div>
+        </div>
+      </div>
+
+      <aside class="panel detail" id="detail"></aside>
+    </section>
+  </div>
+
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+    import * as d3 from "https://unpkg.com/d3@7?module";
+
+    const app = new App({ name: "Context Graph", version: "0.1.0" });
+    const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
+    const svg = d3.select('#graph');
+    const noticeEl = document.getElementById('notice');
+    const detailEl = document.getElementById('detail');
+    const legendEl = document.getElementById('legend');
+    const statsEl = document.getElementById('stats');
+    const footerSummaryEl = document.getElementById('footer-summary');
+
+    function getOpenAiBridge() {
+      return typeof window !== "undefined" ? window.openai : undefined;
+    }
+
+    const SAMPLE_ENTRIES = [
+      {
+        key: 'mcp-auth',
+        summary: 'FastMCP auth notes with links to tokens and widget contracts.',
+        updated_at: '2026-04-07T04:00:00Z',
+        author: 'mcp_sentinel',
+        value: '#mcp #auth
+
+The MCP server uses [[space-agent-tokens]] for runtime auth and surfaces widget contracts in [[widget-contracts]].'
+      },
+      {
+        key: 'space-agent-tokens',
+        summary: 'JWT minting and space-scoped access token behavior.',
+        updated_at: '2026-04-07T04:05:00Z',
+        author: 'mcp_sentinel',
+        value: '#auth #infrastructure
+
+Backend minting creates scoped tokens for agents. See [[dispatch-routing]] and [[mcp-auth]].'
+      },
+      {
+        key: 'dispatch-routing',
+        summary: 'How messages route through dispatch and spaces.',
+        updated_at: '2026-04-07T04:10:00Z',
+        author: 'orion',
+        value: '#infrastructure #routing
+
+Dispatch keeps message delivery space-scoped and hands MCP auth material to [[space-agent-tokens]].'
+      },
+      {
+        key: 'widget-contracts',
+        summary: 'Widget attachment and surface expectations.',
+        updated_at: '2026-04-07T04:12:00Z',
+        author: 'frontend_sentinel',
+        value: '#mcp #ux
+
+Widgets can attach inline or panel-style. Timeline behavior intersects with [[dispatch-routing]] and [[context-graph-prototype]].'
+      },
+      {
+        key: 'context-graph-prototype',
+        summary: 'Client-side graph parsing plan with no extra infra.',
+        updated_at: '2026-04-07T04:18:00Z',
+        author: 'mcp_sentinel',
+        value: '#context #mcp
+
+Use `context(list)` to fetch entries, parse [[mcp-auth]] and [[widget-contracts]], and cluster by #tags.'
+      }
+    ];
+
+    const state = {
+      nodes: [],
+      links: [],
+      index: new Map(),
+      selectedKey: null,
+      source: 'loading',
+      unresolvedLinks: 0,
+    };
+
+    function normalizeToolResult(result) {
+      if (result && typeof result === 'object' && ('structuredContent' in result || 'content' in result)) return result;
+      return { structuredContent: result };
+    }
+
+    function notifyHostHeight() {
+      const openaiBridge = getOpenAiBridge();
+      if (openaiBridge && typeof openaiBridge.notifyIntrinsicHeight === 'function') {
+        requestAnimationFrame(() => {
+          try {
+            const appRoot = document.getElementById("app");
+            const bodyStyles = window.getComputedStyle(document.body);
+            const paddingTop = parseFloat(bodyStyles.paddingTop || "0") || 0;
+            const paddingBottom = parseFloat(bodyStyles.paddingBottom || "0") || 0;
+            const contentHeight = appRoot
+              ? Math.ceil(appRoot.getBoundingClientRect().height + paddingTop + paddingBottom)
+              : Math.ceil(document.body.getBoundingClientRect().height);
+            openaiBridge.notifyIntrinsicHeight(Math.max(120, contentHeight));
+          } catch {}
+        });
+      }
+    }
+
+    const host = {
+      _toolResultHandler: null,
+      _globalsListener: null,
+      _messageListener: null,
+      setToolResultHandler(handler) {
+        this._toolResultHandler = handler;
+        app.ontoolresult = handler;
+        if (!this._messageListener) {
+          this._messageListener = (event) => {
+            const msg = event?.data || {};
+            if (msg.method === 'ui/notifications/tool-result' && msg.params) {
+              const payload = msg.params.result ?? msg.params.output ?? msg.params;
+              handler(normalizeToolResult(payload));
+            } else if (msg.type === 'tool_result' && msg.result) {
+              handler(normalizeToolResult(msg.result));
+            }
+          };
+          window.addEventListener('message', this._messageListener, { passive: true });
+        }
+      },
+      _deliverToolOutput(globals) {
+        const openaiBridge = getOpenAiBridge();
+        const output = globals && Object.prototype.hasOwnProperty.call(globals, 'toolOutput')
+          ? globals.toolOutput
+          : openaiBridge?.toolOutput;
+        if (this._toolResultHandler && output !== undefined) this._toolResultHandler(normalizeToolResult(output));
+      },
+      async connect() {
+        if (!this._globalsListener) {
+          this._globalsListener = (event) => {
+            const globals = event?.detail?.globals;
+            if (globals && Object.prototype.hasOwnProperty.call(globals, 'toolOutput')) this._deliverToolOutput(globals);
+            notifyHostHeight();
+          };
+          window.addEventListener(OPENAI_SET_GLOBALS_EVENT, this._globalsListener, { passive: true });
+        }
+        await app.connect();
+        this._deliverToolOutput();
+        notifyHostHeight();
+      },
+      async callServerTool(name, args) {
+        const openaiBridge = getOpenAiBridge();
+        if (openaiBridge && typeof openaiBridge.callTool === 'function') {
+          return normalizeToolResult(await openaiBridge.callTool(name, args));
+        }
+        return app.callServerTool({ name, arguments: args });
+      },
+    };
+
+    function setNotice(message, severity = 'info') {
+      noticeEl.textContent = message || '';
+      noticeEl.className = `notice ${severity}${message ? ' show' : ''}`;
+      notifyHostHeight();
+    }
+
+    function flattenItems(payload) {
+      const structured = payload?.structuredContent;
+      const data = structured?.data && typeof structured.data === 'object' ? structured.data : structured;
+      const candidates = [structured, data, payload];
+      for (const candidate of candidates) {
+        if (!candidate || typeof candidate !== 'object') continue;
+        if (Array.isArray(candidate.items)) return candidate.items;
+        if (Array.isArray(candidate.results)) return candidate.results;
+      }
+      return [];
+    }
+
+    function stripCode(text) {
+      return String(text || '')
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/`[^`]*`/g, ' ');
+    }
+
+    function extractWikiLinks(markdown) {
+      const source = stripCode(markdown);
+      const matches = [];
+      const regex = /\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]/g;
+      let match;
+      while ((match = regex.exec(source))) {
+        const target = String(match[1] || '').trim();
+        const label = String(match[2] || '').trim();
+        if (target) matches.push({ target, label: label || target });
+      }
+      return matches;
+    }
+
+    function extractTags(markdown) {
+      const source = stripCode(markdown);
+      const matches = source.match(/(^|[^\w/])#([a-z0-9][a-z0-9_/-]*)/gim) || [];
+      return [...new Set(matches.map((raw) => raw.replace(/^.*?#/, '').toLowerCase()))];
+    }
+
+    function plainSummary(value, fallback = '') {
+      const text = stripCode(value)
+        .replace(/\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]/g, '$2$1')
+        .replace(/[>*_~#-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!text) return fallback;
+      return text.length > 120 ? `${text.slice(0, 117).trim()}...` : text;
+    }
+
+    function relDate(value) {
+      if (!value) return '—';
+      const ts = new Date(value).getTime();
+      if (Number.isNaN(ts)) return String(value);
+      const diff = Date.now() - ts;
+      if (diff < 60_000) return 'just now';
+      const mins = Math.floor(diff / 60_000);
+      if (mins < 60) return `${mins}m ago`;
+      const hours = Math.floor(mins / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      if (days < 14) return `${days}d ago`;
+      return new Date(ts).toLocaleDateString();
+    }
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderMarkdown(markdown) {
+      let html = escapeHtml(markdown || '');
+      html = html.replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.trim()}</code></pre>`);
+      html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+      html = html.replace(/\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]/g, '<a href="#" data-link="$1">$2$1</a>');
+      html = html.replace(/(^|\s)#([a-z0-9][a-z0-9_/-]*)/gim, '$1<span class="tag">#$2</span>');
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      const blocks = html.split(/
+{2,}/).map((chunk) => chunk.trim()).filter(Boolean).map((chunk) => {
+        if (/^<h\d|^<pre|^<ul|^<ol/.test(chunk)) return chunk;
+        if (/^(?:- |\* ).+/m.test(chunk)) {
+          const items = chunk.split('
+').map((line) => line.replace(/^[-*]\s+/, '').trim()).filter(Boolean).map((line) => `<li>${line}</li>`).join('');
+          return `<ul>${items}</ul>`;
+        }
+        return `<p>${chunk.replace(/
+/g, '<br>')}</p>`;
+      });
+      return blocks.join('') || '<p class="hint">No markdown content available.</p>';
+    }
+
+    function buildGraph(entries) {
+      const normalized = entries.map((entry) => {
+        const value = typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value ?? '', null, 2);
+        const tags = Array.isArray(entry.tags) ? entry.tags : extractTags(value);
+        const wikilinks = extractWikiLinks(value);
+        return {
+          key: entry.key,
+          label: entry.summary || plainSummary(value, entry.key),
+          summary: entry.summary || plainSummary(value, entry.key),
+          value,
+          tags,
+          wikilinks,
+          updated_at: entry.updated_at || entry.created_at || null,
+          created_at: entry.created_at || null,
+          author: entry.author || entry.author_name || entry.agent_name || null,
+          author_kind: entry.author_kind || null,
+          topic: entry.topic || null,
+        };
+      }).filter((entry) => entry.key);
+
+      const index = new Map(normalized.map((entry) => [entry.key, entry]));
+      let unresolvedLinks = 0;
+      const links = [];
+      const linkSeen = new Set();
+      normalized.forEach((entry) => {
+        entry.outbound = [];
+        entry.inbound = [];
+      });
+
+      for (const entry of normalized) {
+        for (const link of entry.wikilinks) {
+          if (!index.has(link.target)) {
+            unresolvedLinks += 1;
+            continue;
+          }
+          const dedupeKey = `${entry.key}=>${link.target}`;
+          if (linkSeen.has(dedupeKey)) continue;
+          linkSeen.add(dedupeKey);
+          links.push({ source: entry.key, target: link.target });
+          entry.outbound.push(link.target);
+        }
+      }
+
+      links.forEach((link) => {
+        const target = index.get(link.target);
+        if (target) target.inbound.push(link.source);
+      });
+
+      const nodes = normalized.map((entry) => {
+        const degree = entry.outbound.length + entry.inbound.length;
+        return {
+          id: entry.key,
+          ...entry,
+          degree,
+          primaryTag: entry.tags[0] || 'untagged',
+          radius: 10 + Math.min(22, Math.sqrt(Math.max(1, degree)) * 4),
+        };
+      });
+
+      return { nodes, links, index: new Map(nodes.map((node) => [node.id, node])), unresolvedLinks };
+    }
+
+    function renderStats(nodes, links, unresolvedLinks) {
+      const tagSet = new Set(nodes.flatMap((node) => node.tags));
+      statsEl.innerHTML = [
+        `<div class="stat"><strong>${nodes.length}</strong>nodes</div>`,
+        `<div class="stat"><strong>${links.length}</strong>edges</div>`,
+        `<div class="stat"><strong>${tagSet.size}</strong>tag clusters</div>`,
+        `<div class="stat"><strong>${unresolvedLinks}</strong>unresolved links</div>`,
+      ].join('');
+    }
+
+    function renderLegend(nodes, colorScale) {
+      const tags = [...new Set(nodes.map((node) => node.primaryTag))].slice(0, 8);
+      legendEl.innerHTML = tags.map((tag) => `<span class="legend-item"><span class="swatch" style="background:${escapeHtml(colorScale(tag))}"></span>${escapeHtml(tag)}</span>`).join('');
+    }
+
+    function renderDetail(node) {
+      if (!node) {
+        detailEl.innerHTML = `
+          <div class="detail-key">ui://context/graph</div>
+          <h2 class="detail-title">Select a node</h2>
+          <p class="detail-summary">Pick any context entry in the graph to inspect its markdown content, tags, and inbound/outbound links.</p>
+          <p class="hint">This prototype computes the graph at render time from the existing context store. If live tool calls are unavailable, it falls back to embedded sample data so the widget still demonstrates the interaction model.</p>
+        `;
+        notifyHostHeight();
+        return;
+      }
+
+      const tags = node.tags.length
+        ? `<div class="tag-list">${node.tags.map((tag) => `<span class="tag">#${escapeHtml(tag)}</span>`).join('')}</div>`
+        : '<p class="hint">No tags detected.</p>';
+      const outbound = node.outbound.length
+        ? `<div class="link-list">${node.outbound.map((target) => `<button class="link-pill" data-jump="${escapeHtml(target)}">→ ${escapeHtml(target)}</button>`).join('')}</div>`
+        : '<p class="hint">No resolved outbound links.</p>';
+      const inbound = node.inbound.length
+        ? `<div class="link-list">${node.inbound.map((source) => `<button class="link-pill" data-jump="${escapeHtml(source)}">← ${escapeHtml(source)}</button>`).join('')}</div>`
+        : '<p class="hint">No inbound links yet.</p>';
+
+      detailEl.innerHTML = `
+        <div class="detail-key">${escapeHtml(node.id)}</div>
+        <h2 class="detail-title">${escapeHtml(node.id)}</h2>
+        <p class="detail-summary">${escapeHtml(node.summary || 'No summary available.')}</p>
+        <div class="meta-grid">
+          <div class="meta-card"><strong>Updated</strong><span>${escapeHtml(relDate(node.updated_at))}</span></div>
+          <div class="meta-card"><strong>Author</strong><span>${escapeHtml(node.author || 'Unknown')}</span></div>
+          <div class="meta-card"><strong>Resolved links</strong><span>${node.degree}</span></div>
+          <div class="meta-card"><strong>Primary tag</strong><span>${escapeHtml(node.primaryTag)}</span></div>
+        </div>
+        <h3 class="panel-title">Tags</h3>
+        ${tags}
+        <h3 class="panel-title">Outbound links</h3>
+        ${outbound}
+        <h3 class="panel-title">Inbound links</h3>
+        ${inbound}
+        <h3 class="panel-title">Markdown content</h3>
+        <div class="markdown">${renderMarkdown(node.value)}</div>
+      `;
+      detailEl.querySelectorAll('[data-jump]').forEach((button) => {
+        button.addEventListener('click', () => selectNode(button.getAttribute('data-jump')));
+      });
+      detailEl.querySelectorAll('[data-link]').forEach((link) => {
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          selectNode(link.getAttribute('data-link'));
+        });
+      });
+      notifyHostHeight();
+    }
+
+    function selectNode(key) {
+      if (!state.index.has(key)) return;
+      state.selectedKey = key;
+      renderDetail(state.index.get(key));
+      renderGraph();
+    }
+
+    function renderGraph() {
+      svg.selectAll('*').remove();
+      if (!state.nodes.length) {
+        svg.append('text').attr('x', 24).attr('y', 32).attr('fill', '#94a3b8').text('No graphable context entries available.');
+        renderDetail(null);
+        notifyHostHeight();
+        return;
+      }
+
+      const width = 900;
+      const height = 620;
+      const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
+      renderLegend(state.nodes, colorScale);
+
+      const root = svg.append('g');
+      const simulation = d3.forceSimulation(state.nodes)
+        .force('link', d3.forceLink(state.links).id((d) => d.id).distance(110).strength(0.22))
+        .force('charge', d3.forceManyBody().strength(-260))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius((d) => d.radius + 10));
+
+      const activeKey = state.selectedKey;
+      const neighborSet = new Set();
+      state.links.forEach((link) => {
+        const source = typeof link.source === 'object' ? link.source.id : link.source;
+        const target = typeof link.target === 'object' ? link.target.id : link.target;
+        if (activeKey && (source === activeKey || target === activeKey)) {
+          neighborSet.add(source);
+          neighborSet.add(target);
+        }
+      });
+
+      const edges = root.append('g')
+        .selectAll('line')
+        .data(state.links)
+        .join('line')
+        .attr('class', (d) => {
+          const source = typeof d.source === 'object' ? d.source.id : d.source;
+          const target = typeof d.target === 'object' ? d.target.id : d.target;
+          return activeKey && (source === activeKey || target === activeKey) ? 'edge active' : 'edge';
+        });
+
+      const nodes = root.append('g')
+        .selectAll('g')
+        .data(state.nodes)
+        .join('g')
+        .attr('class', (d) => activeKey === d.id ? 'node active' : 'node')
+        .style('cursor', 'pointer')
+        .call(
+          d3.drag()
+            .on('start', (event, d) => {
+              if (!event.active) simulation.alphaTarget(0.18).restart();
+              d.fx = d.x;
+              d.fy = d.y;
+            })
+            .on('drag', (event, d) => {
+              d.fx = event.x;
+              d.fy = event.y;
+            })
+            .on('end', (event, d) => {
+              if (!event.active) simulation.alphaTarget(0);
+              d.fx = null;
+              d.fy = null;
+            })
+        )
+        .on('click', (_, d) => selectNode(d.id));
+
+      nodes.append('circle')
+        .attr('r', (d) => d.radius)
+        .attr('fill', (d) => colorScale(d.primaryTag))
+        .attr('opacity', (d) => !activeKey || d.id === activeKey || neighborSet.has(d.id) ? 0.94 : 0.72);
+
+      nodes.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', (d) => d.radius + 13)
+        .text((d) => d.id.length > 24 ? `${d.id.slice(0, 22)}…` : d.id);
+
+      simulation.on('tick', () => {
+        edges
+          .attr('x1', (d) => d.source.x)
+          .attr('y1', (d) => d.source.y)
+          .attr('x2', (d) => d.target.x)
+          .attr('y2', (d) => d.target.y);
+        nodes.attr('transform', (d) => `translate(${d.x},${d.y})`);
+      });
+
+      footerSummaryEl.textContent = `${state.nodes.length} nodes · ${state.links.length} resolved edges · source: ${state.source}`;
+      notifyHostHeight();
+    }
+
+    async function loadGraphData() {
+      try {
+        const result = await host.callServerTool('context', { action: 'list' });
+        const items = flattenItems(result);
+        if (!items.length) throw new Error('Context list returned no items.');
+        state.source = 'live context(action="list")';
+        setNotice('Loaded live context entries and computed the graph client-side.', 'info');
+        return items;
+      } catch (error) {
+        state.source = 'embedded sample dataset';
+        setNotice(`Live context load unavailable, using sample graph data instead: ${error?.message || error}`, 'error');
+        return SAMPLE_ENTRIES;
+      }
+    }
+
+    function applyGraph(entries) {
+      const graph = buildGraph(entries);
+      state.nodes = graph.nodes;
+      state.links = graph.links;
+      state.index = graph.index;
+      state.unresolvedLinks = graph.unresolvedLinks;
+      renderStats(state.nodes, state.links, state.unresolvedLinks);
+      if (!state.selectedKey && state.nodes.length) state.selectedKey = state.nodes[0].id;
+      renderGraph();
+      renderDetail(state.index.get(state.selectedKey) || null);
+    }
+
+    await host.connect();
+    const entries = await loadGraphData();
+    applyGraph(entries);
+  </script>
+</body>
+</html>

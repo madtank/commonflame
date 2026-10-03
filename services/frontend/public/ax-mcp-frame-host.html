@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Waystation MCP Frame Host</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ax-frame-text: #e5eefc;
+        --ax-frame-error-bg: #071120;
+        --ax-frame-error-fg: #d8e7ff;
+        --ax-frame-error-card-border: rgba(148, 163, 184, 0.22);
+        --ax-frame-error-card-bg: rgba(15, 23, 42, 0.92);
+        --ax-frame-error-shadow: 0 18px 40px rgba(2, 6, 23, 0.35);
+        --ax-frame-error-body: rgba(226, 232, 240, 0.88);
+      }
+
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --ax-frame-text: #0f172a;
+        --ax-frame-error-bg: #f8fafc;
+        --ax-frame-error-fg: #0f172a;
+        --ax-frame-error-card-border: rgba(148, 163, 184, 0.34);
+        --ax-frame-error-card-bg: rgba(255, 255, 255, 0.96);
+        --ax-frame-error-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        --ax-frame-error-body: rgba(51, 65, 85, 0.88);
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: transparent;
+      }
+
+      body {
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--ax-frame-text);
+      }
+
+      .frame-host-error {
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--ax-frame-error-bg);
+        color: var(--ax-frame-error-fg);
+      }
+
+      .frame-host-error__card {
+        max-width: 560px;
+        border: 1px solid var(--ax-frame-error-card-border);
+        border-radius: 18px;
+        background: var(--ax-frame-error-card-bg);
+        padding: 20px 22px;
+        box-shadow: var(--ax-frame-error-shadow);
+      }
+
+      .frame-host-error__title {
+        margin: 0 0 8px;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .frame-host-error__body {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--ax-frame-error-body);
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var prefix = "ax-mcp-html:";
+        var payloadPrefix = "ax-mcp-html-v2:";
+        var storagePrefix = "ax-mcp-frame:";
+        var openAiRequestCounter = 0;
+        var openAiPendingCalls = new Map();
+        var latestOpenAiGlobals = {};
+        var currentTheme = "dark";
+
+        function normalizeThemeValue(value) {
+          return value === "light" ? "light" : "dark";
+        }
+
+        function readInitialTheme() {
+          try {
+            var searchParams = new URLSearchParams(window.location.search || "");
+            return normalizeThemeValue(searchParams.get("theme"));
+          } catch (error) {
+            console.error("[ax-mcp-frame-host] failed to read theme", error);
+            return "dark";
+          }
+        }
+
+        function applyThemeToDocument(theme) {
+          currentTheme = normalizeThemeValue(theme);
+          if (document.documentElement) {
+            document.documentElement.dataset.theme = currentTheme;
+            document.documentElement.style.colorScheme = currentTheme;
+          }
+          if (document.body) {
+            document.body.dataset.theme = currentTheme;
+            document.body.style.colorScheme = currentTheme;
+          }
+        }
+
+        function serializeForInlineScript(value) {
+          try {
+            return JSON.stringify(value || {})
+              .replace(/</g, "\\u003c")
+              .replace(/\u2028/g, "\\u2028")
+              .replace(/\u2029/g, "\\u2029");
+          } catch (error) {
+            console.error(
+              "[ax-mcp-frame-host] failed to serialize bridge globals",
+              error,
+            );
+            return "{}";
+          }
+        }
+
+        function buildInjectedBridgeScript(serializedGlobals, serializedTheme) {
+          return [
+            "<script>",
+            "(function () {",
+            'var OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";',
+            "var openAiRequestCounter = 0;",
+            "var openAiPendingCalls = new Map();",
+            "var initialGlobals = " + serializedGlobals + ";",
+            "var latestGlobals = initialGlobals || {};",
+            "var initialTheme = " + serializedTheme + ";",
+            "function normalizeThemeValue(value) { return value === \"light\" ? \"light\" : \"dark\"; }",
+            "function applyTheme(theme) {",
+            "  var nextTheme = normalizeThemeValue(theme);",
+            "  document.documentElement.dataset.theme = nextTheme;",
+            "  document.documentElement.style.colorScheme = nextTheme;",
+            "  if (document.body) {",
+            "    document.body.dataset.theme = nextTheme;",
+            "    document.body.style.colorScheme = nextTheme;",
+            "  }",
+            "  window.__axTheme = nextTheme;",
+            "  try {",
+            '    window.dispatchEvent(new CustomEvent("ax:theme-changed", { detail: { theme: nextTheme } }));',
+            "  } catch (error) {",
+            '    console.error("[ax-mcp-frame-host] failed to dispatch theme", error);',
+            "  }",
+            "}",
+            "function dispatchOpenAiGlobals(globals) {",
+            "  try {",
+            "    window.dispatchEvent(new CustomEvent(OPENAI_SET_GLOBALS_EVENT, { detail: { globals: globals || {} } }));",
+            "  } catch (error) {",
+            '    console.error("[ax-mcp-frame-host] failed to dispatch globals", error);',
+            "  }",
+            "}",
+            "function applyOpenAiGlobals(globals) {",
+            "  var nextGlobals = globals || {};",
+            "  latestGlobals = Object.assign({}, latestGlobals, nextGlobals);",
+            '  if (Object.prototype.hasOwnProperty.call(nextGlobals, "toolOutput")) {',
+            "    window.openai.toolOutput = nextGlobals.toolOutput;",
+            "  }",
+            "  dispatchOpenAiGlobals(nextGlobals);",
+            "}",
+            "var openAiBridge = {",
+            '  toolOutput: Object.prototype.hasOwnProperty.call(initialGlobals, "toolOutput") ? initialGlobals.toolOutput : undefined,',
+            "  callTool: function (name, args) {",
+            "    return new Promise(function (resolve, reject) {",
+            '      var id = "openai-tool-" + ++openAiRequestCounter;',
+            "      var timeoutId = setTimeout(function () {",
+            "        if (openAiPendingCalls.has(id)) {",
+            "          openAiPendingCalls.delete(id);",
+            '          reject(new Error("Tool call timed out after 15s — host bridge may not be connected."));',
+            "        }",
+            "      }, 15000);",
+            "      openAiPendingCalls.set(id, {",
+            "        resolve: function (val) { clearTimeout(timeoutId); resolve(val); },",
+            "        reject: function (err) { clearTimeout(timeoutId); reject(err); },",
+            "      });",
+            "      window.parent.postMessage({",
+            '        jsonrpc: "2.0",',
+            "        id: id,",
+            '        method: "tools/call",',
+            "        params: { name: name, arguments: args || {} },",
+            '      }, "*");',
+            "    });",
+            "  },",
+            "  notifyIntrinsicHeight: function (height) {",
+            "    window.parent.postMessage({",
+            '      jsonrpc: "2.0",',
+            '      method: "ui/notifications/size-changed",',
+            "      params: { height: height },",
+            '    }, "*");',
+            "  },",
+            "  setWidgetState: function () {",
+            "    return Promise.resolve();",
+            "  },",
+            "};",
+            "window.openai = openAiBridge;",
+            "window.__axSetOpenAiGlobals = applyOpenAiGlobals;",
+            "window.__axSetTheme = applyTheme;",
+            "function supportsDirectHtmlFullscreen() {",
+            "  return Boolean(latestGlobals && latestGlobals.axHostCapabilities && latestGlobals.axHostCapabilities.directHtmlFullscreen);",
+            "}",
+            "function readSelectedHtmlFullscreenPayload(button) {",
+            "  if (!supportsDirectHtmlFullscreen()) return null;",
+            "  if (!button || !document || !document.querySelector) return null;",
+            "  var label = String(button.getAttribute(\"aria-label\") || button.getAttribute(\"title\") || button.textContent || \"\").toLowerCase();",
+            "  if (label.indexOf(\"fullscreen\") === -1) return null;",
+            "  var frame = document.querySelector(\".html-stage iframe.html-iframe[data-context-key]\") || document.querySelector(\"iframe.html-iframe[data-context-key]\");",
+            "  if (!frame || !frame.srcdoc) return null;",
+            "  var key = frame.getAttribute(\"data-context-key\") || \"\";",
+            "  var title = frame.getAttribute(\"title\") || key || \"Sandboxed HTML\";",
+            "  title = title.replace(/^Sandboxed HTML:\\s*/i, \"\");",
+            "  return { title: title, key: key, html: frame.srcdoc };",
+            "}",
+            "document.addEventListener(\"click\", function (event) {",
+            "  var target = event.target;",
+            "  var button = target && target.closest ? target.closest(\"button\") : null;",
+            "  var payload = readSelectedHtmlFullscreenPayload(button);",
+            "  if (!payload) return;",
+            "  event.preventDefault();",
+            "  event.stopPropagation();",
+            "  if (event.stopImmediatePropagation) event.stopImmediatePropagation();",
+            "  window.parent.postMessage({",
+            "    jsonrpc: \"2.0\",",
+            "    id: \"ax-open-html-fullscreen-\" + Date.now(),",
+            "    method: \"ui/open-html-fullscreen\",",
+            "    params: payload,",
+            "  }, \"*\");",
+            "}, true);",
+            'window.addEventListener("message", function (event) {',
+            "  var data = event.data || {};",
+            '  if (data.jsonrpc === "2.0" && data.method === "ui/notifications/host-context-changed" && data.params && (data.params.theme === "light" || data.params.theme === "dark")) {',
+            "    applyTheme(data.params.theme);",
+            "    return;",
+            "  }",
+            '  if (data && data.type === "ax/openai:set_globals") {',
+            "    applyOpenAiGlobals(data.globals || {});",
+            "    return;",
+            "  }",
+            '  if (data && data.id && openAiPendingCalls.has(data.id) && (Object.prototype.hasOwnProperty.call(data, "result") || Object.prototype.hasOwnProperty.call(data, "error"))) {',
+            "    var pending = openAiPendingCalls.get(data.id);",
+            "    openAiPendingCalls.delete(data.id);",
+            "    if (!pending) return;",
+            "    if (data.error) {",
+            '      pending.reject(new Error(data.error.message || "Tool call failed"));',
+            "    } else {",
+            "      pending.resolve(data.result);",
+            "    }",
+            "  }",
+            "});",
+            "applyTheme(initialTheme);",
+            "applyOpenAiGlobals(initialGlobals);",
+            "})();",
+            "</scr" + "ipt>",
+          ].join("");
+        }
+
+        // MCP widget HTML ships with its own visual language. The frame host
+        // only supplies portable tokens so widgets can adapt to light hosts
+        // without coupling their internals to a specific client shell.
+        function buildInjectedThemeStyle() {
+          return [
+            '<style id="ax-widget-theme-tokens">',
+            ':root{color-scheme:dark;}',
+            ':root[data-theme="light"],body[data-theme="light"]{',
+            'color-scheme:light;',
+            '--color-background-primary:#f8fafc;',
+            '--color-background-secondary:#ffffff;',
+            '--color-background-tertiary:#f1f5f9;',
+            '--color-foreground-primary:#0f172a;',
+            '--color-foreground-secondary:#475569;',
+            '--color-border-default:rgba(15,23,42,0.12);',
+            '--color-border-strong:rgba(15,23,42,0.18);',
+            '--color-accent-primary:#0891b2;',
+            '--ax-bg:#f8fafc;',
+            '--ax-surface:#ffffff;',
+            '--ax-surface-strong:#f1f5f9;',
+            '--ax-panel:#ffffff;',
+            '--ax-panel-2:#f8fafc;',
+            '--ax-border:rgba(15,23,42,0.12);',
+            '--ax-border-strong:#cbd5e1;',
+            '--ax-text:#0f172a;',
+            '--ax-text-muted:#64748b;',
+            '--ax-text-dim:#64748b;',
+            '--ax-token-text:#334155;',
+            '--ax-gold:#b7791f;',
+            '--ax-gold-strong:#92400e;',
+            '--ax-accent:#0891b2;',
+            '--ax-accent-soft:rgba(8,145,178,0.10);',
+            '--ax-green:#047857;',
+            '--ax-red:#b91c1c;',
+            '--ax-amber:#b45309;',
+            '--ax-warning:#b45309;',
+            '--ax-danger:#b91c1c;',
+            '--ax-chip:#f1f5f9;',
+            '--ax-chip-active:#e0f2fe;',
+            '--ax-hover:rgba(15,23,42,0.06);',
+            '--ax-surface-header:#f1f5f9;',
+            '--ax-row-hover-bg:rgba(8,145,178,0.10);',
+            '--ax-selected-bg:#e0f2fe;',
+            '--ax-selected-border:rgba(8,145,178,0.28);',
+            '--ax-selected-text:#0f172a;',
+            '--ax-shadow:0 12px 30px -20px rgba(15,23,42,0.28);',
+            '--ax-artifact-backdrop:#f8fafc;',
+            '--ax-artifact-surface:#ffffff;',
+            '--ax-artifact-overlay:rgba(255,255,255,0.88);',
+            '--ax-code-bg:#e2e8f0;',
+            '--ax-inline-code-bg:rgba(15,23,42,0.08);',
+            '--prose-body:#0f172a;',
+            '--prose-headings:#0f172a;',
+            '--prose-links:#0e7490;',
+            '--prose-code:#0f172a;',
+            '--prose-pre-bg:#e2e8f0;',
+            '--bg:#f8fafc;',
+            '--surface:#ffffff;',
+            '--surface-strong:#f1f5f9;',
+            '--panel:#ffffff;',
+            '--panel-2:#f8fafc;',
+            '--cell:#ffffff;',
+            '--border:rgba(15,23,42,0.12);',
+            '--text:#0f172a;',
+            '--text-dim:#64748b;',
+            '--muted:#64748b;',
+            '--dim:#94a3b8;',
+            '--accent:#0891b2;',
+            '--accent-soft:rgba(8,145,178,0.10);',
+            '--warning:#b45309;',
+            '--warning-soft:#fff7ed;',
+            '--danger:#b91c1c;',
+            '--danger-soft:#fef2f2;',
+            '--success:#047857;',
+            '--success-soft:#ecfdf5;',
+            '--info:#1d4ed8;',
+            '--info-soft:#eff6ff;',
+            '--green:#047857;',
+            '--red:#b91c1c;',
+            '--yellow:#b45309;',
+            '--blue:#1d4ed8;',
+            '--shadow:0 12px 30px -20px rgba(15,23,42,0.28);',
+            '}',
+            ':root[data-theme="light"] body{background:var(--ax-bg,var(--bg,#f8fafc));color:var(--ax-text,var(--text,#0f172a));}',
+            ':root[data-theme="light"] input,:root[data-theme="light"] textarea,:root[data-theme="light"] select,:root[data-theme="light"] button{color-scheme:light;}',
+            ':root[data-theme="light"] .panel-header{background:var(--ax-surface-header,#f1f5f9)!important;color:var(--ax-text,#0f172a)!important;border-color:var(--ax-border,rgba(15,23,42,0.12))!important;}',
+            ':root[data-theme="light"] .space-row,:root[data-theme="light"] .memory-item,:root[data-theme="light"] .member-card{background:var(--ax-panel-2,#f8fafc)!important;color:var(--ax-text,#0f172a)!important;border-color:var(--ax-border,rgba(15,23,42,0.12))!important;}',
+            ':root[data-theme="light"] .space-row:hover,:root[data-theme="light"] .memory-item:hover,:root[data-theme="light"] .member-card:hover,:root[data-theme="light"] .tab:hover,:root[data-theme="light"] .chip:hover{background:var(--ax-row-hover-bg,rgba(8,145,178,0.10))!important;color:var(--ax-text,#0f172a)!important;border-color:var(--ax-selected-border,rgba(8,145,178,0.28))!important;}',
+            ':root[data-theme="light"] .tab.active,:root[data-theme="light"] .chip.active,:root[data-theme="light"] .memory-item.active{background:var(--ax-selected-bg,#e0f2fe)!important;color:var(--ax-selected-text,#0f172a)!important;border-color:var(--ax-selected-border,rgba(8,145,178,0.28))!important;}',
+            ':root[data-theme="light"] body.artifact-mode,:root[data-theme="light"] .artifact-panel{background:var(--ax-artifact-backdrop,#f8fafc)!important;color:var(--ax-text,#0f172a)!important;}',
+            ':root[data-theme="light"] .artifact-document,:root[data-theme="light"] .artifact-file-card,:root[data-theme="light"] .artifact-audio-card{background:var(--ax-artifact-surface,#ffffff)!important;color:var(--ax-text,#0f172a)!important;border-color:var(--ax-border,rgba(15,23,42,0.12))!important;}',
+            ':root[data-theme="light"] .artifact-text,:root[data-theme="light"] .artifact-file-title,:root[data-theme="light"] .artifact-detail-body,:root[data-theme="light"] .upload-markdown,:root[data-theme="light"] .markdown{color:var(--prose-body,var(--ax-text,#0f172a))!important;}',
+            ':root[data-theme="light"] .upload-markdown h1,:root[data-theme="light"] .upload-markdown h2,:root[data-theme="light"] .upload-markdown h3,:root[data-theme="light"] .upload-markdown h4,:root[data-theme="light"] .markdown h1,:root[data-theme="light"] .markdown h2,:root[data-theme="light"] .markdown h3{color:var(--prose-headings,var(--ax-text,#0f172a))!important;}',
+            ':root[data-theme="light"] .upload-markdown a,:root[data-theme="light"] .markdown a{color:var(--prose-links,var(--ax-accent,#0e7490))!important;}',
+            ':root[data-theme="light"] .upload-markdown pre.md-code,:root[data-theme="light"] .markdown pre{background:var(--prose-pre-bg,var(--ax-code-bg,#e2e8f0))!important;color:var(--prose-code,var(--ax-text,#0f172a))!important;border:1px solid var(--ax-border,rgba(15,23,42,0.12));}',
+            ':root[data-theme="light"] .upload-markdown code.md-inline,:root[data-theme="light"] .markdown code{background:var(--ax-inline-code-bg,rgba(15,23,42,0.08))!important;color:var(--prose-code,var(--ax-text,#0f172a))!important;}',
+            ':root[data-theme="light"] .artifact-back,:root[data-theme="light"] .artifact-details,:root[data-theme="light"] .upload-details-toggle,:root[data-theme="light"] .upload-file-card,:root[data-theme="light"] .upload-meta-item{background:var(--ax-artifact-overlay,rgba(255,255,255,0.88))!important;color:var(--ax-text,#0f172a)!important;border-color:var(--ax-border,rgba(15,23,42,0.12))!important;}',
+            ':root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark{',
+            'color-scheme:dark;',
+            '--ax-bg:#0a0f1a;',
+            '--ax-surface:rgba(15,23,42,0.92);',
+            '--ax-surface-strong:rgba(30,41,59,0.96);',
+            '--ax-border:rgba(148,163,184,0.18);',
+            '--ax-text:#e2e8f0;',
+            '--ax-text-muted:#94a3b8;',
+            '--ax-text-dim:#94a3b8;',
+            '--ax-token-text:#cbd5e1;',
+            '--ax-accent:#67e8f9;',
+            '--ax-warning:#f59e0b;',
+            '--ax-danger:#f43f5e;',
+            '--warning:#f59e0b;',
+            '--danger:#f43f5e;',
+            '--success:#34d399;',
+            '--info:#60a5fa;',
+            '}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) body{background:var(--ax-bg,#0a0f1a);color:var(--ax-text,#e2e8f0);}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-row-label,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .toolbar-label,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .field-label,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .form-field label{color:var(--ax-text-muted,#94a3b8)!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .task-title,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .field-value,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .detail-title{color:var(--ax-text,#e2e8f0)!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .task-summary,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .task-secondary-meta,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .task-assignee,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .task-freshness,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .count,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-count,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .detail-summary,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .detail-desc{color:var(--ax-text-muted,#94a3b8)!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn{background:rgba(15,23,42,0.92)!important;background-image:none!important;border-color:rgba(148,163,184,0.22)!important;color:#cbd5e1!important;box-shadow:none!important;text-shadow:none!important;filter:none!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn *{color:inherit!important;text-shadow:none!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn:hover{background:rgba(30,41,59,0.92)!important;background-image:none!important;border-color:rgba(148,163,184,0.34)!important;color:#e2e8f0!important;box-shadow:none!important;filter:none!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn.active{background:rgba(30,41,59,0.96)!important;background-image:none!important;border-color:rgba(148,163,184,0.42)!important;color:#f8fafc!important;box-shadow:none!important;filter:none!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn.active .filter-count{color:#e2e8f0!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-filter-open"].active{background:rgba(30,41,59,0.96)!important;border-color:rgba(96,165,250,0.38)!important;color:#bfdbfe!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-filter-pending"].active{background:rgba(30,41,59,0.96)!important;border-color:rgba(245,158,11,0.38)!important;color:#fde68a!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-filter-in-progress"].active{background:rgba(30,41,59,0.96)!important;border-color:rgba(52,211,153,0.38)!important;color:#bbf7d0!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-filter-completed"].active{background:rgba(30,41,59,0.96)!important;border-color:rgba(148,163,184,0.32)!important;color:#cbd5e1!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-priority-critical"]{color:#fda4af!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-priority-high"]{color:#fecaca!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-priority-medium"]{color:#fcd34d!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-priority-low"]{color:#93c5fd!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-priority-critical"].active,:is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-priority-high"].active{background:rgba(30,41,59,0.96)!important;border-color:rgba(244,63,94,0.38)!important;color:#fecdd3!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-priority-medium"].active{background:rgba(30,41,59,0.96)!important;border-color:rgba(245,158,11,0.42)!important;color:#fde68a!important;}',
+            ':is(:root[data-theme="dark"],body[data-theme="dark"],html.dark,body.dark) .filter-btn[data-testid="tasks-priority-low"].active{background:rgba(30,41,59,0.96)!important;border-color:rgba(96,165,250,0.34)!important;color:#bfdbfe!important;}',
+            '@media (prefers-color-scheme:dark){body:not([data-theme="light"]) .filter-btn{background:rgba(15,23,42,0.92)!important;background-image:none!important;color:#cbd5e1!important;box-shadow:none!important;text-shadow:none!important;filter:none!important;}body:not([data-theme="light"]) .filter-btn *{color:inherit!important;text-shadow:none!important;}body:not([data-theme="light"]) .filter-btn.active{background:rgba(30,41,59,0.96)!important;background-image:none!important;color:#f8fafc!important;box-shadow:none!important;filter:none!important;}}',
+            ':root[data-theme="dark"] .status-pill{font-weight:650!important;text-shadow:none!important;}',
+            ':root[data-theme="dark"] .status-open{background:rgba(59,130,246,0.14)!important;color:#bfdbfe!important;border-color:rgba(96,165,250,0.30)!important;}',
+            ':root[data-theme="dark"] .status-pending{background:rgba(245,158,11,0.14)!important;color:#fde68a!important;border-color:rgba(245,158,11,0.30)!important;}',
+            ':root[data-theme="dark"] .status-in_progress{background:rgba(16,185,129,0.14)!important;color:#bbf7d0!important;border-color:rgba(52,211,153,0.30)!important;}',
+            ':root[data-theme="dark"] .status-completed,:root[data-theme="dark"] .status-closed{background:rgba(148,163,184,0.12)!important;color:#cbd5e1!important;border-color:rgba(148,163,184,0.22)!important;}',
+            ':root[data-theme="dark"] .prio-btn{background:rgba(15,23,42,0.82)!important;border-color:rgba(148,163,184,0.18)!important;}',
+            ':root[data-theme="dark"] .prio-btn[data-prio="critical"],:root[data-theme="dark"] .prio-btn[data-prio="high"]{color:#fda4af!important;}',
+            ':root[data-theme="dark"] .prio-btn[data-prio="medium"]{color:#fcd34d!important;}',
+            ':root[data-theme="dark"] .prio-btn[data-prio="low"]{color:#67e8f9!important;}',
+            ':root[data-theme="dark"] .prio-btn.active{box-shadow:none!important;}',
+            ':root[data-theme="dark"] .prio-btn[data-prio="critical"].active,:root[data-theme="dark"] .prio-btn[data-prio="high"].active{background:rgba(244,63,94,0.22)!important;border-color:rgba(251,113,133,0.42)!important;color:#ffe4e6!important;}',
+            ':root[data-theme="dark"] .prio-btn[data-prio="medium"].active{background:rgba(245,158,11,0.22)!important;border-color:rgba(251,191,36,0.42)!important;color:#fef3c7!important;}',
+            ':root[data-theme="dark"] .prio-btn[data-prio="low"].active{background:rgba(6,182,212,0.20)!important;border-color:rgba(103,232,249,0.38)!important;color:#cffafe!important;}',
+            "</style>",
+          ].join("");
+        }
+
+
+        function buildInjectedTaskSortA11yScript() {
+          return [
+            "<script>",
+            "(function () {",
+            'var SORT_LABELS = { newest: "Newest", oldest: "Oldest", priority: "Priority" };',
+            "var PRIORITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };",
+            "var activeSort = \"newest\";",
+            "function textOf(node) { return (node && node.textContent ? node.textContent : \"\").trim(); }",
+            "function isSortLabel(text) { return text === SORT_LABELS.newest || text === SORT_LABELS.oldest || text === SORT_LABELS.priority; }",
+            "function sortKeyFromText(text) { return text === SORT_LABELS.oldest ? \"oldest\" : text === SORT_LABELS.priority ? \"priority\" : \"newest\"; }",
+            "function parseAgeMs(text) {",
+            "  var lower = String(text || \"\").toLowerCase();",
+            "  if (/just now/.test(lower)) return 0;",
+            "  var match = lower.match(/(\\d+)\\s*(m|min|minute|minutes|h|hr|hour|hours|d|day|days)\\s+ago/);",
+            "  if (!match) return 0;",
+            "  var value = parseInt(match[1], 10) || 0;",
+            "  var unit = match[2];",
+            "  if (unit.charAt(0) === \"d\") return value * 86400000;",
+            "  if (unit.charAt(0) === \"h\") return value * 3600000;",
+            "  return value * 60000;",
+            "}",
+            "function priorityRank(text) {",
+            "  var lower = String(text || \"\").toLowerCase();",
+            "  var match = lower.match(/\\b(critical|high|medium|low)\\b/);",
+            "  return match ? PRIORITY_RANK[match[1]] : 99;",
+            "}",
+            "function getTaskCards() { return Array.prototype.slice.call(document.querySelectorAll(\".task-card\")); }",
+            "function sortCards(mode) {",
+            "  var cards = getTaskCards();",
+            "  if (cards.length < 2) return;",
+            "  var parent = cards[0].parentElement;",
+            "  if (!parent) return;",
+            "  cards.sort(function (a, b) {",
+            "    if (mode === \"priority\") {",
+            "      var prio = priorityRank(textOf(a)) - priorityRank(textOf(b));",
+            "      if (prio !== 0) return prio;",
+            "    }",
+            "    var ageDelta = parseAgeMs(textOf(a)) - parseAgeMs(textOf(b));",
+            "    return mode === \"oldest\" ? ageDelta * -1 : ageDelta;",
+            "  });",
+            "  cards.forEach(function (card) { parent.appendChild(card); });",
+            "}",
+            "function setActive(mode) {",
+            "  activeSort = mode;",
+            "  Array.prototype.forEach.call(document.querySelectorAll(\"button[data-ax-task-sort]\"), function (btn) {",
+            "    var selected = btn.getAttribute(\"data-ax-task-sort\") === mode;",
+            "    btn.classList.toggle(\"active\", selected);",
+            "    btn.setAttribute(\"aria-pressed\", selected ? \"true\" : \"false\");",
+            "  });",
+            "}",
+            "function makeButton(label) {",
+            "  var mode = sortKeyFromText(label);",
+            "  var btn = document.createElement(\"button\");",
+            "  btn.type = \"button\";",
+            "  btn.className = \"filter-btn ax-task-sort-btn\";",
+            "  btn.setAttribute(\"data-ax-task-sort\", mode);",
+            "  btn.setAttribute(\"data-testid\", \"tasks-sort-\" + mode);",
+            "  btn.setAttribute(\"aria-label\", \"Sort tasks by \" + label);",
+            "  btn.textContent = label;",
+            "  btn.addEventListener(\"click\", function () { sortCards(mode); setActive(mode); });",
+            "  btn.addEventListener(\"keydown\", function (event) { if (event.key === \"Enter\" || event.key === \" \") { event.preventDefault(); btn.click(); } });",
+            "  return btn;",
+            "}",
+            "function enhanceSortLabels() {",
+            "  var changed = false;",
+            "  Array.prototype.forEach.call(document.querySelectorAll(\"body *\"), function (el) {",
+            "    if (!el || el.closest(\"button[data-ax-task-sort]\") || /^(SCRIPT|STYLE|BUTTON|INPUT|TEXTAREA|SELECT|OPTION)$/i.test(el.tagName)) return;",
+            "    var label = textOf(el);",
+            "    if (!isSortLabel(label)) return;",
+            "    var parentText = textOf(el.parentElement);",
+            "    var nearSort = parentText.indexOf(\"SORT\") !== -1 || (el.parentElement && textOf(el.parentElement.previousElementSibling) === \"SORT\");",
+            "    if (!nearSort && getTaskCards().length === 0) return;",
+            "    el.replaceWith(makeButton(label));",
+            "    changed = true;",
+            "  });",
+            "  if (changed) setActive(activeSort);",
+            "}",
+            "function scheduleEnhance() { window.setTimeout(enhanceSortLabels, 0); window.setTimeout(enhanceSortLabels, 250); window.setTimeout(enhanceSortLabels, 1000); }",
+            "if (document.readyState === \"loading\") document.addEventListener(\"DOMContentLoaded\", scheduleEnhance); else scheduleEnhance();",
+            "try { new MutationObserver(scheduleEnhance).observe(document.documentElement, { childList: true, subtree: true }); } catch (error) {}",
+            "})();",
+            "</" + "script>",
+          ].join("");
+        }
+
+        function injectBridgeIntoHtml(html, globals) {
+          var themeStyle = buildInjectedThemeStyle();
+          var bridgeScript = buildInjectedBridgeScript(
+            serializeForInlineScript(globals),
+            JSON.stringify(currentTheme),
+          );
+          var taskSortA11yScript = buildInjectedTaskSortA11yScript();
+          if (/<body[^>]*>/i.test(html)) {
+            return html.replace(/<body([^>]*)>/i, function (match, attrs) {
+              return (
+                "<body" + (attrs || "") + ">" + themeStyle + bridgeScript + taskSortA11yScript
+              );
+            });
+          }
+          if (/<head[^>]*>/i.test(html)) {
+            return html.replace(
+              /<\/head>/i,
+              themeStyle + bridgeScript + taskSortA11yScript + "</head>",
+            );
+          }
+          return themeStyle + bridgeScript + taskSortA11yScript + html;
+        }
+
+        function applyOpenAiGlobals(globals) {
+          var nextGlobals = globals || {};
+          latestOpenAiGlobals = Object.assign(
+            {},
+            latestOpenAiGlobals,
+            nextGlobals,
+          );
+          if (Object.prototype.hasOwnProperty.call(nextGlobals, "toolOutput")) {
+            window.openai.toolOutput = nextGlobals.toolOutput;
+          }
+          dispatchOpenAiGlobals(nextGlobals);
+        }
+
+        function dispatchOpenAiGlobals(globals) {
+          try {
+            window.dispatchEvent(
+              new CustomEvent("openai:set_globals", {
+                detail: {
+                  globals: globals || {},
+                },
+              }),
+            );
+          } catch (error) {
+            console.error(
+              "[ax-mcp-frame-host] failed to dispatch globals",
+              error,
+            );
+          }
+        }
+
+        var openAiBridge = {
+          toolOutput: undefined,
+          callTool: function (name, args) {
+            return new Promise(function (resolve, reject) {
+              var id = "openai-tool-" + ++openAiRequestCounter;
+              var timeoutId = setTimeout(function () {
+                if (openAiPendingCalls.has(id)) {
+                  openAiPendingCalls.delete(id);
+                  reject(
+                    new Error(
+                      "Tool call timed out after 15s — host bridge may not be connected.",
+                    ),
+                  );
+                }
+              }, 15000);
+              openAiPendingCalls.set(id, {
+                resolve: function (val) {
+                  clearTimeout(timeoutId);
+                  resolve(val);
+                },
+                reject: function (err) {
+                  clearTimeout(timeoutId);
+                  reject(err);
+                },
+              });
+              window.parent.postMessage(
+                {
+                  jsonrpc: "2.0",
+                  id: id,
+                  method: "tools/call",
+                  params: {
+                    name: name,
+                    arguments: args || {},
+                  },
+                },
+                "*",
+              );
+            });
+          },
+          notifyIntrinsicHeight: function (height) {
+            window.parent.postMessage(
+              {
+                jsonrpc: "2.0",
+                method: "ui/notifications/size-changed",
+                params: {
+                  height: height,
+                },
+              },
+              "*",
+            );
+          },
+          setWidgetState: function () {
+            return Promise.resolve();
+          },
+        };
+        window.openai = openAiBridge;
+        window.__axSetOpenAiGlobals = applyOpenAiGlobals;
+        window.__axSetTheme = applyThemeToDocument;
+
+        function getFramePayloadName() {
+          if (
+            window.name &&
+            (window.name.startsWith(prefix) ||
+              window.name.startsWith(payloadPrefix))
+          ) {
+            return window.name;
+          }
+
+          try {
+            var searchParams = new URLSearchParams(
+              window.location.search || "",
+            );
+            var payloadKey = searchParams.get("payloadKey");
+            if (!payloadKey) return "";
+            var storedPayload = window.sessionStorage.getItem(
+              storagePrefix + payloadKey,
+            );
+            if (
+              storedPayload &&
+              (storedPayload.startsWith(prefix) ||
+                storedPayload.startsWith(payloadPrefix))
+            ) {
+              return storedPayload;
+            }
+          } catch (error) {
+            console.error(
+              "[ax-mcp-frame-host] failed to read stored payload",
+              error,
+            );
+          }
+
+          return "";
+        }
+
+        function getFramePayloadDiagnostics(payloadKey) {
+          var windowName = typeof window.name === "string" ? window.name : "";
+          var storedPayloadLength = null;
+
+          try {
+            if (payloadKey) {
+              var storedPayload = window.sessionStorage.getItem(
+                storagePrefix + payloadKey,
+              );
+              storedPayloadLength =
+                typeof storedPayload === "string" ? storedPayload.length : null;
+            }
+          } catch {
+            storedPayloadLength = null;
+          }
+
+          return {
+            payloadKey: payloadKey || null,
+            windowNameLength: windowName.length,
+            windowNameHasPrefix:
+              windowName.startsWith(prefix) ||
+              windowName.startsWith(payloadPrefix),
+            storedPayloadLength: storedPayloadLength,
+          };
+        }
+
+        function getFramePayloadKey() {
+          try {
+            var searchParams = new URLSearchParams(
+              window.location.search || "",
+            );
+            return searchParams.get("payloadKey") || "";
+          } catch {
+            return "";
+          }
+        }
+
+        function showMissingPayloadError() {
+          document.body.innerHTML =
+            '<div class="frame-host-error"><div class="frame-host-error__card"><p class="frame-host-error__title">Widget frame payload is missing.</p><p class="frame-host-error__body">The Waystation widget host could not locate the HTML payload for this frame.</p></div></div>';
+        }
+
+        function requestFramePayloadName() {
+          return new Promise(function (resolve) {
+            if (!window.parent || window.parent === window) {
+              resolve("");
+              return;
+            }
+
+            var payloadKey = getFramePayloadKey();
+            var startedAt = Date.now();
+            var timeoutMs = 5000;
+            var retryMs = 250;
+            var retryId = null;
+            console.warn(
+              "[ax-mcp-frame-host] payload missing; requesting parent replay",
+              getFramePayloadDiagnostics(payloadKey),
+            );
+            var timeoutId = window.setTimeout(function () {
+              if (retryId !== null) window.clearInterval(retryId);
+              window.removeEventListener("message", handlePayloadResponse);
+              console.warn(
+                "[ax-mcp-frame-host] parent payload replay timed out",
+                getFramePayloadDiagnostics(payloadKey),
+              );
+              resolve("");
+            }, timeoutMs);
+
+            function postPayloadRequest() {
+              if (Date.now() - startedAt >= timeoutMs) return;
+              window.parent.postMessage(
+                {
+                  type: "ax/mcp-frame:request-payload",
+                  params: {
+                    payloadKey: payloadKey || null,
+                  },
+                },
+                "*",
+              );
+            }
+
+            function handlePayloadResponse(event) {
+              var data = event.data || {};
+              if (!data || data.type !== "ax/mcp-frame:payload") return;
+              if (
+                payloadKey &&
+                data.payloadKey &&
+                data.payloadKey !== payloadKey
+              )
+                return;
+
+              var nextPayloadName =
+                typeof data.payloadName === "string" ? data.payloadName : "";
+              if (
+                !nextPayloadName ||
+                (!nextPayloadName.startsWith(prefix) &&
+                  !nextPayloadName.startsWith(payloadPrefix))
+              ) {
+                return;
+              }
+
+              window.clearTimeout(timeoutId);
+              if (retryId !== null) window.clearInterval(retryId);
+              window.removeEventListener("message", handlePayloadResponse);
+              console.warn(
+                "[ax-mcp-frame-host] parent payload replay received",
+                {
+                  payloadKey: payloadKey || null,
+                  payloadLength: nextPayloadName.length,
+                },
+              );
+              resolve(nextPayloadName);
+            }
+
+            window.addEventListener("message", handlePayloadResponse);
+            postPayloadRequest();
+            retryId = window.setInterval(postPayloadRequest, retryMs);
+          });
+        }
+
+        applyThemeToDocument(readInitialTheme());
+
+        // Handle responses from the parent (AxMcpAppWidget) for openai.callTool
+        // AND handle the MCP Apps SDK's own transport messages.
+        window.addEventListener("message", function (event) {
+          var data = event.data || {};
+
+          if (data && data.type === "ax/openai:set_globals") {
+            applyOpenAiGlobals(data.globals || {});
+            return;
+          }
+
+          if (
+            data.jsonrpc === "2.0" &&
+            data.method === "ui/notifications/host-context-changed" &&
+            data.params &&
+            (data.params.theme === "light" || data.params.theme === "dark")
+          ) {
+            applyThemeToDocument(data.params.theme);
+            return;
+          }
+
+          // Response to a pending openai.callTool request
+          if (
+            data &&
+            data.id &&
+            openAiPendingCalls.has(data.id) &&
+            (Object.prototype.hasOwnProperty.call(data, "result") ||
+              Object.prototype.hasOwnProperty.call(data, "error"))
+          ) {
+            var pending = openAiPendingCalls.get(data.id);
+            openAiPendingCalls.delete(data.id);
+            if (!pending) return;
+            if (data.error) {
+              pending.reject(
+                new Error(data.error.message || "Tool call failed"),
+              );
+            } else {
+              pending.resolve(data.result);
+            }
+          }
+        });
+
+        function renderFramePayload(payloadName) {
+          var encoded = payloadName.startsWith(payloadPrefix)
+            ? payloadName.slice(payloadPrefix.length)
+            : payloadName.slice(prefix.length);
+          var html = "";
+
+          try {
+            var decoded = decodeURIComponent(escape(window.atob(encoded)));
+            if (payloadName.startsWith(payloadPrefix)) {
+              var payload = JSON.parse(decoded);
+              html = String(payload && payload.html ? payload.html : "");
+              latestOpenAiGlobals = Object.assign(
+                {},
+                latestOpenAiGlobals,
+                payload && payload.globals ? payload.globals : {},
+              );
+            } else {
+              html = decoded;
+            }
+          } catch (error) {
+            document.body.innerHTML =
+              '<div class="frame-host-error"><div class="frame-host-error__card"><p class="frame-host-error__title">Widget payload could not be decoded.</p><p class="frame-host-error__body">Refresh the conversation and try again.</p></div></div>';
+            return;
+          }
+
+          html = injectBridgeIntoHtml(html, latestOpenAiGlobals);
+          document.open();
+          document.write(html); // nosec: HTML is from MCP server, not user input
+          document.close();
+        }
+
+        var payloadName = getFramePayloadName();
+
+        if (payloadName) {
+          renderFramePayload(payloadName);
+          return;
+        }
+
+        requestFramePayloadName().then(function (fallbackPayloadName) {
+          if (!fallbackPayloadName) {
+            showMissingPayloadError();
+            return;
+          } else {
+            renderFramePayload(fallbackPayloadName);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,261 @@
+#!/usr/bin/env python3
+"""Exercise an isolated running stack without printing any credentials.
+
+Creates one synthetic local account/workspace per run. No existing account or
+private data is read. Requires Docker Compose and Python's standard library.
+"""
+import argparse
+import base64
+import hashlib
+import http.cookiejar
+import json
+import secrets
+import subprocess
+import sys
+import time
+from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.request import Request, build_opener, HTTPCookieProcessor
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--url", default="http://localhost:3000")
+    parser.add_argument("--health-only", action="store_true")
+    args = parser.parse_args()
+    base = args.url.rstrip("/")
+    public_mcp = f"{base}/mcp"
+    cookies = http.cookiejar.CookieJar()
+    client = build_opener(HTTPCookieProcessor(cookies))
+
+    def request(path, payload=None, *, token=None, form=False, expected=200, method=None):
+        headers = {"Accept": "application/json, text/event-stream", "Origin": base}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        body = None
+        if payload is not None:
+            body = urlencode(payload).encode() if form else json.dumps(payload).encode()
+            headers["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
+        req = Request(base + path, data=body, headers=headers, method=method)
+        try:
+            response = client.open(req, timeout=25)
+        except HTTPError as error:
+            response = error
+        data = response.read().decode()
+        if response.status != expected:
+            # Response bodies may carry credentials; report status and route only.
+            raise AssertionError(f"{path}: expected {expected}, received {response.status}")
+        if data.startswith("event:") or data.startswith("data:"):
+            frames = [line[5:].strip() for line in data.splitlines() if line.startswith("data:")]
+            value = json.loads(frames[-1]) if frames else {}
+        else:
+            try:
+                value = json.loads(data)
+            except json.JSONDecodeError:
+                value = data
+        return value, response.headers
+
+    request("/health")
+    metadata, _ = request("/.well-known/oauth-authorization-server")
+    assert metadata["device_authorization_endpoint"] == base + "/oauth/device/code"
+    assert metadata["token_endpoint"] == base + "/oauth/token"
+    jwks, _ = request("/.well-known/jwks.json")
+    assert jwks.get("keys"), "JWKS must contain persisted public signing keys"
+    # The catalog contains tool schemas only and is intentionally public.
+    catalog, _ = request("/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+    public_names = {tool["name"] for tool in catalog.get("result", {}).get("tools", [])}
+    assert {"whoami", "agents", "tasks", "messages", "spaces", "context", "search"} <= public_names
+    # Every advertised tool must challenge before any backend data can be read.
+    for name in public_names:
+        _, challenge = request("/mcp", {
+            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+            "params": {"name": name, "arguments": {}},
+        }, expected=401)
+        assert "resource_metadata" in challenge.get("WWW-Authenticate", ""), "MCP must advertise auth discovery"
+    request("/mcp", {"jsonrpc": "2.0", "id": 3, "method": "resources/read",
+                     "params": {"uri": "ax://mission-briefing"}}, expected=401)
+    request("/auth.md")
+    print("PASS health, native OAuth discovery, JWKS, auth.md, unauthenticated MCP challenge")
+    if args.health_only:
+        return
+
+    username = "smoke_" + secrets.token_hex(5)
+    password = secrets.token_urlsafe(32)
+    create_script = """import asyncio,json,sys
+from scripts.create_local_user import create_user
+data=json.load(sys.stdin)
+asyncio.run(create_user(data['username'],data['password']))
+print('Synthetic account created')
+"""
+    subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-c", create_script],
+                   input=json.dumps({"username": username, "password": password}), text=True,
+                   check=True, capture_output=True)
+    login, headers = request("/auth/local/login", {"username": username, "password": password})
+    access = login["access_token"]
+    space_id = login["space_id"]
+    assert "HttpOnly" in headers.get("Set-Cookie", ""), "Refresh cookie must be HttpOnly"
+    request("/auth/me", token=access)
+    request("/api/v1/spaces", token=access)
+    request("/auth/local/login", {"username": username, "password": "incorrect-password"}, expected=401)
+    refreshed, _ = request("/auth/local/refresh", {})
+    access = refreshed["access_token"]
+    request("/auth/me", token=access)
+    print("PASS explicit local account, login, wrong-password rejection, authenticated API, refresh")
+
+    scopes = "openid offline_access ax-api/mcp:read ax-api/mcp:write agents.read spaces.read tasks.read tasks.write messages.read messages.write"
+    registration, _ = request("/oauth/register", {
+        "client_name": "Waystation smoke client", "token_endpoint_auth_method": "none",
+        "grant_types": ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
+        "scope": scopes,
+    }, expected=201)
+    client_id = registration["client_id"]
+    agent_resource = public_mcp + "/agents/" + username
+    device, _ = request("/oauth/device/code", {
+        "client_id": client_id, "scope": scopes, "resource": agent_resource,
+    }, form=True)
+    token_params = {"client_id": client_id, "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                    "device_code": device["device_code"], "resource": agent_resource}
+    pending, _ = request("/oauth/token", token_params, form=True, expected=400)
+    assert pending.get("error") == "authorization_pending"
+    request("/oauth/device/approve", {"user_code": device["user_code"], "approved": "true"}, token=access, form=True)
+    time.sleep(device.get("interval", 5))
+    pair, _ = request("/oauth/token", token_params, form=True)
+    agent_access = pair["access_token"]
+    print("PASS OAuth client registration, device code, pending consent, approval, token issuance")
+
+    def token_claims(value):
+        # Inspection only: the authenticated MCP calls below verify signatures
+        # and audiences through the owning resource server.
+        encoded = value.split(".")[1]
+        return json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+
+    original_claims = token_claims(agent_access)
+    rotated, _ = request("/oauth/token", {
+        "grant_type": "refresh_token", "client_id": client_id,
+        "refresh_token": pair["refresh_token"], "resource": agent_resource,
+    }, form=True)
+    assert rotated["refresh_token"] != pair["refresh_token"], "OAuth refresh must rotate"
+    assert token_claims(rotated["access_token"])["agent_id"] == original_claims["agent_id"]
+    replay, _ = request("/oauth/token", {
+        "grant_type": "refresh_token", "client_id": client_id,
+        "refresh_token": pair["refresh_token"], "resource": agent_resource,
+    }, form=True, expected=400)
+    assert replay.get("error") == "invalid_grant", "Rotated refresh credentials must not replay"
+    agent_access = rotated["access_token"]
+    print("PASS OAuth refresh rotation, agent identity preservation, refresh replay rejection")
+
+    callback_uri = "http://127.0.0.1:9999/waystation-smoke-callback"
+    pkce_client, _ = request("/oauth/register", {
+        "client_name": "Waystation PKCE smoke client", "redirect_uris": [callback_uri],
+        "token_endpoint_auth_method": "none", "response_types": ["code"],
+        "grant_types": ["authorization_code", "refresh_token"], "scope": scopes,
+    }, expected=201)
+    verifier = secrets.token_urlsafe(48)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+    pkce_params = {
+        "response_type": "code", "client_id": pkce_client["client_id"],
+        "redirect_uri": callback_uri, "scope": scopes, "state": secrets.token_urlsafe(24),
+        "resource": agent_resource, "code_challenge": challenge, "code_challenge_method": "S256",
+    }
+    consent_page, _ = request("/oauth/authorize?" + urlencode(pkce_params))
+    assert "Approve this connection" in consent_page, "Unauthenticated OAuth entry must show human consent"
+    request("/oauth/authorize", pkce_params, expected=401)
+    request("/oauth/authorize", {**pkce_params, "redirect_uri": "https://invalid.example/callback"},
+            token=access, expected=400)
+    approval, _ = request("/oauth/authorize", pkce_params, token=access)
+    callback = parse_qs(urlparse(approval["redirect_uri"]).query)
+    assert callback.get("state") == [pkce_params["state"]], "OAuth state must survive approval"
+    code_params = {
+        "grant_type": "authorization_code", "client_id": pkce_client["client_id"],
+        "code": callback["code"][0], "redirect_uri": callback_uri,
+        "code_verifier": verifier, "resource": agent_resource,
+    }
+    wrong_pkce, _ = request("/oauth/token", {**code_params, "code_verifier": secrets.token_urlsafe(48)},
+                            form=True, expected=400)
+    assert wrong_pkce.get("error") == "invalid_grant", "Incorrect PKCE verifier must fail"
+    pkce_pair, _ = request("/oauth/token", code_params, form=True)
+    pkce_claims = token_claims(pkce_pair["access_token"])
+    assert pkce_claims["agent_id"] == original_claims["agent_id"]
+    assert pkce_claims["aud"] == public_mcp, "Named routes must use the canonical protected-resource audience"
+    consumed, _ = request("/oauth/token", code_params, form=True, expected=400)
+    assert consumed.get("error") == "invalid_grant", "Authorization codes must be single use"
+    print("PASS native PKCE consent, redirect/state binding, verifier rejection, code exchange and replay rejection")
+
+    sequence = 0
+
+    def rpc(method, params=None):
+        nonlocal sequence
+        sequence += 1
+        payload = {"jsonrpc": "2.0", "id": sequence, "method": method}
+        if params is not None:
+            payload["params"] = params
+        result, _ = request("/mcp", payload, token=agent_access)
+        assert "error" not in result, f"MCP {method} returned a protocol error"
+        output = result.get("result", {})
+        assert not output.get("isError"), f"MCP {method} returned a tool error"
+        return output
+
+    rpc("initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
+                       "clientInfo": {"name": "waystation-smoke", "version": "0.1.0"}})
+    tools = rpc("tools/list")
+    names = {tool["name"] for tool in tools.get("tools", [])}
+    assert {"whoami", "agents", "tasks", "messages", "spaces"} <= names
+    rpc("tools/call", {"name": "whoami", "arguments": {}})
+    rpc("tools/call", {"name": "agents", "arguments": {"action": "list", "space_id": space_id}})
+    print("PASS stateless MCP initialize, tool discovery, whoami, authenticated agents tool")
+
+    task_title = "Waystation smoke task"
+    task, _ = request("/api/v1/tasks", {"title": task_title, "description": "Synthetic integration check",
+                                      "space_id": space_id}, token=access)
+    task_id = task.get("id") or task.get("task", {}).get("id")
+    assert task_id, "Task creation must return a durable ID"
+    saved_task, _ = request(f"/api/v1/tasks/{task_id}", token=access)
+    saved_task = saved_task.get("task", saved_task)
+    assert saved_task.get("id") == task_id, "Readback must return the created task"
+    assert saved_task.get("title") == task_title, "Task title must persist"
+    assert str(saved_task.get("space_id")) == space_id, "Task must remain in the authenticated workspace"
+    print("PASS task create/read persistence")
+
+    content = "Waystation synthetic message roundtrip " + secrets.token_hex(6)
+    created_message, _ = request("/api/messages", {"content": content, "channel": "main"}, token=access)
+    message_id = created_message.get("id")
+    assert message_id, "Message creation must return a durable ID"
+    saved_message, _ = request(f"/api/messages/{message_id}", token=access)
+    assert saved_message["content"] == content, "Message content must persist"
+    assert str(saved_message["space_id"]) == space_id, "Message must remain in the authenticated workspace"
+    assert saved_message["sender_type"] == "user", "Browser messages must preserve human authorship"
+    print("PASS message create/read persistence and human authorship")
+
+    # The stream credential stays in a header and memory; no ?token URLs enter
+    # proxy/access logs. Read the initial frame and close the stream immediately.
+    stream_request = Request(base + "/api/sse/messages", headers={
+        "Accept": "text/event-stream", "Authorization": "Bearer " + access, "Origin": base,
+    })
+    with client.open(stream_request, timeout=20) as stream:
+        assert stream.status == 200
+        event_type, event_data = None, None
+        for _ in range(12):
+            line = stream.readline().decode().strip()
+            if line.startswith("event:"):
+                event_type = line[6:].strip()
+            elif line.startswith("data:"):
+                event_data = json.loads(line[5:].strip())
+            elif not line and event_data is not None:
+                break
+        assert event_type == "connected", "SSE must confirm its authenticated connection"
+        assert event_data["space_id"] == space_id, "SSE must subscribe to the authenticated workspace"
+        assert event_data["space_ids"] == [space_id], "Private local session must not hydrate another workspace"
+    print("PASS bearer-authenticated SSE connection and workspace scope")
+    request("/auth/local/logout", {})
+    request("/auth/local/refresh", {}, expected=401)
+    print("PASS logout and refresh revocation")
+    print("Full-stack smoke check passed. Synthetic account/workspace remains for auditability.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (AssertionError, subprocess.CalledProcessError, OSError, KeyError) as error:
+        # Do not echo subprocess output, request headers, or token responses.
+        print(f"Smoke check failed: {type(error).__name__}: {str(error) if not isinstance(error, subprocess.CalledProcessError) else 'account creation command failed'}", file=sys.stderr)
+        sys.exit(1)

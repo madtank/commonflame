@@ -1,0 +1,4203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Context Explorer - Waystation</title>
+  <style>
+    :root {
+      --ax-bg: var(--color-background-primary, #0a0f1a);
+      --ax-surface: var(--color-background-secondary, rgba(15,23,42,0.92));
+      --ax-surface-strong: var(--color-background-tertiary, rgba(30,41,59,0.96));
+      --ax-text: var(--color-foreground-primary, hsl(210, 40%, 98%));
+      --ax-text-dim: var(--color-foreground-secondary, hsl(215, 20.2%, 65.1%));
+      --ax-border: var(--color-border-default, rgba(255,255,255,0.1));
+      --ax-accent: var(--color-accent-primary, #22d3ee);
+      --ax-accent-soft: rgba(6,182,212,0.12);
+      --ax-warning: #fbbf24;
+      --ax-danger: #fb7185;
+      --ax-shadow: 0 12px 24px -8px rgba(0,0,0,0.25);
+      --ax-radius: 18px;
+      --ax-font: var(--font-family-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      --ax-mono: var(--font-family-mono, "SF Mono", "Fira Code", monospace);
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+    html, body {
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(6,182,212,0.12), transparent 34%),
+        radial-gradient(circle at top right, rgba(148,163,184,0.16), transparent 28%),
+        var(--ax-bg);
+      color: var(--ax-text);
+      font-family: var(--ax-font);
+    }
+    body { padding: 16px; }
+    button, input, textarea { font: inherit; }
+    .shell { width: 100%; max-width: 1180px; margin: 0 auto; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--ax-border);
+      border-radius: 24px;
+      padding: 24px;
+      margin-bottom: 18px;
+      background:
+        linear-gradient(140deg, rgba(6,182,212,0.12), transparent 42%),
+        linear-gradient(180deg, var(--ax-surface-strong), var(--ax-surface));
+      box-shadow: var(--ax-shadow);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(0deg, transparent 0, transparent 74%, rgba(255,255,255,0.03) 74.2%, transparent 74.6%, transparent 100%);
+      opacity: 0.45;
+    }
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .eyebrow {
+      display: none;
+    }
+    .hero h2 {
+      font-size: 16px;
+      line-height: 1.2;
+      margin-bottom: 0;
+      letter-spacing: -0.01em;
+    }
+    .hero-copy {
+      display: none;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .stat {
+      border-radius: 10px;
+      border: 1px solid var(--ax-border);
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.03);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .stat-value {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--ax-accent);
+    }
+    .stat-label {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ax-text-dim);
+    }
+    .topic-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .topic-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--ax-border);
+      background: var(--ax-surface);
+      font-size: 12px;
+      color: var(--ax-text-dim);
+    }
+    button.topic-pill {
+      cursor: pointer;
+      transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+    }
+    button.topic-pill:hover,
+    button.topic-pill.is-active {
+      border-color: var(--ax-accent);
+      background: var(--ax-accent-soft);
+      color: var(--ax-accent);
+    }
+    .topic-pill strong { color: var(--ax-text); font-weight: 600; }
+    .catalog-controls {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .catalog-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .catalog-tab {
+      border: 1px solid var(--ax-border);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.03);
+      color: var(--ax-text-dim);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+    }
+    .catalog-tab:hover,
+    .catalog-tab.is-active {
+      border-color: var(--ax-accent);
+      background: var(--ax-accent-soft);
+      color: var(--ax-accent);
+    }
+    .catalog-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(2,6,23,0.38);
+    }
+    .catalog-search span {
+      color: var(--ax-text-dim);
+      font-size: 13px;
+    }
+    .catalog-search input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ax-text);
+      font-size: 13px;
+    }
+    .catalog-search input::placeholder {
+      color: rgba(148,163,184,0.8);
+    }
+    .catalog-filter-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(160px, 240px);
+      gap: 10px;
+      align-items: center;
+    }
+    .catalog-select {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      padding: 8px 10px;
+      background: rgba(2,6,23,0.38);
+      color: var(--ax-text-dim);
+      font-size: 13px;
+      min-width: 0;
+    }
+    .catalog-select select {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ax-text);
+      font: inherit;
+    }
+    .curated-rail {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .curated-card {
+      width: 100%;
+      border: 1px solid var(--ax-border);
+      border-radius: 16px;
+      padding: 12px;
+      background:
+        linear-gradient(135deg, rgba(251,191,36,0.08), transparent 55%),
+        rgba(255,255,255,0.03);
+      color: var(--ax-text);
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+    }
+    .curated-card:hover,
+    .curated-card:focus-visible {
+      border-color: var(--ax-accent);
+      background:
+        linear-gradient(135deg, rgba(34,211,238,0.14), transparent 58%),
+        rgba(255,255,255,0.05);
+      outline: none;
+      transform: translateY(-1px);
+    }
+    .curated-label {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ax-text-dim);
+      font-weight: 800;
+      margin-bottom: 7px;
+    }
+    .curated-link {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--ax-text);
+      cursor: pointer;
+      text-align: left;
+      font-weight: 750;
+      line-height: 1.35;
+    }
+    .curated-card:hover .curated-link,
+    .curated-card:focus-visible .curated-link {
+      color: var(--ax-accent);
+    }
+    .notice {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      border: 1px solid transparent;
+    }
+    .notice-info {
+      background: var(--ax-accent-soft);
+      color: var(--ax-accent);
+      border-color: rgba(6,182,212,0.18);
+    }
+    .notice-error {
+      background: rgba(186,59,45,0.12);
+      color: var(--ax-danger);
+      border-color: rgba(186,59,45,0.2);
+    }
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--ax-border);
+      border-radius: 22px;
+      background: var(--ax-surface);
+      box-shadow: var(--ax-shadow);
+    }
+    .browser-panel { padding: 18px; }
+    .detail-panel {
+      position: sticky;
+      top: 16px;
+      padding: 18px;
+      background:
+        linear-gradient(180deg, rgba(6,182,212,0.12), transparent 32%),
+        var(--ax-surface-strong);
+    }
+    .context-detail-panel {
+      position: static;
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .panel-title {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .panel-subtitle {
+      font-size: 13px;
+      color: var(--ax-text-dim);
+      margin-top: 4px;
+    }
+    .summary-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--ax-border);
+      background: var(--ax-surface-strong);
+      font-size: 12px;
+      color: var(--ax-text-dim);
+      white-space: nowrap;
+    }
+    .panel-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .group-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .group {
+      padding-top: 2px;
+    }
+    .group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .group-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .group-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--ax-accent);
+      box-shadow: 0 0 0 6px rgba(6,182,212,0.12);
+      flex-shrink: 0;
+    }
+    .group-name {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .group-count {
+      font-size: 12px;
+      color: var(--ax-text-dim);
+    }
+    .entry-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .entry-chip {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--ax-border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.06), transparent 55%),
+        var(--ax-surface-strong);
+      cursor: pointer;
+      transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+      color: inherit;
+    }
+    .entry-chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--ax-accent);
+      box-shadow: 0 10px 24px rgba(6,182,212,0.12);
+    }
+    .entry-chip.is-active {
+      border-color: var(--ax-accent);
+      box-shadow: 0 0 0 1px rgba(18,106,82,0.28), 0 14px 28px rgba(18,106,82,0.14);
+    }
+    .entry-card-body {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .entry-preview-thumb {
+      width: 64px;
+      height: 64px;
+      flex: 0 0 64px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(148,163,184,0.18);
+      background:
+        linear-gradient(135deg, rgba(6,182,212,0.16), rgba(148,163,184,0.08)),
+        rgba(15,23,42,0.72);
+      display: grid;
+      place-items: center;
+      color: var(--ax-accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .entry-preview-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .entry-content {
+      min-width: 0;
+      flex: 1;
+    }
+    .entry-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .entry-head {
+      min-width: 0;
+      flex: 1;
+    }
+    .entry-title {
+      font-size: 14px;
+      font-weight: 700;
+      word-break: break-word;
+      margin-bottom: 3px;
+    }
+    .entry-key {
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--ax-text-dim);
+      font-family: var(--ax-mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .entry-preview {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--ax-text-dim);
+      display: block;
+      margin-bottom: 10px;
+    }
+    .entry-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .mini-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(6,182,212,0.12);
+      color: var(--ax-accent);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .mini-pill.warn {
+      background: rgba(148,163,184,0.16);
+      color: var(--ax-warning);
+    }
+    .mini-pill.neutral {
+      background: rgba(127,127,127,0.1);
+      color: var(--ax-text-dim);
+    }
+    .detail-empty,
+    .empty-state {
+      padding: 26px 20px;
+      border: 1px dashed var(--ax-border);
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(6,182,212,0.04), transparent 68%);
+      text-align: center;
+    }
+    .empty-state strong,
+    .detail-empty strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .empty-state p,
+    .detail-empty p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--ax-text-dim);
+    }
+    .detail-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ax-text-dim);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .detail-topic {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--ax-accent-soft);
+      color: var(--ax-accent);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .detail-title {
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+    .detail-summary {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--ax-text-dim);
+      margin-bottom: 12px;
+    }
+    .detail-key {
+      font-family: var(--ax-mono);
+      font-size: 12px;
+      color: var(--ax-text-dim);
+      margin-bottom: 14px;
+      word-break: break-all;
+    }
+    .detail-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .detail-action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .detail-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .meta-card {
+      border: 1px solid var(--ax-border);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+    .meta-card strong {
+      display: block;
+      font-size: 11px;
+      color: var(--ax-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 5px;
+    }
+    .meta-card span {
+      display: block;
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .value-card {
+      margin-bottom: 16px;
+      border: 1px solid var(--ax-border);
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(12,20,34,0.04);
+    }
+    .value-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--ax-border);
+      background: rgba(255,255,255,0.03);
+    }
+    .value-title {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .value-kind {
+      font-size: 11px;
+      color: var(--ax-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .value-body {
+      padding: 14px;
+      font-family: var(--ax-mono);
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 420px;
+      overflow: auto;
+    }
+    /* Media rendering */
+    .upload-video {
+      width: 100%;
+      max-height: 400px;
+      border-radius: 0;
+      background: #000;
+    }
+    .upload-audio {
+      width: 100%;
+      min-height: 46px;
+      padding: 0;
+      color-scheme: dark;
+    }
+    .upload-pdf {
+      width: 100%;
+      min-height: 500px;
+      border: none;
+      border-radius: 0;
+      background: rgba(255,255,255,0.95);
+    }
+    .html-card-chrome {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--ax-surface-strong, #1e293b);
+      border-bottom: 1px solid var(--ax-border, rgba(255,255,255,0.08));
+      font-size: 12px;
+    }
+    .html-card-chrome .sandbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ax-text-dim, #94a3b8);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .html-card-chrome .toolbar {
+      display: inline-flex;
+      gap: 4px;
+    }
+    .html-card-chrome .tool-btn {
+      background: transparent;
+      border: 1px solid var(--ax-border, rgba(255,255,255,0.12));
+      color: var(--ax-text, #e2e8f0);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: var(--ax-font);
+    }
+    .html-card-chrome .tool-btn:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    .html-stage {
+      background: rgba(2,6,23,0.72);
+    }
+    .html-iframe {
+      width: 100%;
+      min-height: 240px;
+      border: 0;
+      background: #fff;
+      display: block;
+    }
+    .html-fullscreen-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      background: var(--ax-bg, #020617);
+      color: var(--ax-text, #e2e8f0);
+    }
+    .html-fullscreen-header {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 56px;
+      padding: 10px 16px;
+      background: var(--ax-surface-strong, #1e293b);
+      border-bottom: 1px solid var(--ax-border, rgba(255,255,255,0.08));
+    }
+    .html-fullscreen-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .html-fullscreen-close {
+      flex: 0 0 auto;
+      background: transparent;
+      border: 1px solid var(--ax-border, rgba(255,255,255,0.14));
+      color: var(--ax-text, #e2e8f0);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: var(--ax-font);
+    }
+    .html-fullscreen-close:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    .html-fullscreen-stage {
+      flex: 1 1 auto;
+      min-height: 0;
+      background: #050b12;
+    }
+    .html-fullscreen-stage .html-iframe {
+      height: 100%;
+      min-height: 0;
+      background: #fff;
+    }
+    .html-raw {
+      padding: 12px 16px;
+      font-family: var(--ax-mono, ui-monospace, monospace);
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--ax-surface, #0a0f1a);
+      color: var(--ax-text, #e2e8f0);
+      max-height: 600px;
+      overflow: auto;
+    }
+    .upload-markdown {
+      padding: 16px 20px;
+      font-family: var(--ax-font);
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--ax-text);
+      max-height: 500px;
+      overflow: auto;
+    }
+    .upload-markdown h2 { font-size: 20px; margin: 16px 0 8px; font-weight: 700; }
+    .upload-markdown h3 { font-size: 17px; margin: 14px 0 6px; font-weight: 600; }
+    .upload-markdown h4 { font-size: 15px; margin: 12px 0 4px; font-weight: 600; }
+    .upload-markdown strong { font-weight: 700; }
+    .upload-markdown em { font-style: italic; }
+    .upload-markdown ul { padding-left: 20px; margin: 8px 0; }
+    .upload-markdown li { margin: 4px 0; }
+    .upload-markdown hr { border: none; border-top: 1px solid var(--ax-border); margin: 16px 0; }
+    .upload-markdown a { color: var(--ax-accent); text-decoration: none; }
+    .upload-markdown a:hover { text-decoration: underline; }
+    .upload-markdown pre.md-code {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 12px;
+      overflow-x: auto;
+      font-family: var(--ax-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 8px 0;
+    }
+    .upload-markdown code.md-inline {
+      background: rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-family: var(--ax-mono);
+      font-size: 12px;
+    }
+    .upload-text {
+      padding: 16px 20px;
+      font-family: var(--ax-mono);
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 500px;
+      overflow: auto;
+      color: var(--ax-text);
+    }
+    /* Content-first upload layout */
+    .upload-hero {
+      position: relative;
+      margin: -1px -1px 0;
+      border-radius: 18px 18px 0 0;
+      overflow: hidden;
+      background: rgba(0,0,0,0.3);
+    }
+    .upload-hero-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 16px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 2;
+    }
+    .upload-hero-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 0.04em;
+    }
+    .upload-hero-filename {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      font-family: var(--ax-mono);
+    }
+    .upload-details-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-top: 1px solid var(--ax-border);
+      background: rgba(255,255,255,0.02);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ax-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      transition: background 140ms ease;
+    }
+    .upload-details-toggle:hover {
+      background: rgba(255,255,255,0.05);
+    }
+    .upload-details-toggle .chevron {
+      transition: transform 200ms ease;
+      font-size: 14px;
+    }
+    .upload-details-toggle .chevron.open {
+      transform: rotate(180deg);
+    }
+    .upload-details-body {
+      display: none;
+      padding: 12px 14px;
+      border-top: 1px solid var(--ax-border);
+    }
+    .upload-details-body.open {
+      display: block;
+    }
+    .upload-card {
+      display: grid;
+      gap: 12px;
+      font-family: var(--ax-font);
+    }
+    .upload-image {
+      max-width: 100%;
+      width: 100%;
+      max-height: none;
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1px solid var(--ax-border);
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 140ms ease;
+    }
+    .upload-image:hover {
+      transform: scale(1.01);
+      box-shadow: 0 8px 32px -8px rgba(0,0,0,0.4);
+    }
+    .upload-image.expanded {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      max-height: 100vh;
+      object-fit: contain;
+      border-radius: 0;
+      border: none;
+      background: rgba(0,0,0,0.92);
+      z-index: 9999;
+      cursor: zoom-out;
+      transform: none;
+      box-shadow: none;
+    }
+    .upload-file-card {
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .upload-file-name {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+    .upload-meta {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      margin-bottom: 10px;
+    }
+    .upload-meta-item {
+      border: 1px solid var(--ax-border);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(255,255,255,0.02);
+    }
+    .upload-meta-item strong {
+      display: block;
+      font-size: 11px;
+      color: var(--ax-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .upload-meta-item span {
+      display: block;
+      font-size: 13px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .upload-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ax-accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .upload-link:hover {
+      text-decoration: underline;
+    }
+    .action-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--ax-border);
+      border-radius: 999px;
+      padding: 0;
+      background: var(--ax-surface);
+      cursor: pointer;
+      color: var(--ax-text-dim);
+      font-size: 18px;
+      line-height: 1;
+      transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+      white-space: nowrap;
+    }
+    .btn-close:hover,
+    .btn-close:focus-visible {
+      border-color: var(--ax-accent);
+      background: var(--ax-accent-soft);
+      color: var(--ax-accent);
+      outline: none;
+    }
+    .btn {
+      border: 1px solid var(--ax-border);
+      border-radius: 12px;
+      padding: 9px 14px;
+      background: var(--ax-surface);
+      cursor: pointer;
+      color: inherit;
+      font-size: 13px;
+      transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+    }
+    .btn:hover {
+      border-color: var(--ax-accent);
+      color: var(--ax-accent);
+    }
+    .btn-danger {
+      border-color: rgba(186,59,45,0.28);
+      color: var(--ax-danger);
+      background: rgba(186,59,45,0.06);
+    }
+    .btn-danger:hover {
+      border-color: var(--ax-danger);
+      background: rgba(186,59,45,0.12);
+      color: var(--ax-danger);
+    }
+    .btn-success {
+      border-color: rgba(34,158,86,0.32);
+      color: #2cb16a;
+      background: rgba(34,158,86,0.08);
+    }
+    .btn-success:hover {
+      border-color: #2cb16a;
+      background: rgba(34,158,86,0.16);
+      color: #2cb16a;
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .btn-compact {
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    body.artifact-mode {
+      padding: 0;
+      overflow: hidden;
+      background: #05070b;
+    }
+    body.artifact-mode .shell {
+      max-width: none;
+      height: 100vh;
+      margin: 0;
+    }
+    .artifact-panel {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      min-height: 560px;
+      overflow: hidden;
+      background: #05070b;
+    }
+    .artifact-toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 10;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .artifact-stage {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 52px 12px 62px;
+    }
+    .artifact-stage.is-document {
+      align-items: stretch;
+      padding: 62px 24px 72px;
+    }
+    .artifact-stage.is-pdf {
+      align-items: stretch;
+      padding: 70px 12px 70px;
+      overflow: hidden;
+    }
+    .artifact-image,
+    .artifact-video,
+    .artifact-pdf {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 0;
+      background: #000;
+    }
+    .artifact-image,
+    .artifact-video {
+      object-fit: contain;
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .artifact-audio-card,
+    .artifact-file-card,
+    .artifact-document {
+      width: min(920px, 100%);
+      max-height: 100%;
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(12,20,34,0.92);
+      box-shadow: 0 20px 52px rgba(0,0,0,0.32);
+    }
+    .artifact-audio-card,
+    .artifact-file-card {
+      padding: 22px;
+    }
+    .artifact-pdf-card {
+      width: min(720px, 100%);
+      padding: 26px;
+      text-align: left;
+    }
+    .artifact-pdf-viewer {
+      width: 100%;
+      height: 100%;
+      min-height: 420px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 8px;
+      background: #0b1220;
+      box-shadow: 0 20px 52px rgba(0,0,0,0.36);
+    }
+    .artifact-pdf-viewer .artifact-pdf {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #111827;
+    }
+    .artifact-pdf-viewer.is-focused {
+      box-shadow: 0 0 0 2px rgba(34,211,238,0.38), 0 28px 62px rgba(0,0,0,0.42);
+    }
+    .artifact-control-box {
+      pointer-events: auto;
+      margin-left: auto;
+      max-width: min(720px, 100%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 10px;
+      background: rgba(5,7,11,0.76);
+      color: rgba(255,255,255,0.88);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.28);
+    }
+    .artifact-control-title {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+    .artifact-control-title strong,
+    .artifact-control-title span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .artifact-control-title strong {
+      color: #fff;
+      font-weight: 800;
+    }
+    .artifact-control-title span {
+      color: var(--ax-text-dim);
+      font-size: 11px;
+    }
+    .artifact-control-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      flex: 0 0 auto;
+    }
+    .artifact-control-actions .btn {
+      padding: 7px 9px;
+      font-size: 11px;
+    }
+    .artifact-pdf-glyph {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 58px;
+      height: 58px;
+      border: 1px solid rgba(34,211,238,0.24);
+      border-radius: 12px;
+      background: rgba(6,182,212,0.12);
+      color: var(--ax-accent);
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+    .artifact-file-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+    .artifact-file-subtitle {
+      color: var(--ax-text-dim);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    .artifact-audio-card .upload-audio {
+      display: block;
+      margin-top: 14px;
+    }
+    .artifact-media-status {
+      margin-top: 10px;
+      color: var(--ax-text-dim);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .artifact-media-status.is-error {
+      color: #fca5a5;
+    }
+    .artifact-document {
+      padding: 24px 28px;
+    }
+    .artifact-text {
+      font-family: var(--ax-mono);
+      font-size: 13px;
+      line-height: 1.62;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .artifact-details {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 9;
+      max-width: 720px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(5,7,11,0.72);
+      color: rgba(255,255,255,0.78);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 34px rgba(0,0,0,0.24);
+    }
+    .artifact-details summary {
+      cursor: pointer;
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .artifact-detail-body {
+      padding: 0 12px 12px;
+    }
+    .artifact-detail-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .loading {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--ax-text-dim);
+      font-size: 14px;
+    }
+    @media (max-width: 900px) {
+      .hero-top,
+      .workspace {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+      .hero-stats {
+        width: 100%;
+      }
+      .detail-panel {
+        position: static;
+      }
+    }
+    @media (max-width: 640px) {
+      body { padding: 12px; }
+      body.artifact-mode { padding: 0; }
+      .hero,
+      .browser-panel,
+      .detail-panel { padding: 16px; }
+      .hero h2 { font-size: 24px; }
+      .hero-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .entry-grid {
+        grid-template-columns: 1fr;
+      }
+      .catalog-filter-row {
+        grid-template-columns: 1fr;
+      }
+      .detail-meta-grid {
+        grid-template-columns: 1fr;
+      }
+      .artifact-stage.is-document {
+        padding: 58px 12px 68px;
+      }
+      .artifact-toolbar {
+        flex-wrap: wrap;
+      }
+      .artifact-control-box {
+        width: 100%;
+        max-width: none;
+        margin-left: 0;
+        align-items: flex-start;
+      }
+      .artifact-control-actions {
+        justify-content: flex-start;
+      }
+      .artifact-stage.is-pdf {
+        padding: 122px 8px 72px;
+      }
+      .artifact-document {
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app"><div class="loading">Loading context...</div></div>
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Context Explorer", version: "1.0.0" });
+    const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
+
+    function getOpenAiBridge() {
+      return typeof window !== "undefined" ? window.openai : undefined;
+    }
+
+    function normalizeToolResult(result) {
+      if (result && typeof result === "object" && ("structuredContent" in result || "content" in result)) {
+        return result;
+      }
+      return { structuredContent: result };
+    }
+
+    function notifyHostHeight() {
+      const openaiBridge = getOpenAiBridge();
+      if (openaiBridge && typeof openaiBridge.notifyIntrinsicHeight === "function") {
+        requestAnimationFrame(() => {
+          try {
+            const appRoot = document.getElementById("app");
+            const bodyStyles = window.getComputedStyle(document.body);
+            const paddingTop = parseFloat(bodyStyles.paddingTop || "0") || 0;
+            const paddingBottom = parseFloat(bodyStyles.paddingBottom || "0") || 0;
+            const contentHeight = appRoot
+              ? Math.ceil(appRoot.getBoundingClientRect().height + paddingTop + paddingBottom)
+              : Math.ceil(document.body.getBoundingClientRect().height);
+            openaiBridge.notifyIntrinsicHeight(Math.max(120, contentHeight));
+          } catch {}
+        });
+      }
+    }
+
+    const host = {
+      _toolResultHandler: null,
+      _globalsListener: null,
+      _messageListener: null,
+      setToolResultHandler(handler) {
+        this._toolResultHandler = handler;
+        app.ontoolresult = handler;
+        if (!this._messageListener) {
+          this._messageListener = (event) => {
+            const msg = event?.data || {};
+            if (msg.method === "ui/notifications/tool-result" && msg.params) {
+              const params = msg.params;
+              const payload = params.result ?? params.output ?? params;
+              handler(normalizeToolResult(payload));
+            } else if (msg.type === "tool_result" && msg.result) {
+              handler(normalizeToolResult(msg.result));
+            } else if (msg && (Object.prototype.hasOwnProperty.call(msg, "structuredContent") || Object.prototype.hasOwnProperty.call(msg, "kind"))) {
+              handler(normalizeToolResult(msg));
+            }
+          };
+          window.addEventListener("message", this._messageListener, { passive: true });
+        }
+      },
+      _deliverToolOutput(globals) {
+        const openaiBridge = getOpenAiBridge();
+        const output = globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")
+          ? globals.toolOutput
+          : openaiBridge?.toolOutput;
+        if (this._toolResultHandler && output !== undefined) {
+          this._toolResultHandler(normalizeToolResult(output));
+        }
+      },
+      async connect() {
+        if (!this._globalsListener) {
+          this._globalsListener = (event) => {
+            const globals = event?.detail?.globals;
+            if (globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")) {
+              this._deliverToolOutput(globals);
+            }
+            notifyHostHeight();
+          };
+          window.addEventListener(OPENAI_SET_GLOBALS_EVENT, this._globalsListener, { passive: true });
+        }
+        await app.connect();
+        this._deliverToolOutput();
+        notifyHostHeight();
+      },
+      async callServerTool(name, args) {
+        const openaiBridge = getOpenAiBridge();
+        if (openaiBridge && typeof openaiBridge.callTool === "function") {
+          return normalizeToolResult(await openaiBridge.callTool(name, args));
+        }
+        return app.callServerTool({ name, arguments: args });
+      },
+      setHostCommandHandler(handler) {
+        window.addEventListener("message", (event) => {
+          let msg = event.data;
+          if (!msg) return;
+          if (typeof msg === "string") {
+            try { msg = JSON.parse(msg); } catch { return; }
+          }
+          if (!msg || typeof msg !== "object") return;
+          if (msg.type === "ax/host-command") {
+            handler(msg.command, msg);
+          }
+        });
+      },
+    };
+
+    let state = {
+      items: [],
+      keys: [],
+      count: 0,
+      selectedKey: null,
+      selectedItem: null,
+      // Incremented by open/back navigation so stale detail requests cannot
+      // overwrite a newer selection.
+      detailRequestGeneration: 0,
+      loadingList: false,
+      loadingDetail: false,
+      notice: null,
+      debug: null,
+      permissions: null,
+      spaceContext: null,
+      viewMode: "all",
+      fileTypeFilter: "",
+      query: "",
+      restoreSearchFocus: false,
+      searchRenderTimer: null,
+      topicFilter: "",
+      favoriteKeys: new Set(),
+      favoriteScope: null,
+      vaultKeys: new Set(),
+      vaultScope: null,
+      htmlMessageAbortController: null,
+    };
+
+    function resetHtmlMessageListener() {
+      if (!state.htmlMessageAbortController) return;
+      state.htmlMessageAbortController.abort();
+      state.htmlMessageAbortController = null;
+    }
+
+    function h(tag, attrs, text) {
+      const e = document.createElement(tag);
+      if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === "className") e.className = v;
+        else if (k === "style") e.style.cssText = v;
+        else if (k === "disabled") e.disabled = !!v;
+        else if (k.startsWith("data-")) e.setAttribute(k, v);
+        else e.setAttribute(k, v);
+      });
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    function permissionState() {
+      return state.permissions || {};
+    }
+
+    function canDeleteContext() {
+      return Boolean(permissionState().can_delete);
+    }
+
+    function canApproveContext() {
+      const perms = permissionState();
+      return Boolean(perms.can_create || perms.can_update);
+    }
+
+    function itemCanTimeOut(item) {
+      if (!item) return false;
+      return Boolean(item.ttl) || Boolean(item.expires_at);
+    }
+
+    function canPromoteContext() {
+      return !isReadOnlyMode();
+    }
+
+    function isReadOnlyMode() {
+      return Boolean(permissionState().read_only);
+    }
+
+    function readOnlyMessage() {
+      return permissionState().blocked_reason || "This explorer is currently browse-only.";
+    }
+
+    function formatValue(value) {
+      if (value === null || value === undefined) return "No value stored.";
+      if (typeof value === "string") return value;
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return String(value);
+      }
+    }
+
+    function shorten(text, limit) {
+      const source = String(text || "").replace(/\s+/g, " ").trim();
+      return source.length > limit ? source.slice(0, limit - 1) + "..." : source;
+    }
+
+    function publicSourceLabel(value) {
+      const source = String(value || "").trim().toLowerCase();
+      if (!source) return "";
+      if (source === "url_fetch") return "Fetched URL";
+      if (source === "local") return "Local upload";
+      if (source === "message_attachment") return "Message attachment";
+      // Internal storage/provenance labels are diagnostics, not user-facing UI.
+      if (["redis", "postgres", "postgresql", "database", "s3"].includes(source)) return "";
+      if (source.startsWith("axctl_") || source.startsWith("qa_")) return "";
+      return "";
+    }
+
+    function plainTextSummary(value) {
+      const source = String(value || "")
+        .replace(/```[\s\S]*?```/g, " ")
+        .replace(/[`*_>#-]+/g, " ")
+        .replace(/\[[^\]]+\]\([^)]+\)/g, "$1")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!source) return "";
+      const sentence = source.match(/.+?[.!?](\s|$)/);
+      return sentence ? sentence[0].trim() : source;
+    }
+
+    function relDate(value) {
+      if (!value) return "";
+      const ts = new Date(value).getTime();
+      if (isNaN(ts)) return String(value);
+      const diff = Date.now() - ts;
+      if (diff < 60000) return "Just now";
+      const mins = Math.floor(diff / 60000);
+      if (mins < 60) return mins + "m ago";
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + "h ago";
+      const days = Math.floor(hrs / 24);
+      if (days < 14) return days + "d ago";
+      return new Date(ts).toLocaleDateString();
+    }
+
+    function ttlLabel(item) {
+      if (item.expires_at) {
+        const diff = Math.round((Number(item.expires_at) * 1000 - Date.now()) / 1000);
+        if (diff <= 0) return "expired";
+        if (diff < 3600) return Math.max(1, Math.round(diff / 60)) + "m left";
+        if (diff < 86400) return Math.round(diff / 3600) + "h left";
+        return Math.round(diff / 86400) + "d left";
+      }
+      if (item.ttl) {
+        if (item.ttl < 3600) return item.ttl + "s TTL";
+        if (item.ttl < 86400) return Math.round(item.ttl / 3600) + "h TTL";
+        return Math.round(item.ttl / 86400) + "d TTL";
+      }
+      return "No TTL";
+    }
+
+    function inferTopic(item) {
+      if (item.topic) return item.topic;
+      const key = item.key || "";
+      const token = key.split(/[:/]/).find(Boolean);
+      return token || "general";
+    }
+
+    function spaceScopeId() {
+      const ctx = state.spaceContext || {};
+      return String(ctx.id || ctx.space_id || ctx.slug || ctx.name || "default");
+    }
+
+    function favoriteStorageKey() {
+      return "ax-context-explorer:favorites:" + spaceScopeId();
+    }
+
+    function vaultStorageKey() {
+      return "ax-context-explorer:vault-keys:" + spaceScopeId();
+    }
+
+    function loadFavoritesForCurrentSpace() {
+      const scope = favoriteStorageKey();
+      if (state.favoriteScope === scope) return;
+      state.favoriteScope = scope;
+      try {
+        const raw = window.localStorage && window.localStorage.getItem(scope);
+        const parsed = raw ? JSON.parse(raw) : [];
+        state.favoriteKeys = new Set(Array.isArray(parsed) ? parsed.filter((key) => typeof key === "string") : []);
+      } catch {
+        state.favoriteKeys = new Set();
+      }
+    }
+
+    function saveFavoritesForCurrentSpace() {
+      try {
+        window.localStorage && window.localStorage.setItem(favoriteStorageKey(), JSON.stringify([...state.favoriteKeys].sort()));
+      } catch {
+        // Storage can be unavailable in some embedded hosts; favorites remain session-local.
+      }
+    }
+
+    function loadVaultKeysForCurrentSpace() {
+      const scope = vaultStorageKey();
+      if (state.vaultScope === scope) return;
+      state.vaultScope = scope;
+      try {
+        const raw = window.localStorage && window.localStorage.getItem(scope);
+        const parsed = raw ? JSON.parse(raw) : [];
+        state.vaultKeys = new Set(Array.isArray(parsed) ? parsed.filter((key) => typeof key === "string") : []);
+      } catch {
+        state.vaultKeys = new Set();
+      }
+    }
+
+    function saveVaultKeysForCurrentSpace() {
+      try {
+        window.localStorage && window.localStorage.setItem(vaultStorageKey(), JSON.stringify([...state.vaultKeys].sort()));
+      } catch {
+        // Storage can be unavailable in some embedded hosts; vault markers remain session-local.
+      }
+    }
+
+    function markKeyAsVault(key) {
+      if (!key) return;
+      loadVaultKeysForCurrentSpace();
+      state.vaultKeys.add(String(key));
+      saveVaultKeysForCurrentSpace();
+    }
+
+    function isVaultItem(item) {
+      const key = String(item.key || "");
+      const storage = String(item.storage || "").toLowerCase();
+      return (
+        state.vaultKeys.has(key)
+        || storage === "vault"
+        || storage === "intelligence"
+        || storage === "workspace_intelligence"
+        || key.toLowerCase().startsWith("vault/")
+      );
+    }
+
+    function hasExpiry(item) {
+      if (isVaultItem(item)) return false;
+      return Boolean(item.expires_at || item.ttl);
+    }
+
+    function contextExpiryLabel(item) {
+      // Keep the vault guard client-side too: standalone fixtures and older
+      // server responses may still carry expiry fields before normalization.
+      if (isVaultItem(item)) return "Permanent";
+      if (hasExpiry(item)) return ttlLabel(item);
+      return "Permanent";
+    }
+
+    function isFavoriteItem(item) {
+      const key = String(item.key || "");
+      return state.favoriteKeys.has(key) || key.toLowerCase().startsWith("favorite/") || item.favorite === true || item.pinned === true;
+    }
+
+    function isExpiringItem(item) {
+      return hasExpiry(item);
+    }
+
+    function setViewMode(mode) {
+      state.viewMode = mode;
+      state.selectedKey = null;
+      state.selectedItem = null;
+      render();
+    }
+
+    function setTopicFilter(topic) {
+      state.topicFilter = state.topicFilter === topic ? "" : topic;
+      state.selectedKey = null;
+      state.selectedItem = null;
+      render();
+    }
+
+    function toggleFavorite(item) {
+      if (!item?.key) return;
+      loadFavoritesForCurrentSpace();
+      if (state.favoriteKeys.has(item.key)) state.favoriteKeys.delete(item.key);
+      else state.favoriteKeys.add(item.key);
+      saveFavoritesForCurrentSpace();
+      render();
+    }
+
+    function titleForItem(item) {
+      if (item.subject) return item.subject;
+      const value = resolvedItemValue(item);
+      if (value && typeof value === "object") {
+        const uploadValue = uploadValueFor(value);
+        if (uploadValue && uploadValue.filename) return uploadValue.filename;
+        const candidates = [value.subject, value.title, value.name, value.summary];
+        for (const candidate of candidates) {
+          if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+        }
+      }
+      const key = item.key || "untitled";
+      const segments = key.split(/[:/]/).filter(Boolean);
+      return segments[segments.length - 1] || key;
+    }
+
+    function parseJsonString(value) {
+      if (typeof value !== "string") return null;
+      const trimmed = value.trim();
+      if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return null;
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        return null;
+      }
+    }
+
+    function resolvedItemValue(item) {
+      const val = item?.value;
+      // Direct string parse
+      const parsed = parseJsonString(val);
+      if (parsed !== null) return parsed;
+      // If value is an object with a nested 'value' string, try parsing that
+      if (val && typeof val === "object" && typeof val.value === "string") {
+        const innerParsed = parseJsonString(val.value);
+        if (innerParsed !== null) return innerParsed;
+      }
+      if (val === undefined && item?.file_upload && typeof item.file_upload === "object" && !Array.isArray(item.file_upload)) {
+        return { ...item.file_upload, type: item.file_upload.type || "file_upload" };
+      }
+      return val;
+    }
+
+    function contextKindLabel(uploadValue, htmlValue, item) {
+      if (uploadValue) return uploadKindLabel(uploadValue);
+      if (htmlValue) return "HTML";
+      return itemArtifactKindLabel(item) || inferTopic(item);
+    }
+
+    function firstString(value, keys) {
+      if (!value || typeof value !== "object") return "";
+      for (const key of keys) {
+        const candidate = value[key];
+        if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+      }
+      return "";
+    }
+
+    function normalizedToken(value) {
+      return String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+    }
+
+    // Keep in sync with the server-side context normalizer; the widget also
+    // handles legacy responses that have not been normalized yet.
+    const DECLARED_UPLOAD_CONTENT_TYPES = {
+      audio: "audio/*",
+      csv: "text/csv",
+      file: "application/octet-stream",
+      image: "image/*",
+      json: "application/json",
+      markdown: "text/markdown",
+      md: "text/markdown",
+      pdf: "application/pdf",
+      svg: "image/svg+xml",
+      text: "text/plain",
+      txt: "text/plain",
+      video: "video/*",
+      xml: "application/xml",
+    };
+
+    function declaredContentTypeFor(value) {
+      const declared = firstString(value, ["type", "kind", "artifact_type", "artifact kind"]);
+      if (!declared) return "";
+      if (declared.includes("/")) return declared;
+      return DECLARED_UPLOAD_CONTENT_TYPES[normalizedToken(declared)] || "";
+    }
+
+    function firstNumber(value, keys) {
+      if (!value || typeof value !== "object") return null;
+      for (const key of keys) {
+        const candidate = value[key];
+        if (typeof candidate === "number" && Number.isFinite(candidate)) return candidate;
+      }
+      return null;
+    }
+
+    function contentTypeFor(value) {
+      const explicit = firstString(value, [
+        "content_type",
+        "content type",
+        "contentType",
+        "mime_type",
+        "mime type",
+        "mimeType",
+        "resource_mime_type",
+        "resource mime type",
+        "resourceMimeType",
+        "media_type",
+        "media type",
+        "mediaType",
+        "file_type",
+        "file type",
+        "fileType",
+      ]);
+      if (explicit) return explicit;
+      return contentTypeFromFilename(value) || declaredContentTypeFor(value);
+    }
+
+    function fileUrlFor(value) {
+      return firstString(value, [
+        "url",
+        "href",
+        "download_url",
+        "download url",
+        "downloadUrl",
+        "file_url",
+        "file url",
+        "fileUrl",
+        "resource_url",
+        "resource url",
+        "resourceUrl",
+        "src",
+        "data_url",
+        "data url",
+        "dataUrl",
+      ]);
+    }
+
+    function fileNameFor(value) {
+      return firstString(value, [
+        "filename",
+        "file_name",
+        "file name",
+        "fileName",
+        "name",
+        "title",
+      ]);
+    }
+
+    function fileSizeFor(value) {
+      return firstNumber(value, ["size", "size_bytes", "size bytes", "sizeBytes", "byte_size", "byte size", "byteSize", "bytes"]);
+    }
+
+    function contentTypeFromFilename(value) {
+      const source = (fileNameFor(value) || fileUrlFor(value)).toLowerCase().split(/[?#]/)[0];
+      if (!source) return "";
+      if (source.endsWith(".html") || source.endsWith(".htm")) return "text/html";
+      if (source.endsWith(".jpg") || source.endsWith(".jpeg")) return "image/jpeg";
+      if (source.endsWith(".png")) return "image/png";
+      if (source.endsWith(".gif")) return "image/gif";
+      if (source.endsWith(".webp")) return "image/webp";
+      if (source.endsWith(".avif")) return "image/avif";
+      if (source.endsWith(".svg")) return "image/svg+xml";
+      if (source.endsWith(".pdf")) return "application/pdf";
+      if (source.endsWith(".md") || source.endsWith(".markdown")) return "text/markdown";
+      if (source.endsWith(".json")) return "application/json";
+      if (source.endsWith(".txt") || source.endsWith(".log")) return "text/plain";
+      if (source.endsWith(".mp3")) return "audio/mpeg";
+      if (source.endsWith(".wav")) return "audio/wav";
+      if (source.endsWith(".mp4")) return "video/mp4";
+      if (source.endsWith(".webm")) return "video/webm";
+      return "";
+    }
+
+    function filenameFromContextKey(key) {
+      const tokens = String(key || "").split(/[:/\\]+/).reverse();
+      for (const token of tokens) {
+        const candidate = token.trim().split("?")[0].split("#")[0];
+        if (candidate && contentTypeFromFilename({ filename: candidate })) return candidate;
+      }
+      return "";
+    }
+
+    function isUploadLocatorString(value) {
+      return /^(https?:\/\/|data:)/i.test(String(value || "").trim());
+    }
+
+    function hasExplicitUploadMetadata(value) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+      // Keep this list in sync with _EXPLICIT_FILE_UPLOAD_METADATA_KEYS in
+      // fastmcp_server/tools/context.py; test_widget_call_contract.py enforces
+      // the cross-language set equality.
+      return [
+        "attachment_id",
+        "attachment id",
+        "attachmentId",
+        "base64",
+        "content base64",
+        "content_base64",
+        "contentBase64",
+        "content type",
+        "content_type",
+        "contentType",
+        "data base64",
+        "data url",
+        "data_base64",
+        "data_url",
+        "dataBase64",
+        "dataUrl",
+        "download url",
+        "download_url",
+        "downloadUrl",
+        "file name",
+        "file type",
+        "file url",
+        "file_name",
+        "file_type",
+        "file_url",
+        "fileName",
+        "fileType",
+        "fileUrl",
+        "filename",
+        "media type",
+        "media_type",
+        "mediaType",
+        "mime type",
+        "mime_type",
+        "mimeType",
+        "resource mime type",
+        "resource url",
+        "resource_mime_type",
+        "resource_url",
+        "resourceMimeType",
+        "resourceUrl",
+      ].some((key) => Object.prototype.hasOwnProperty.call(value, key));
+    }
+
+    function uploadValueFromContextKey(key, value) {
+      const filename = filenameFromContextKey(key);
+      const contentType = contentTypeFromFilename({ filename });
+      if (!filename || !contentType) return null;
+
+      if (typeof value === "string") {
+        if (isUploadLocatorString(value)) {
+          return { type: "file_upload", filename, content_type: contentType, url: value.trim() };
+        }
+        if (isInlineTextUploadContentType(contentType)) {
+          return { type: "file_upload", filename, content_type: contentType, content: value };
+        }
+        return null;
+      }
+
+      if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+      if (contentType === "application/json" && !hasExplicitUploadMetadata(value)) {
+        return {
+          type: "file_upload",
+          filename,
+          content_type: contentType,
+          content: JSON.stringify(value, null, 2),
+        };
+      }
+      return uploadValueFor({
+        ...value,
+        type: value.type || "file_upload",
+        filename: fileNameFor(value) || filename,
+        content_type: contentTypeFor(value) || contentType,
+      });
+    }
+
+    function inlineUploadDataUrlFor(value, contentType) {
+      if (!value || typeof value !== "object") return "";
+      const dataUrl = firstString(value, ["data_url", "data url", "dataUrl"]);
+      if (dataUrl.toLowerCase().startsWith("data:")) return dataUrl;
+
+      const base64 = firstString(value, [
+        "content_base64",
+        "content base64",
+        "contentBase64",
+        "data_base64",
+        "data base64",
+        "dataBase64",
+        "base64",
+      ]);
+      if (base64) {
+        return "data:" + (contentType || "application/octet-stream") + ";base64," + base64.replace(/\s+/g, "");
+      }
+
+      const text = firstString(value, ["content", "body", "text"]);
+      const ct = String(contentType || "").toLowerCase();
+      if (text && isInlineTextUploadContentType(ct)) {
+        return "data:" + (contentType || "text/plain") + ";charset=utf-8," + encodeURIComponent(text);
+      }
+      return "";
+    }
+
+    function isInlineTextUploadContentType(contentType) {
+      const ct = String(contentType || "").toLowerCase();
+      return ct.startsWith("text/")
+        || ct === "application/json"
+        || ct === "application/xml"
+        || ct === "image/svg+xml";
+    }
+
+    function itemArtifactText(item) {
+      return [
+        firstString(item, ["artifact_type", "artifact_kind", "content_type", "mime_type", "resource_mime_type"]),
+        item?.summary || "",
+        item?.description || "",
+        item?.value_preview || "",
+      ].join(" ").toLowerCase();
+    }
+
+    function itemArtifactKindLabel(item) {
+      const text = itemArtifactText(item);
+      if (!text.trim()) return "";
+      if (text.includes("html") || text.includes("text/html")) return "HTML";
+      if (text.includes("pdf") || text.includes("application/pdf")) return "PDF";
+      if (text.includes("markdown") || text.endsWith(".md")) return "Markdown";
+      if (text.includes("image/") || /\.(avif|gif|jpe?g|png|svg|webp)\b/.test(text)) return "Image";
+      if (text.includes("video/") || /\.(mp4|webm)\b/.test(text)) return "Video";
+      if (text.includes("audio/") || /\.(mp3|wav)\b/.test(text)) return "Audio";
+      if (text.includes("application/json") || text.endsWith(".json")) return "JSON";
+      if (text.includes("text/") || /\.(log|txt)\b/.test(text)) return "Text";
+      return "";
+    }
+
+    function itemArtifactGlyph(item) {
+      const label = itemArtifactKindLabel(item);
+      if (label === "Markdown") return "MD";
+      if (label === "Image") return "IMG";
+      if (label === "Video") return "VID";
+      if (label === "Audio") return "AUD";
+      if (label === "PDF") return "PDF";
+      if (label === "JSON") return "{}";
+      if (label === "Text") return "TXT";
+      if (label === "HTML") return "HTML";
+      return "CTX";
+    }
+
+    function htmlValueFor(value) {
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed.toLowerCase().startsWith("<!doctype html") || trimmed.toLowerCase().startsWith("<html")) {
+          return { type: "html", html: value };
+        }
+        return null;
+      }
+      if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+      const declared = [
+        firstString(value, ["type", "kind", "artifact_type"]),
+        contentTypeFor(value),
+      ].some((candidate) => {
+        const normalized = candidate.toLowerCase();
+        return normalized === "html" || normalized === "text/html" || normalized.endsWith(".html");
+      });
+      const html = typeof value.html === "string"
+        ? value.html
+        : declared && typeof value.content === "string"
+          ? value.content
+          : declared && typeof value.body === "string"
+            ? value.body
+            : "";
+      if (!html) return null;
+      return { ...value, type: "html", html };
+    }
+
+    function uploadValueFor(value) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+      if (htmlValueFor(value)) return null;
+      const contentType = contentTypeFor(value);
+      const url = fileUrlFor(value) || inlineUploadDataUrlFor(value, contentType);
+      const filename = fileNameFor(value);
+      const size = fileSizeFor(value);
+      const declaredType = normalizedToken(value.type);
+      const declaredKind = normalizedToken(value.kind);
+      const declaredContentType = declaredContentTypeFor(value);
+      const explicitlyFile = declaredType === "file_upload"
+        || declaredType === "file"
+        || declaredType === "attachment"
+        || declaredKind === "file"
+        || declaredKind === "attachment";
+      const declaredTextType = declaredType === "text" || declaredType === "txt";
+      const hasUrlLocator = Boolean(fileUrlFor(value)) && !declaredTextType;
+      const hasInlineBinaryPayload = Boolean(
+        "data_url" in value
+        || "data url" in value
+        || "dataUrl" in value
+        || "content_base64" in value
+        || "content base64" in value
+        || "contentBase64" in value
+        || "data_base64" in value
+        || "data base64" in value
+        || "dataBase64" in value
+        || "base64" in value
+      );
+      const hasInlineTextPayload = Boolean(
+        "content" in value || "body" in value || "data" in value || "text" in value
+      );
+      const hasFileMetadata = Boolean(
+        size !== null
+        || "filename" in value
+        || "file_name" in value
+        || "file name" in value
+        || "fileName" in value
+        || "content_type" in value
+        || "content type" in value
+        || "contentType" in value
+        || "mime_type" in value
+        || "mime type" in value
+        || "mimeType" in value
+        || "resource_mime_type" in value
+        || "resource mime type" in value
+        || "resourceMimeType" in value
+        || "media_type" in value
+        || "media type" in value
+        || "mediaType" in value
+        || "file_type" in value
+        || "file type" in value
+        || "fileType" in value
+        || "download_url" in value
+        || "download url" in value
+        || "downloadUrl" in value
+        || "file_url" in value
+        || "file url" in value
+        || "fileUrl" in value
+        || "resource_url" in value
+        || "resource url" in value
+        || "resourceUrl" in value
+        || "data_url" in value
+        || "data url" in value
+        || "dataUrl" in value
+        || "content_base64" in value
+        || "content base64" in value
+        || "contentBase64" in value
+        || "data_base64" in value
+        || "data base64" in value
+        || "dataBase64" in value
+        || "base64" in value
+      );
+      const hasDeclaredUploadEvidence = Boolean(
+        declaredContentType && (
+          filename
+          || size !== null
+          || hasUrlLocator
+          || hasInlineBinaryPayload
+          || (hasInlineTextPayload && !declaredTextType && isInlineTextUploadContentType(contentType))
+        )
+      );
+      if (!explicitlyFile && !hasFileMetadata && !hasDeclaredUploadEvidence) return null;
+      return {
+        ...value,
+        type: "file_upload",
+        content_type: contentType || value.content_type || "application/octet-stream",
+        url: url || value.url || "",
+        filename: filename || value.filename || "",
+        size: size ?? value.size,
+      };
+    }
+
+    function isFileUploadValue(value) {
+      return Boolean(uploadValueFor(value));
+    }
+
+    function isHtmlValue(value) {
+      return Boolean(htmlValueFor(value));
+    }
+
+    function shouldRenderHtml() {
+      const ctx = state.spaceContext;
+      if (!ctx || typeof ctx !== "object") return true;
+      if (ctx.allow_html_render === false) return false;
+      return true;
+    }
+
+    function isImageContentType(contentType) {
+      return typeof contentType === "string" && contentType.toLowerCase().startsWith("image/");
+    }
+
+    function isRasterImageContentType(contentType) {
+      if (typeof contentType !== "string") return false;
+      return [
+        "image/avif",
+        "image/gif",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ].includes(contentType.toLowerCase());
+    }
+
+    const MAX_UPLOAD_OBJECT_URL_CACHE_ENTRIES = 16;
+    const uploadObjectUrlCache = new Map();
+
+    function uploadObjectUrlCacheKey(url, contentType) {
+      return String(contentType || "") + "\n" + String(url || "");
+    }
+
+    function getStoredUserToken() {
+      const keys = [
+        "ax_development_userToken",
+        "ax_dev_userToken",
+        "ax_local_userToken",
+        "ax_staging_userToken",
+        "ax_production_userToken",
+        "auth_token",
+        "userToken",
+      ];
+      const stores = [];
+      try {
+        if (window.localStorage) stores.push(window.localStorage);
+      } catch {
+        // Some future iframe sandbox modes may block localStorage access.
+      }
+      try {
+        if (window.sessionStorage) stores.push(window.sessionStorage);
+      } catch {
+        // Same as above for sessionStorage.
+      }
+      function readToken(store, key) {
+        try {
+          const token = store && store.getItem(key);
+          if (token) return token;
+        } catch {
+          // Storage can be unavailable in some embedded hosts.
+        }
+        return null;
+      }
+      for (const key of keys) {
+        for (const store of stores) {
+          const token = readToken(store, key);
+          if (token) return token;
+        }
+      }
+      return null;
+    }
+
+    function isInlineUploadUrl(url) {
+      const normalized = String(url || "").trim().toLowerCase();
+      return normalized.startsWith("data:") || normalized.startsWith("blob:");
+    }
+
+    function shouldIncludeUploadCredentials(url) {
+      if (!url || isInlineUploadUrl(url)) return false;
+      try {
+        const target = new URL(url, window.location.href);
+        const currentHost = String(window.location.hostname || "").toLowerCase();
+        const targetHost = String(target.hostname || "").toLowerCase();
+        if (target.origin === window.location.origin) return true;
+        const loopbackHosts = ["localhost", "127.0.0.1", "::1"];
+        const currentIsLocal = loopbackHosts.includes(currentHost) || window.location.protocol === "file:";
+        // Keep cross-origin cookies loopback-to-loopback only. This supports
+        // local MCP/browser tests, including file:// harnesses with no host,
+        // without letting production widgets attach cookies to arbitrary
+        // services on a user's localhost.
+        return currentIsLocal && loopbackHosts.includes(targetHost);
+      } catch {
+        return false;
+      }
+    }
+
+    function shouldIncludeUploadAuthorization(url) {
+      if (!url || isInlineUploadUrl(url)) return false;
+      try {
+        const target = new URL(url, window.location.href);
+        if (target.origin === window.location.origin) return true;
+        const loopbackHosts = ["localhost", "127.0.0.1", "::1"];
+        const targetHost = String(target.hostname || "").toLowerCase();
+        const currentHost = String(window.location.hostname || "").toLowerCase();
+        const currentIsLocal = loopbackHosts.includes(currentHost) || window.location.protocol === "file:";
+        const targetIsLocalUploadApi = currentIsLocal && loopbackHosts.includes(targetHost);
+        return targetIsLocalUploadApi && target.pathname.startsWith("/api/v1/uploads/");
+      } catch {
+        return false;
+      }
+    }
+
+    function rememberUploadObjectUrl(cacheKey, objectUrl) {
+      if (uploadObjectUrlCache.has(cacheKey)) {
+        const previous = uploadObjectUrlCache.get(cacheKey);
+        if (previous && previous !== objectUrl) URL.revokeObjectURL(previous);
+        uploadObjectUrlCache.delete(cacheKey);
+      }
+      uploadObjectUrlCache.set(cacheKey, objectUrl);
+      while (uploadObjectUrlCache.size > MAX_UPLOAD_OBJECT_URL_CACHE_ENTRIES) {
+        const oldestKey = uploadObjectUrlCache.keys().next().value;
+        const oldestObjectUrl = uploadObjectUrlCache.get(oldestKey);
+        uploadObjectUrlCache.delete(oldestKey);
+        if (oldestObjectUrl) URL.revokeObjectURL(oldestObjectUrl);
+      }
+      return objectUrl;
+    }
+
+    async function blobLooksLikePdf(blob) {
+      const bytes = new Uint8Array(await blob.slice(0, 1024).arrayBuffer());
+      for (let index = 0; index <= bytes.length - 5; index += 1) {
+        if (
+          bytes[index] === 0x25
+          && bytes[index + 1] === 0x50
+          && bytes[index + 2] === 0x44
+          && bytes[index + 3] === 0x46
+          && bytes[index + 4] === 0x2d
+        ) return true;
+      }
+      return false;
+    }
+
+    async function fetchUploadObjectUrl(url, contentType) {
+      if (!url) throw new Error("Missing upload URL");
+      const headers = {};
+      const token = shouldIncludeUploadAuthorization(url) ? getStoredUserToken() : "";
+      if (token) headers.Authorization = "Bearer " + token;
+      const fetchOptions = { headers };
+      if (!token && shouldIncludeUploadCredentials(url)) {
+        fetchOptions.credentials = "include";
+      }
+      const response = await fetch(url, fetchOptions);
+      if (!response.ok) throw new Error("Upload fetch failed: " + response.status);
+      let blob = await response.blob();
+      const expectedType = String(contentType || "").toLowerCase();
+      const actualType = String(blob.type || "").toLowerCase();
+      const expectedIsText = /^text\//i.test(String(contentType || ""));
+      if (expectedType === "application/pdf") {
+        if (!(await blobLooksLikePdf(blob))) {
+          throw new Error("Upload payload is not a PDF document");
+        }
+        blob = new Blob([blob], { type: contentType });
+      } else if (
+        contentType
+        && (
+          !actualType
+          || actualType === "application/octet-stream"
+          || (actualType === "text/plain" && !expectedIsText)
+        )
+      ) {
+        blob = new Blob([blob], { type: contentType });
+      }
+      return URL.createObjectURL(blob);
+    }
+
+    async function resolveUploadObjectUrl(url, contentType) {
+      if (!url) throw new Error("Missing upload URL");
+      const cacheKey = uploadObjectUrlCacheKey(url, contentType);
+      if (uploadObjectUrlCache.has(cacheKey)) {
+        const objectUrl = uploadObjectUrlCache.get(cacheKey);
+        uploadObjectUrlCache.delete(cacheKey);
+        uploadObjectUrlCache.set(cacheKey, objectUrl);
+        return objectUrl;
+      }
+      return rememberUploadObjectUrl(cacheKey, await fetchUploadObjectUrl(url, contentType));
+    }
+
+    function hydrateUploadImage(img, url, contentType) {
+      resolveUploadObjectUrl(url, contentType)
+        .then((objectUrl) => { img.src = objectUrl; })
+        .catch(() => {
+          img.src = url;
+          img.dataset.loadState = "fallback";
+        });
+    }
+
+    function hydrateUploadSource(element, url, contentType) {
+      const reloadElement = function(src, state) {
+        element.dataset.loadState = state;
+        element.src = src;
+        if (typeof element.load === "function") {
+          element.load();
+        }
+      };
+      resolveUploadObjectUrl(url, contentType)
+        .then((objectUrl) => { reloadElement(objectUrl, "loaded"); })
+        .catch(() => {
+          reloadElement(url, "fallback");
+        });
+    }
+
+    function hydratePdfSource(frame, url, contentType) {
+      resolveUploadObjectUrl(url, contentType)
+        .then((objectUrl) => {
+          if (!String(objectUrl || "").startsWith("blob:")) {
+            throw new Error("PDF source must be hydrated as a blob URL");
+          }
+          frame.dataset.loadState = "loaded";
+          frame.src = objectUrl;
+        })
+        .catch(() => {
+          frame.dataset.loadState = "error";
+        });
+    }
+
+    function fetchUploadText(url) {
+      // Data URLs: decode inline (UTF-8 safe) with no network fetch. The sandbox
+      // CSP can block fetch() of data:/blob: (connect-src); images survive via an
+      // img.src fallback, but text has none — so decoding here is what stops
+      // md/json/csv from failing with "Could not load file".
+      if (typeof url === "string" && url.slice(0, 5).toLowerCase() === "data:") {
+        try {
+          const comma = url.indexOf(",");
+          if (comma === -1) return Promise.reject(new Error("malformed data URL"));
+          const meta = url.slice(5, comma);
+          const raw = url.slice(comma + 1);
+          if (/;base64/i.test(meta)) {
+            const bin = atob(raw);
+            const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+            return Promise.resolve(new TextDecoder().decode(bytes));
+          }
+          return Promise.resolve(decodeURIComponent(raw));
+        } catch (err) {
+          return Promise.reject(err);
+        }
+      }
+      if (isInlineUploadUrl(url)) {
+        return fetch(url).then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); });
+      }
+      return resolveUploadObjectUrl(url)
+        .then((objectUrl) => fetch(objectUrl))
+        .catch(() => {
+          // Public/signed URLs can still render without a local auth token.
+          // Auth-gated URLs fail closed with a non-ok response and show a load error.
+          return fetch(url);
+        })
+        .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); });
+    }
+
+    function openUploadUrl(url) {
+      resolveUploadObjectUrl(url)
+        .then((objectUrl) => window.open(objectUrl, "_blank", "noopener,noreferrer"))
+        .catch(() => window.open(url, "_blank", "noopener,noreferrer"));
+    }
+
+    function triggerUploadDownload(url, filename, options) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || "download";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      if (options && options.revokeAfterClick) {
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+    }
+
+    function downloadUploadUrl(url, filename) {
+      fetchUploadObjectUrl(url)
+        .then((objectUrl) => triggerUploadDownload(objectUrl, filename, { revokeAfterClick: true }))
+        .catch(() => triggerUploadDownload(url, filename));
+    }
+
+    function handleUploadAction(uploadValue) {
+      if (!uploadValue || !uploadValue.url) return;
+      if (isRasterImageContentType(uploadValue.content_type)) {
+        openUploadUrl(uploadValue.url);
+        return;
+      }
+      downloadUploadUrl(uploadValue.url, uploadValue.filename);
+    }
+
+    function isVideoContentType(contentType) {
+      return typeof contentType === "string" && contentType.toLowerCase().startsWith("video/");
+    }
+
+    function isAudioContentType(contentType) {
+      return typeof contentType === "string" && contentType.toLowerCase().startsWith("audio/");
+    }
+
+    function isPdfContentType(contentType) {
+      return typeof contentType === "string" && contentType.toLowerCase() === "application/pdf";
+    }
+
+    function isMarkdownContentType(contentType) {
+      if (typeof contentType !== "string") return false;
+      const ct = contentType.toLowerCase();
+      return ct === "text/markdown" || ct === "text/x-markdown";
+    }
+
+    function isTextContentType(contentType) {
+      if (typeof contentType !== "string") return false;
+      const ct = contentType.toLowerCase();
+      return ct.startsWith("text/") || ct === "application/json" || ct === "application/xml";
+    }
+
+    function isRenderableUpload(contentType) {
+      return isImageContentType(contentType) || isVideoContentType(contentType) ||
+             isAudioContentType(contentType) || isPdfContentType(contentType) ||
+             isMarkdownContentType(contentType) || isTextContentType(contentType);
+    }
+
+    function uploadKindLabel(uploadValue) {
+      // Strip MIME parameters (e.g. "text/html; charset=utf-8") so exact media-type
+      // comparisons below match parameterized content types, not just bare ones.
+      const contentType = String(uploadValue?.content_type || "").toLowerCase().split(";")[0].trim();
+      if (isMarkdownContentType(contentType)) return "Markdown";
+      if (contentType === "image/svg+xml") return "SVG";
+      if (isImageContentType(contentType)) return "Image";
+      if (isVideoContentType(contentType)) return "Video";
+      if (isAudioContentType(contentType)) return "Audio";
+      if (isPdfContentType(contentType)) return "PDF";
+      if (contentType === "application/json") return "JSON";
+      if (contentType === "text/html") return "HTML";
+      if (contentType === "text/csv") return "CSV";
+      if (isTextContentType(contentType)) return "Text";
+      return contentType ? "File" : "Unknown";
+    }
+
+    function fileTypeKeyForItem(item) {
+      const value = resolvedItemValue(item);
+      const uploadValue = uploadValueFor(value);
+      if (uploadValue) {
+        const label = uploadKindLabel(uploadValue).toLowerCase();
+        if (label === "unknown") return "file";
+        return label;
+      }
+      if (htmlValueFor(value)) return "html";
+      const label = itemArtifactKindLabel(item).toLowerCase();
+      return label || "context";
+    }
+
+    function fileTypeLabel(type) {
+      const labels = {
+        audio: "Audio",
+        context: "Context",
+        csv: "CSV",
+        file: "File",
+        html: "HTML",
+        image: "Image",
+        json: "JSON",
+        markdown: "Markdown",
+        pdf: "PDF",
+        svg: "SVG",
+        text: "Text",
+        video: "Video",
+      };
+      return labels[type] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : "All types");
+    }
+
+    function uploadGlyph(uploadValue) {
+      const label = uploadKindLabel(uploadValue);
+      if (label === "Markdown") return "MD";
+      if (label === "Image") return "IMG";
+      if (label === "Video") return "VID";
+      if (label === "Audio") return "AUD";
+      if (label === "PDF") return "PDF";
+      if (label === "JSON") return "{}";
+      if (label === "HTML") return "HTML";
+      if (label === "CSV") return "CSV";
+      if (label === "Text") return "TXT";
+      if (label === "SVG") return "SVG";
+      return "FILE";
+    }
+
+    function publicActorLabel(value) {
+      const text = String(value || "").trim();
+      if (!text) return "";
+      return text.replace(/^(user|agent):/i, "");
+    }
+
+    function renderEntryThumb(item, uploadValue, htmlValue) {
+      const thumb = h("div", { className: "entry-preview-thumb" });
+      if (uploadValue && isImageContentType(uploadValue.content_type) && uploadValue.url) {
+        const img = h("img", { alt: uploadValue.filename || item.key || "Context image" });
+        hydrateUploadImage(img, uploadValue.url, uploadValue.content_type);
+        thumb.appendChild(img);
+        return thumb;
+      }
+      thumb.appendChild(h("span", null, uploadValue ? uploadGlyph(uploadValue) : htmlValue ? "HTML" : itemArtifactGlyph(item)));
+      return thumb;
+    }
+
+    // Lightweight markdown → HTML (covers 90% of cases, zero dependencies)
+    function renderMarkdown(text) {
+      if (typeof text !== "string") return "";
+      let html = text
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        // Headers
+        .replace(/^### (.+)$/gm, "<h4>$1</h4>")
+        .replace(/^## (.+)$/gm, "<h3>$1</h3>")
+        .replace(/^# (.+)$/gm, "<h2>$1</h2>")
+        // Bold/italic
+        .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.+?)\*/g, "<em>$1</em>")
+        // Code
+        .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="md-code"><code>$2</code></pre>')
+        .replace(/`([^`]+)`/g, '<code class="md-inline">$1</code>')
+        // Links
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+        // Lists
+        .replace(/^\s*[-*]\s+(.+)$/gm, "<li>$1</li>")
+        .replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>")
+        // Horizontal rule
+        .replace(/^---+$/gm, "<hr>")
+        // Paragraphs (double newline)
+        .replace(/\n\n/g, "</p><p>")
+        // Single newlines → <br>
+        .replace(/\n/g, "<br>");
+      return "<p>" + html + "</p>";
+    }
+
+    function formatBytes(size) {
+      if (typeof size !== "number" || !Number.isFinite(size) || size < 0) return "Unknown";
+      if (size < 1024) return size + " B";
+      const units = ["KB", "MB", "GB", "TB"];
+      let value = size;
+      let unitIndex = -1;
+      while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex += 1;
+      }
+      const rounded = value >= 10 || unitIndex === 0 ? Math.round(value * 10) / 10 : Math.round(value * 100) / 100;
+      return rounded + " " + units[unitIndex];
+    }
+
+    function previewForItem(item) {
+      const value = resolvedItemValue(item);
+      const uploadValue = uploadValueFor(value);
+      if (uploadValue) {
+        if (typeof item.summary === "string" && item.summary.trim()) {
+          return shorten(item.summary, 140);
+        }
+        const parts = [uploadKindLabel(uploadValue)];
+        if (uploadValue.content_type) parts.push(uploadValue.content_type);
+        if (typeof uploadValue.size === "number") parts.push(formatBytes(uploadValue.size));
+        return parts.join(" • ");
+      }
+      const htmlValue = htmlValueFor(value);
+      if (htmlValue) {
+        if (typeof item.summary === "string" && item.summary.trim()) {
+          return shorten(plainTextSummary(item.summary), 120);
+        }
+        return "Sandboxed HTML document";
+      }
+      const artifactLabel = itemArtifactKindLabel(item);
+      if (artifactLabel) return artifactLabel + " artifact";
+      if (typeof item.value_preview === "string" && item.value_preview.trim()) {
+        return shorten(plainTextSummary(item.value_preview), 120);
+      }
+      if (typeof item.note_preview === "string" && item.note_preview.trim()) {
+        return shorten(plainTextSummary(item.note_preview), 120);
+      }
+      if (typeof item.summary === "string" && item.summary.trim()) {
+        return shorten(plainTextSummary(item.summary), 120);
+      }
+      if (typeof value === "string" && value.trim()) {
+        return shorten(plainTextSummary(value), 120);
+      }
+      if (value && typeof value === "object") {
+        return shorten(plainTextSummary(formatValue(value)), 120);
+      }
+      return "No preview available yet.";
+    }
+
+    function initials(text) {
+      const cleaned = String(text || "").trim();
+      if (!cleaned) return "?";
+      const parts = cleaned.split(/[\s:_/-]+/).filter(Boolean);
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+
+    function toneForSeed(seed) {
+      let hash = 0;
+      const text = String(seed || "context");
+      for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+      const hue = hash % 360;
+      return {
+        background: "background: hsla(" + hue + ", 78%, 90%, 0.9);",
+        border: "border-color: hsla(" + hue + ", 48%, 54%, 0.38);",
+        color: "color: hsl(" + hue + ", 46%, 24%);",
+      };
+    }
+
+    function sortItems(items) {
+      return [...items].sort((a, b) => {
+        const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+        const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+        if (aTime !== bTime) return bTime - aTime;
+        return (a.key || "").localeCompare(b.key || "");
+      });
+    }
+
+    function mergeItem(items, nextItem) {
+      const merged = [];
+      let replaced = false;
+      for (const item of items) {
+        if (item.key === nextItem.key) {
+          merged.push({ ...item, ...nextItem });
+          replaced = true;
+        } else {
+          merged.push(item);
+        }
+      }
+      if (!replaced) merged.unshift(nextItem);
+      return sortItems(merged);
+    }
+
+    function summarize(items) {
+      const topics = new Set();
+      let scratchpads = 0;
+      let expiringSoon = 0;
+      for (const item of items) {
+        topics.add(inferTopic(item));
+        if (inferTopic(item) === "scratchpad") scratchpads += 1;
+        if (hasExpiry(item) && item.expires_at && Number(item.expires_at) * 1000 - Date.now() < 6 * 3600 * 1000) {
+          expiringSoon += 1;
+        }
+      }
+      return {
+        topics: topics.size,
+        scratchpads,
+        expiringSoon,
+      };
+    }
+
+    function topTopics(items) {
+      const counts = new Map();
+      for (const item of items) {
+        const topic = inferTopic(item);
+        counts.set(topic, (counts.get(topic) || 0) + 1);
+      }
+      return [...counts.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 6);
+    }
+
+    function groupedItems(items) {
+      const groups = new Map();
+      for (const item of items) {
+        const topic = inferTopic(item);
+        if (!groups.has(topic)) groups.set(topic, []);
+        groups.get(topic).push(item);
+      }
+      return [...groups.entries()]
+        .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+        .map(([topic, topicItems]) => ({ topic, items: sortItems(topicItems) }));
+    }
+
+    function searchableText(item) {
+      return [
+        item.key,
+        titleForItem(item),
+        previewForItem(item),
+        inferTopic(item),
+        fileTypeLabel(fileTypeKeyForItem(item)),
+        item.storage,
+        item.agent_name,
+      ].filter(Boolean).join(" ").toLowerCase();
+    }
+
+    function viewCounts(items) {
+      return {
+        all: items.length,
+        favorites: items.filter(isFavoriteItem).length,
+        vault: items.filter(isVaultItem).length,
+        expiring: items.filter(isExpiringItem).length,
+      };
+    }
+
+    function itemsForView(items, mode = state.viewMode) {
+      if (mode === "favorites") return items.filter(isFavoriteItem);
+      if (mode === "vault") return items.filter(isVaultItem);
+      if (mode === "expiring") return items.filter(isExpiringItem);
+      return items;
+    }
+
+    function filterItems(items) {
+      const query = String(state.query || "").trim().toLowerCase();
+      return sortItems(itemsForView(items))
+        .filter((item) => !state.topicFilter || inferTopic(item) === state.topicFilter)
+        .filter((item) => !state.fileTypeFilter || fileTypeKeyForItem(item) === state.fileTypeFilter)
+        .filter((item) => !query || searchableText(item).includes(query));
+    }
+
+    function fileTypeCounts(items) {
+      const counts = new Map();
+      for (const item of items) {
+        const type = fileTypeKeyForItem(item);
+        counts.set(type, (counts.get(type) || 0) + 1);
+      }
+      return [...counts.entries()].sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1];
+        return fileTypeLabel(a[0]).localeCompare(fileTypeLabel(b[0]));
+      });
+    }
+
+    function viewLabel(mode) {
+      if (mode === "favorites") return "Favorites";
+      if (mode === "vault") return "Vault";
+      if (mode === "expiring") return "Expiring";
+      return "All";
+    }
+
+    const CONTEXT_WRAPPER_KEYS = [
+      "action",
+      "count",
+      "detail",
+      "entries",
+      "error",
+      "items",
+      "keys",
+      "kind",
+      "limit",
+      "message",
+      "offset",
+      "results",
+      "status",
+      "version",
+    ];
+
+    function looksLikeWrappedValue(value) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+      if (!Object.prototype.hasOwnProperty.call(value, "value") && !Object.prototype.hasOwnProperty.call(value, "value_preview")) {
+        return false;
+      }
+      return [
+        "agent_name",
+        "artifact_kind",
+        "artifact_type",
+        "content_type",
+        "created_at",
+        "expires_at",
+        "mime_type",
+        "resource_mime_type",
+        "source",
+        "storage",
+        "summary",
+        "summary_snippet",
+        "topic",
+        "ttl",
+        "updated_at",
+        "value_preview",
+      ].some((key) => Object.prototype.hasOwnProperty.call(value, key));
+    }
+
+    function normalizeItem(raw, defaultKey) {
+      if (typeof raw === "string") {
+        return { key: raw, value: undefined };
+      }
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+        return { key: defaultKey || "", value: raw };
+      }
+
+      const item = { key: typeof raw.key === "string" ? raw.key : (defaultKey || "") };
+      const payload = looksLikeWrappedValue(raw.value) ? raw.value : raw;
+
+      if (looksLikeWrappedValue(payload)) {
+        if (Object.prototype.hasOwnProperty.call(payload, "value")) item.value = payload.value;
+        if (typeof payload.value_preview === "string") item.value_preview = payload.value_preview;
+      } else if (Object.prototype.hasOwnProperty.call(raw, "value")) {
+        item.value = raw.value;
+      }
+
+      const metaKeys = [
+        "agent_name",
+        "artifact_kind",
+        "artifact_type",
+        "content_type",
+        "created_at",
+        "expires_at",
+        "mime_type",
+        "resource_mime_type",
+        "source",
+        "storage",
+        "summary",
+        "summary_snippet",
+        "topic",
+        "ttl",
+        "updated_at",
+        "value_preview",
+        "value_omitted",
+        "value_size",
+        "value_type",
+        "file_upload",
+        "status",
+      ];
+      for (const key of metaKeys) {
+        if (Object.prototype.hasOwnProperty.call(payload, key)) item[key] = payload[key];
+        else if (Object.prototype.hasOwnProperty.call(raw, key)) item[key] = raw[key];
+      }
+
+      const resolvedValue = resolvedItemValue(item);
+      if (resolvedValue && typeof resolvedValue === "object" && !Array.isArray(resolvedValue)) {
+        if (typeof resolvedValue.subject === "string" && resolvedValue.subject.trim()) item.subject = resolvedValue.subject.trim();
+        if (typeof resolvedValue.note === "string" && resolvedValue.note.trim()) item.note_preview = resolvedValue.note.trim();
+        if (typeof resolvedValue.summary === "string" && resolvedValue.summary.trim()) item.summary = resolvedValue.summary.trim();
+      }
+
+      if (!uploadValueFor(item.value) && !htmlValueFor(item.value)) {
+        const inferredUpload = uploadValueFromContextKey(item.key, item.value);
+        if (inferredUpload) item.value = inferredUpload;
+      }
+
+      return item;
+    }
+
+    function normalizeKeys(keys) {
+      if (!Array.isArray(keys)) return [];
+      return keys
+        .map((entry) => {
+          if (typeof entry === "string") return entry.trim();
+          if (entry && typeof entry === "object" && typeof entry.key === "string") return entry.key.trim();
+          return "";
+        })
+        .filter(Boolean);
+    }
+
+    function normalizeItems(items) {
+      if (!Array.isArray(items)) return [];
+      return items
+        .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+        .map((item) => normalizeItem(item))
+        .filter((item) => typeof item.key === "string" && item.key.trim());
+    }
+
+    function looksLikeContextMap(payload) {
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+      const entries = Object.entries(payload).filter(([key]) => !CONTEXT_WRAPPER_KEYS.includes(key));
+      if (!entries.length) return false;
+      return entries.some(([key, value]) => (
+        looksLikeWrappedValue(value)
+        || typeof value === "string"
+        || typeof value === "number"
+        || typeof value === "boolean"
+        || (value && typeof value === "object" && !Array.isArray(value))
+      ) && (key.includes(":") || key.includes("/") || key.includes("_") || key.includes("-")));
+    }
+
+    function buildCanonicalPayload(payload, source) {
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+
+      const hasCanonicalFields = payload.kind === "context"
+        || typeof payload.action === "string"
+        || Array.isArray(payload.items)
+        || Array.isArray(payload.keys);
+      if (!hasCanonicalFields) return null;
+
+      const items = normalizeItems(payload.items);
+      const keys = normalizeKeys(payload.keys);
+      return {
+        kind: "context",
+        version: typeof payload.version === "number" ? payload.version : 1,
+        action: typeof payload.action === "string" ? payload.action : "list",
+        items,
+        keys: keys.length ? keys : items.map((item) => item.key).filter(Boolean),
+        count: typeof payload.count === "number" ? payload.count : (keys.length || items.length),
+        selected_key: typeof payload.selected_key === "string" ? payload.selected_key : null,
+        notice: payload.notice && typeof payload.notice === "object" ? payload.notice : null,
+        permissions: payload.permissions && typeof payload.permissions === "object" ? payload.permissions : null,
+        space_context: payload.space_context && typeof payload.space_context === "object" ? payload.space_context : null,
+        source,
+      };
+    }
+
+    function buildLegacyPayload(payload, source) {
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+
+      if (payload.context && typeof payload.context === "object" && !Array.isArray(payload.context)) {
+        const items = Object.entries(payload.context).map(([key, value]) => normalizeItem({ value }, key));
+        return {
+          kind: "context",
+          version: 1,
+          action: "list",
+          items,
+          keys: items.map((item) => item.key).filter(Boolean),
+          count: typeof payload.count === "number" ? payload.count : items.length,
+          selected_key: typeof payload.selected_key === "string" ? payload.selected_key : null,
+          notice: payload.notice && typeof payload.notice === "object" ? payload.notice : null,
+          permissions: payload.permissions && typeof payload.permissions === "object" ? payload.permissions : null,
+          space_context: payload.space_context && typeof payload.space_context === "object" ? payload.space_context : null,
+          source,
+        };
+      }
+
+      if (typeof payload.key === "string") {
+        const item = normalizeItem(payload);
+        return {
+          kind: "context",
+          version: 1,
+          action: "get",
+          items: [item],
+          keys: [item.key],
+          count: 1,
+          selected_key: typeof payload.selected_key === "string" ? payload.selected_key : item.key,
+          notice: payload.notice && typeof payload.notice === "object" ? payload.notice : null,
+          permissions: payload.permissions && typeof payload.permissions === "object" ? payload.permissions : null,
+          space_context: payload.space_context && typeof payload.space_context === "object" ? payload.space_context : null,
+          source,
+        };
+      }
+
+      if (looksLikeContextMap(payload)) {
+        const items = Object.entries(payload)
+          .filter(([key]) => !CONTEXT_WRAPPER_KEYS.includes(key))
+          .map(([key, value]) => normalizeItem({ value }, key));
+        return {
+          kind: "context",
+          version: 1,
+          action: "list",
+          items,
+          keys: items.map((item) => item.key).filter(Boolean),
+          count: typeof payload.count === "number" ? payload.count : items.length,
+          selected_key: typeof payload.selected_key === "string" ? payload.selected_key : null,
+          notice: payload.notice && typeof payload.notice === "object" ? payload.notice : null,
+          source,
+        };
+      }
+
+      return null;
+    }
+
+    function extractRawPayload(result) {
+      if (result && result.rawPayload && typeof result.rawPayload === "object") return result.rawPayload;
+      const blocks = Array.isArray(result?.content) ? result.content : [];
+      for (const block of blocks) {
+        if (!block || block.type !== "text" || typeof block.text !== "string") continue;
+        try {
+          const parsed = JSON.parse(block.text);
+          return parsed.structuredContent || parsed;
+        } catch {}
+      }
+      return null;
+    }
+
+    function extractData(result) {
+      const structured = result?.structuredContent && typeof result.structuredContent === "object"
+        ? result.structuredContent
+        : null;
+      const raw = extractRawPayload(result);
+      return (
+        buildCanonicalPayload(structured, "structuredContent")
+        || buildCanonicalPayload(raw, "raw-content")
+        || buildLegacyPayload(structured, "structured-legacy")
+        || buildLegacyPayload(raw, "raw-legacy")
+      );
+    }
+
+    function unwrapV2(data) {
+      // Unwrap v2 envelope: {kind, version, state, data: {...}, actions}
+      if (data && data.version && data.data && typeof data.data === "object") return data.data;
+      return data;
+    }
+
+
+    function buildDebugInfo(result, data) {
+      const structured = result?.structuredContent && typeof result.structuredContent === "object"
+        ? result.structuredContent
+        : null;
+      const raw = extractRawPayload(result);
+      return {
+        rendered_items: Array.isArray(data?.items) ? data.items.length : 0,
+        rendered_keys: Array.isArray(data?.keys) ? data.keys.length : 0,
+        structured_keys: structured ? Object.keys(structured).slice(0, 12) : [],
+        raw_keys: raw && typeof raw === "object" ? Object.keys(raw).slice(0, 12) : [],
+        count: data?.count,
+        action: data?.action,
+        source: data?.source,
+      };
+    }
+
+    function buildDisplayItems(items = state.items, keys = state.keys) {
+      if (items.length) return items;
+      return [];
+    }
+
+    function applyListData(data) {
+      const items = sortItems(unwrapV2(data).items || []);
+      const keys = Array.isArray(data.keys)
+        ? normalizeKeys(data.keys)
+        : items.map((item) => item.key).filter(Boolean);
+      state.items = items;
+      state.keys = keys;
+      state.count = typeof data.count === "number" ? data.count : items.length;
+
+      const displayItems = buildDisplayItems(items, keys);
+      if (state.selectedKey) {
+        const selected = displayItems.find((item) => item.key === state.selectedKey);
+        state.selectedItem = selected || null;
+        if (!selected) state.selectedKey = null;
+      } else {
+        state.selectedItem = null;
+      }
+    }
+
+    function handleToolResult(result, options = {}) {
+      const data = extractData(result);
+      if (!data) {
+        state.loadingList = false;
+        return;
+      }
+      state.permissions = data.permissions || state.permissions;
+      state.spaceContext = data.space_context || state.spaceContext;
+      loadFavoritesForCurrentSpace();
+      loadVaultKeysForCurrentSpace();
+      state.debug = buildDebugInfo(result, data);
+      if (data.notice?.message) {
+        state.notice = data.notice;
+      }
+      if (typeof window !== "undefined") {
+        window.__axContextDebug = {
+          result,
+          data,
+          debug: state.debug,
+        };
+      }
+
+      if (data.action === "get" && data.items && data.items.length === 1) {
+        const item = data.items[0];
+        if (options.expectedKey && item.key !== options.expectedKey) return;
+        state.items = mergeItem(state.items, item);
+        if (!state.keys.includes(item.key)) state.keys = [...state.keys, item.key].sort();
+        state.selectedKey = item.key;
+        state.selectedItem = state.items.find((entry) => entry.key === item.key) || item;
+        state.loadingList = false;
+        state.loadingDetail = false;
+        render();
+        return;
+      }
+
+      applyListData(data);
+      if (data.selected_key) {
+        const selected = buildDisplayItems().find((item) => item.key === data.selected_key);
+        state.selectedKey = data.selected_key;
+        state.selectedItem = selected || null;
+      }
+      state.loadingList = false;
+      state.loadingDetail = false;
+      render();
+    }
+
+    async function loadList(notice) {
+      if (state.loadingList) return;
+      if (notice) state.notice = notice;
+      state.loadingList = true;
+      state.loadingDetail = false;
+      render();
+      try {
+        // Request a larger page than the agent default (50) so a human can browse
+        // a whole space; the server caps this at its hard max. Rows are metadata-only.
+        handleToolResult(await host.callServerTool("context", { action: "list", limit: 200 }));
+      } catch {
+        state.loadingList = false;
+        state.loadingDetail = false;
+        state.notice = { severity: "error", message: "Unable to load context." };
+        render();
+      }
+    }
+
+    function showAllContext() {
+      cancelSearchRender();
+      state.detailRequestGeneration += 1;
+      closeHtmlFullscreenOverlays({ suppressFocus: true });
+      state.selectedKey = null;
+      state.selectedItem = null;
+      state.loadingDetail = false;
+      state.viewMode = "all";
+      state.fileTypeFilter = "";
+      state.topicFilter = "";
+      state.query = "";
+      state.notice = null;
+      resetHtmlMessageListener();
+      render();
+    }
+
+    async function openItem(item) {
+      const requestGeneration = state.detailRequestGeneration + 1;
+      state.detailRequestGeneration = requestGeneration;
+      state.selectedKey = item.key;
+      state.selectedItem = state.items.find((entry) => entry.key === item.key) || item;
+      state.loadingDetail = true;
+      state.notice = null;
+      render();
+      try {
+        const result = await host.callServerTool("context", { action: "get", key: item.key });
+        if (
+          state.detailRequestGeneration !== requestGeneration
+          || state.selectedKey !== item.key
+        ) {
+          return;
+        }
+        handleToolResult(result, { expectedKey: item.key });
+      } catch (error) {
+        if (
+          state.detailRequestGeneration !== requestGeneration
+          || state.selectedKey !== item.key
+        ) {
+          return;
+        }
+        state.loadingDetail = false;
+        state.notice = {
+          severity: "error",
+          message: "Unable to load " + item.key + ".",
+        };
+        render();
+      }
+    }
+
+    async function deleteSelected() {
+      if (!state.selectedItem?.key) return;
+      if (!canDeleteContext()) {
+        state.notice = { severity: "error", message: readOnlyMessage() };
+        render();
+        return;
+      }
+      const key = state.selectedItem.key;
+      if (typeof window !== "undefined" && typeof window.confirm === "function") {
+        const confirmed = window.confirm("Delete context entry '" + key + "'?");
+        if (!confirmed) return;
+      }
+
+      state.loadingDetail = true;
+      render();
+      try {
+        handleToolResult(await host.callServerTool("context", { action: "delete", key }));
+      } catch {
+        state.loadingDetail = false;
+        state.notice = { severity: "error", message: "Delete failed for " + key + "." };
+        render();
+      }
+    }
+
+    async function approveSelected() {
+      if (!state.selectedItem?.key) return;
+      if (!canApproveContext()) {
+        state.notice = { severity: "error", message: readOnlyMessage() };
+        render();
+        return;
+      }
+      const key = state.selectedItem.key;
+      state.loadingDetail = true;
+      render();
+      try {
+        handleToolResult(await host.callServerTool("context", { action: "approve", key }));
+      } catch {
+        state.loadingDetail = false;
+        state.notice = { severity: "error", message: "Approve failed for " + key + "." };
+        render();
+      }
+    }
+
+    async function declineSelected() {
+      if (!state.selectedItem?.key) return;
+      if (!canDeleteContext()) {
+        state.notice = { severity: "error", message: readOnlyMessage() };
+        render();
+        return;
+      }
+      const key = state.selectedItem.key;
+      if (typeof window !== "undefined" && typeof window.confirm === "function") {
+        const confirmed = window.confirm("Decline and remove context entry '" + key + "'?");
+        if (!confirmed) return;
+      }
+      state.loadingDetail = true;
+      render();
+      try {
+        handleToolResult(await host.callServerTool("context", { action: "decline", key }));
+      } catch {
+        state.loadingDetail = false;
+        state.notice = { severity: "error", message: "Decline failed for " + key + "." };
+        render();
+      }
+    }
+
+    async function promoteSelected() {
+      if (!state.selectedItem?.key) return;
+      if (!canPromoteContext()) {
+        state.notice = { severity: "error", message: readOnlyMessage() };
+        render();
+        return;
+      }
+      const key = state.selectedItem.key;
+      state.loadingDetail = true;
+      render();
+      try {
+        const result = await host.callServerTool("context", {
+          action: "promote",
+          key,
+        });
+        const data = extractData(result);
+        const promoted = data?.notice?.code === "context_promoted"
+          || (Array.isArray(data?.items) && data.items.some((item) => item.key === key && isVaultItem(item)));
+        if (!promoted) {
+          state.loadingDetail = false;
+          state.notice = data?.notice?.message
+            ? data.notice
+            : { severity: "error", message: "Promote failed for " + key + "." };
+          render();
+          return;
+        }
+        const promotedItem = Array.isArray(data?.items)
+          ? data.items.find((item) => item.key === key)
+          : null;
+        if (promotedItem) {
+          state.items = mergeItem(state.items, promotedItem);
+        }
+        markKeyAsVault(key);
+        await loadList(data?.notice?.message
+          ? data.notice
+          : { severity: "success", message: "Promoted context \"" + key + "\" to vault." });
+      } catch {
+        state.loadingDetail = false;
+        state.notice = { severity: "error", message: "Promote failed for " + key + "." };
+        render();
+      }
+    }
+
+    function renderHero(root) {
+      const displayItems = buildDisplayItems();
+      const summary = summarize(displayItems);
+      const hero = h("section", { className: "hero" });
+
+      const top = h("div", { className: "hero-top" });
+      const copy = h("div");
+      copy.appendChild(h("h2", null, "Context"));
+      top.appendChild(copy);
+
+      const stats = h("div", { className: "hero-stats" });
+      const statEntries = [
+        { value: displayItems.length, label: state.count && state.count !== displayItems.length ? "Shown" : "Entries" },
+        { value: summary.topics, label: "Topics" },
+        { value: summary.expiringSoon, label: "Expiring Soon" },
+      ];
+      for (const entry of statEntries) {
+        const card = h("div", { className: "stat" });
+        card.appendChild(h("div", { className: "stat-value" }, String(entry.value)));
+        card.appendChild(h("div", { className: "stat-label" }, entry.label));
+        stats.appendChild(card);
+      }
+      top.appendChild(stats);
+      hero.appendChild(top);
+
+      const strip = h("div", { className: "topic-strip" });
+      const topicItems = topTopics(displayItems);
+      if (!topicItems.length) {
+        strip.appendChild(h("div", { className: "topic-pill" }, "No topics yet"));
+      } else {
+        for (const [topic, count] of topicItems) {
+          const pill = h("button", {
+            className: state.topicFilter === topic ? "topic-pill is-active" : "topic-pill",
+            type: "button",
+            "aria-pressed": state.topicFilter === topic ? "true" : "false",
+          });
+          pill.appendChild(h("strong", null, topic));
+          pill.appendChild(h("span", null, count + " keys"));
+          pill.addEventListener("click", () => setTopicFilter(topic));
+          strip.appendChild(pill);
+        }
+      }
+      hero.appendChild(strip);
+      root.appendChild(hero);
+    }
+
+    function renderNotice(root) {
+      if (!state.notice?.message) return;
+      const cls = state.notice.severity === "error" ? "notice notice-error" : "notice notice-info";
+      root.appendChild(h("div", { className: cls }, state.notice.message));
+    }
+
+    function renderPermissionNotice(root) {
+      if (!isReadOnlyMode()) return;
+      root.appendChild(h("div", { className: "notice notice-info", "data-testid": "context-read-only-notice" }, readOnlyMessage()));
+    }
+
+    function renderDebug(root) {
+      if (!state.debug) return;
+      const displayItems = buildDisplayItems();
+      if (!(state.count > 0 && displayItems.length === 0)) return;
+      const box = h("div", { className: "notice notice-error" });
+      const lines = [
+        "Context data mismatch: host says " + state.count + " entries, widget rendered " + displayItems.length + ".",
+        "structured keys: " + (state.debug.structured_keys.length ? state.debug.structured_keys.join(", ") : "(none)"),
+        "raw keys: " + (state.debug.raw_keys.length ? state.debug.raw_keys.join(", ") : "(none)"),
+        "normalized source: " + (state.debug.source || "unknown") + ", normalized keys: " + (state.debug.rendered_keys || 0) + ".",
+        "Open the browser console and inspect window.__axContextDebug for the full payload.",
+      ];
+      box.textContent = lines.join(" ");
+      root.appendChild(box);
+    }
+
+    function renderEmpty(root) {
+      const empty = h("div", { className: "panel browser-panel" });
+      const stateBox = h("div", { className: "empty-state" });
+      stateBox.appendChild(h("strong", null, "No context entries stored"));
+      stateBox.appendChild(h(
+        "p",
+        null,
+        "Use the context tool to set shared status, scratchpad notes, or coordination flags. Once data exists, this explorer will show one-line summaries and let you drill into the full stored value."
+      ));
+      empty.appendChild(stateBox);
+      root.appendChild(empty);
+    }
+
+    function restoreSearchFocusIfNeeded() {
+      if (!state.restoreSearchFocus) return;
+      state.restoreSearchFocus = false;
+      requestAnimationFrame(() => {
+        const input = document.querySelector('[data-testid="context-search-input"]');
+        if (!(input instanceof HTMLInputElement)) return;
+        input.focus();
+        const position = input.value.length;
+        try {
+          input.setSelectionRange(position, position);
+        } catch {}
+      });
+    }
+
+    function cancelSearchRender() {
+      if (!state.searchRenderTimer) return;
+      clearTimeout(state.searchRenderTimer);
+      state.searchRenderTimer = null;
+    }
+
+    function scheduleSearchRender(input) {
+      cancelSearchRender();
+      state.searchRenderTimer = setTimeout(() => {
+        state.searchRenderTimer = null;
+        state.restoreSearchFocus = document.activeElement === input;
+        render();
+      }, 80);
+    }
+
+    function renderBrowserPanel() {
+      loadFavoritesForCurrentSpace();
+      const allItems = sortItems(buildDisplayItems());
+      const displayItems = filterItems(allItems);
+      const counts = viewCounts(allItems);
+      const panel = h("section", { className: "panel browser-panel" });
+      const header = h("div", { className: "panel-header" });
+      const titleBlock = h("div");
+      titleBlock.appendChild(h("div", { className: "panel-title" }, "Context"));
+      const summaryText = state.count && state.count !== displayItems.length
+        ? displayItems.length + " shown of " + state.count + " stored"
+        : displayItems.length + " available";
+      titleBlock.appendChild(h("div", { className: "panel-subtitle" }, summaryText));
+      header.appendChild(titleBlock);
+      const headerActions = h("div", { className: "panel-actions" });
+      headerActions.appendChild(h("div", { className: "summary-chip" }, viewLabel(state.viewMode)));
+      const refreshList = h("button", {
+        className: "btn btn-compact",
+        type: "button",
+        disabled: state.loadingList,
+        title: "Refresh context list",
+        "aria-label": "Refresh context list",
+      }, state.loadingList ? "Refreshing" : "Refresh");
+      refreshList.addEventListener("click", () => loadList());
+      headerActions.appendChild(refreshList);
+      header.appendChild(headerActions);
+      panel.appendChild(header);
+
+      const controls = h("div", { className: "catalog-controls" });
+      const tabs = h("div", { className: "catalog-tabs", role: "tablist", "aria-label": "Context views" });
+      for (const [mode, label, count] of [
+        ["all", "All", counts.all],
+        ["favorites", "Favorites", counts.favorites],
+        ["vault", "Vault", counts.vault],
+        ["expiring", "Expiring", counts.expiring],
+      ]) {
+        const tab = h("button", {
+          className: state.viewMode === mode ? "catalog-tab is-active" : "catalog-tab",
+          type: "button",
+          role: "tab",
+          "aria-selected": state.viewMode === mode ? "true" : "false",
+        }, label + " " + count);
+        tab.addEventListener("click", () => setViewMode(mode));
+        tabs.appendChild(tab);
+      }
+      controls.appendChild(tabs);
+
+      const filterRow = h("div", { className: "catalog-filter-row" });
+      const search = h("label", { className: "catalog-search" });
+      search.appendChild(h("span", null, "Search"));
+      const input = h("input", {
+        type: "search",
+        placeholder: "Search context",
+        value: state.query,
+        "aria-label": "Search context",
+        "data-testid": "context-search-input",
+      });
+      input.addEventListener("input", (event) => {
+        state.query = event.target.value;
+        scheduleSearchRender(input);
+      });
+      search.appendChild(input);
+      filterRow.appendChild(search);
+
+      const typeCounts = fileTypeCounts(allItems);
+      const typeFilter = h("label", { className: "catalog-select" });
+      typeFilter.appendChild(h("span", null, "Type"));
+      const select = h("select", {
+        "aria-label": "Filter by file type",
+        "data-testid": "context-file-type-filter",
+      });
+      select.appendChild(h("option", { value: "" }, "All types"));
+      for (const [type, count] of typeCounts) {
+        select.appendChild(h("option", { value: type }, fileTypeLabel(type) + " " + count));
+      }
+      select.value = state.fileTypeFilter || "";
+      select.addEventListener("change", (event) => {
+        state.fileTypeFilter = event.target.value;
+        render();
+      });
+      typeFilter.appendChild(select);
+      filterRow.appendChild(typeFilter);
+      controls.appendChild(filterRow);
+      panel.appendChild(controls);
+
+      if (state.viewMode === "all" && !state.query && !state.topicFilter && !state.fileTypeFilter) {
+        const favorite = allItems.find(isFavoriteItem);
+        const vault = allItems.find(isVaultItem);
+        if (favorite || vault) {
+          const rail = h("div", { className: "curated-rail" });
+          for (const [label, item] of [["Favorite", favorite], ["Vault", vault]]) {
+            if (!item) continue;
+            const card = h("button", { className: "curated-card", type: "button" });
+            card.appendChild(h("div", { className: "curated-label" }, label));
+            card.appendChild(h("span", { className: "curated-link" }, titleForItem(item)));
+            card.addEventListener("click", () => openItem(item));
+            rail.appendChild(card);
+          }
+          panel.appendChild(rail);
+        }
+      }
+
+      if (!displayItems.length) {
+        const empty = h("div", { className: "empty-state" });
+        empty.appendChild(h("strong", null, "No matching context"));
+        empty.appendChild(h("p", null, "Try a different search, view, or topic filter."));
+        panel.appendChild(empty);
+        return panel;
+      }
+
+      const list = h("div", { className: "entry-grid" });
+      for (const item of displayItems) {
+        const isActive = state.selectedKey === item.key;
+        const chip = h("button", {
+          className: isActive ? "entry-chip is-active" : "entry-chip",
+          type: "button",
+        });
+        chip.addEventListener("click", () => openItem(item));
+
+        const displayValue = resolvedItemValue(item);
+        const uploadValue = uploadValueFor(displayValue);
+        const htmlValue = !uploadValue ? htmlValueFor(displayValue) : null;
+        const body = h("div", { className: "entry-card-body" });
+        body.appendChild(renderEntryThumb(item, uploadValue, htmlValue));
+        const content = h("div", { className: "entry-content" });
+
+        const top = h("div", { className: "entry-top" });
+        const head = h("div", { className: "entry-head" });
+        const rowTitle = titleForItem(item);
+        head.appendChild(h("div", { className: "entry-title" }, rowTitle || item.key || "untitled"));
+        if (item.key && item.key !== rowTitle) {
+          head.appendChild(h("div", { className: "entry-key" }, item.key));
+        }
+        top.appendChild(head);
+        const rowDate = relDate(item.updated_at || item.created_at);
+        if (rowDate) {
+          top.appendChild(h("span", { className: "mini-pill neutral" }, rowDate));
+        }
+        content.appendChild(top);
+
+        content.appendChild(h("div", { className: "entry-preview" }, previewForItem(item)));
+
+        const meta = h("div", { className: "entry-meta" });
+        meta.appendChild(h("span", { className: "mini-pill" }, contextKindLabel(uploadValue, htmlValue, item)));
+        if (isFavoriteItem(item)) {
+          meta.appendChild(h("span", { className: "mini-pill" }, "Favorite"));
+        }
+        if (isVaultItem(item)) {
+          meta.appendChild(h("span", { className: "mini-pill" }, "Vault"));
+        }
+        const actor = publicActorLabel(item.agent_name);
+        if (actor) {
+          meta.appendChild(h("span", { className: "mini-pill neutral" }, "by " + actor));
+        }
+        if (hasExpiry(item)) {
+          meta.appendChild(h("span", { className: "mini-pill warn" }, ttlLabel(item)));
+        }
+        content.appendChild(meta);
+        body.appendChild(content);
+        chip.appendChild(body);
+        list.appendChild(chip);
+      }
+
+      panel.appendChild(list);
+      return panel;
+    }
+
+    function clearSelectedItem() {
+      state.selectedKey = null;
+      state.selectedItem = null;
+      render();
+    }
+
+    function closeHtmlFullscreenOverlays(options) {
+      document.querySelectorAll(".html-fullscreen-overlay").forEach(function(overlay) {
+        if (typeof overlay.__axCloseFullscreen === "function") {
+          overlay.__axCloseFullscreen(options);
+          return;
+        }
+        // Defensive cleanup for stale overlays created before the close hook existed.
+        overlay.remove();
+      });
+    }
+
+    function appendUploadMeta(container, entries) {
+      const meta = h("div", { className: "upload-meta" });
+      for (const [label, val] of entries) {
+        const metaItem = h("div", { className: "upload-meta-item" });
+        metaItem.appendChild(h("strong", null, label));
+        metaItem.appendChild(h("span", null, String(val)));
+        meta.appendChild(metaItem);
+      }
+      container.appendChild(meta);
+    }
+
+    const MARKDOWN_ALLOWED_TAGS = new Set([
+      "a", "blockquote", "br", "code", "del", "em", "h1", "h2", "h3", "h4", "h5", "h6",
+      "hr", "img", "li", "ol", "p", "pre", "s", "strong", "table", "tbody", "td",
+      "th", "thead", "tr", "ul",
+    ]);
+    const MARKDOWN_ALLOWED_ATTRS = {
+      a: new Set(["href", "title"]),
+      code: new Set(["class"]),
+      img: new Set(["alt", "src", "title"]),
+      td: new Set(["align"]),
+      th: new Set(["align"]),
+    };
+    const MARKDOWN_ALLOWED_URL_ATTRS = new Set(["href", "src"]);
+
+    function isUnsafeMarkdownUrl(value) {
+      const normalized = String(value).trim().replace(/[\u0000-\u001F\u007F\s]+/g, "").toLowerCase();
+      if (!normalized) return false;
+      if (normalized.startsWith("javascript:") || normalized.startsWith("data:")) return true;
+      const schemeMatch = normalized.match(/^([a-z][a-z0-9+.-]*):/);
+      // blob: is allowed only for this page's object URLs created from fetched
+      // uploads; every other explicit non-web scheme is stripped.
+      return Boolean(schemeMatch && !["http:", "https:", "blob:"].includes(schemeMatch[0]));
+    }
+
+    function sanitizeMarkdownFragment(frag) {
+      frag.querySelectorAll("*").forEach(function(el) {
+        if (!frag.contains(el)) return;
+        const tag = el.tagName.toLowerCase();
+        if (!MARKDOWN_ALLOWED_TAGS.has(tag)) {
+          el.replaceWith(document.createTextNode(el.textContent || ""));
+          return;
+        }
+
+        const allowedAttrs = MARKDOWN_ALLOWED_ATTRS[tag] || null;
+        for (var a of [...el.attributes]) {
+          const attr = a.name.toLowerCase();
+          if (attr.startsWith("on") || !allowedAttrs || !allowedAttrs.has(attr)) {
+            el.removeAttribute(a.name);
+            continue;
+          }
+          if (MARKDOWN_ALLOWED_URL_ATTRS.has(attr) && isUnsafeMarkdownUrl(a.value)) {
+            el.removeAttribute(a.name);
+          }
+        }
+
+        if (tag === "a" && el.getAttribute("href")) {
+          el.setAttribute("target", "_blank");
+          el.setAttribute("rel", "noopener noreferrer");
+        }
+      });
+    }
+
+    function appendSafeMarkdown(container, text) {
+      var rendered = renderMarkdown(text);
+      var tpl = document.createElement("template");
+      tpl.innerHTML = rendered;
+      var frag = tpl.content;
+      sanitizeMarkdownFragment(frag);
+      container.textContent = "";
+      container.appendChild(frag);
+    }
+
+    function appendApprovalActions(actions, item, noun) {
+      if (itemCanTimeOut(item) && canApproveContext()) {
+        const approveBtn = h("button", {
+          className: "btn btn-success",
+          type: "button",
+          disabled: state.loadingDetail,
+          "data-testid": "context-approve",
+          title: "Keep this " + noun + " permanently — clears expiry so it does not time out.",
+        }, "Approve");
+        approveBtn.addEventListener("click", approveSelected);
+        actions.appendChild(approveBtn);
+      }
+      if (itemCanTimeOut(item) && canDeleteContext()) {
+        const declineBtn = h("button", {
+          className: "btn btn-danger",
+          type: "button",
+          disabled: state.loadingDetail,
+          "data-testid": "context-decline",
+          title: "Decline and remove this " + noun + ".",
+        }, "Decline");
+        declineBtn.addEventListener("click", declineSelected);
+        actions.appendChild(declineBtn);
+      }
+    }
+
+    function renderArtifactDetails(item, uploadValue) {
+      const details = h("details", { className: "artifact-details" });
+      details.appendChild(h("summary", null, "Details"));
+      const body = h("div", { className: "artifact-detail-body" });
+      appendUploadMeta(body, [
+        ["Filename", uploadValue.filename || "Unknown"],
+        ["Type", uploadValue.content_type || "Unknown"],
+        ["Size", formatBytes(uploadValue.size)],
+        ["Attachment ID", uploadValue.attachment_id || "-"],
+      ]);
+
+      const provenance = [];
+      if (item.key) provenance.push(["Context key", item.key]);
+      if (item.agent_name) provenance.push(["Author", item.agent_name]);
+      const detailDate = relDate(item.updated_at || item.created_at);
+      if (detailDate) provenance.push(["Updated", detailDate]);
+      provenance.push(["Expires", contextExpiryLabel(item)]);
+      const sourceLabel = publicSourceLabel(item.source);
+      if (sourceLabel) provenance.push(["Source", sourceLabel]);
+      appendUploadMeta(body, provenance);
+
+      const actions = h("div", { className: "artifact-detail-actions" });
+      if (uploadValue.url) {
+        const uploadLink = h("button", { className: "btn", type: "button" },
+          isRasterImageContentType(uploadValue.content_type) ? "Open full image" : "Download file");
+        uploadLink.addEventListener("click", function() { handleUploadAction(uploadValue); });
+        actions.appendChild(uploadLink);
+      }
+      const refresh = h("button", { className: "btn", type: "button", disabled: state.loadingDetail }, "Refresh");
+      refresh.addEventListener("click", () => openItem(item));
+      actions.appendChild(refresh);
+      appendApprovalActions(actions, item, "document");
+      if (canDeleteContext()) {
+        const deleteBtn = h("button", { className: "btn btn-danger", type: "button", disabled: state.loadingDetail }, "Delete");
+        deleteBtn.addEventListener("click", deleteSelected);
+        actions.appendChild(deleteBtn);
+      }
+      body.appendChild(actions);
+      details.appendChild(body);
+      return details;
+    }
+
+    function renderArtifactPanel() {
+      const item = state.selectedItem;
+      const uploadValue = uploadValueFor(resolvedItemValue(item));
+      const panel = h("section", { className: "artifact-panel" });
+      const toolbar = h("div", { className: "artifact-toolbar" });
+
+      const stage = h("div", { className: "artifact-stage" });
+      if (uploadValue && isImageContentType(uploadValue.content_type) && uploadValue.url) {
+        const img = h("img", {
+          className: "artifact-image",
+          alt: uploadValue.filename || "Uploaded image",
+        });
+        hydrateUploadImage(img, uploadValue.url, uploadValue.content_type);
+        stage.appendChild(img);
+      } else if (uploadValue && isVideoContentType(uploadValue.content_type) && uploadValue.url) {
+        const video = h("video", { className: "artifact-video", controls: true, preload: "metadata" });
+        hydrateUploadSource(video, uploadValue.url, uploadValue.content_type);
+        stage.appendChild(video);
+      } else if (uploadValue && isAudioContentType(uploadValue.content_type) && uploadValue.url) {
+        const card = h("div", { className: "artifact-audio-card" });
+        card.appendChild(h("div", { className: "artifact-file-title" }, uploadValue.filename || "Audio"));
+        const audio = h("audio", { className: "upload-audio", controls: true, preload: "metadata" });
+        const status = h("div", { className: "artifact-media-status", role: "status" }, "Loading audio preview...");
+        audio.addEventListener("loadedmetadata", () => {
+          status.classList.remove("is-error");
+          status.textContent = "Audio preview ready.";
+        });
+        audio.addEventListener("error", () => {
+          status.classList.add("is-error");
+          status.textContent = "Audio preview could not load. Open or download the file from Details.";
+        });
+        hydrateUploadSource(audio, uploadValue.url, uploadValue.content_type);
+        card.appendChild(audio);
+        card.appendChild(status);
+        stage.appendChild(card);
+      } else if (uploadValue && isPdfContentType(uploadValue.content_type) && uploadValue.url) {
+        stage.className = "artifact-stage is-pdf";
+        const viewer = h("div", { className: "artifact-pdf-viewer" });
+        const frame = h("iframe", {
+          className: "artifact-pdf",
+          title: uploadValue.filename || item.key || "PDF document",
+        });
+        // Chrome's native PDF viewer needs same-origin inside a sandboxed blob
+        // frame. hydratePdfSource never falls back to the original upload URL,
+        // so the wider sandbox only applies to object URLs we created here.
+        // HTML artifacts remain sandboxed in their stricter srcdoc renderer.
+        frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-downloads");
+        frame.setAttribute("referrerpolicy", "no-referrer");
+        hydratePdfSource(frame, uploadValue.url, uploadValue.content_type);
+        viewer.appendChild(frame);
+        stage.appendChild(viewer);
+
+        const controlBox = h("div", { className: "artifact-control-box" });
+        controlBox.setAttribute("role", "group");
+        controlBox.setAttribute("aria-label", "PDF actions");
+        const controlTitle = h("div", { className: "artifact-control-title" });
+        controlTitle.appendChild(h("strong", null, uploadValue.filename || item.key || "PDF document"));
+        controlTitle.appendChild(h("span", null, "PDF / " + formatBytes(uploadValue.size)));
+        controlBox.appendChild(controlTitle);
+        const controlActions = h("div", { className: "artifact-control-actions" });
+        const openBtn = h("button", { className: "btn", type: "button" }, "Open");
+        openBtn.addEventListener("click", function() { openUploadUrl(uploadValue.url); });
+        controlActions.appendChild(openBtn);
+        const downloadBtn = h("button", { className: "btn", type: "button" }, "Download");
+        downloadBtn.addEventListener("click", function() { downloadUploadUrl(uploadValue.url, uploadValue.filename); });
+        controlActions.appendChild(downloadBtn);
+        const fullscreenBtn = h("button", { className: "btn", type: "button" }, "Fullscreen");
+        fullscreenBtn.addEventListener("click", function() {
+          if (document.fullscreenElement === viewer && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+            return;
+          }
+          if (viewer.requestFullscreen) {
+            viewer.requestFullscreen().catch(function() {
+              viewer.classList.add("is-focused");
+              viewer.scrollIntoView({ block: "center", behavior: "smooth" });
+            });
+            return;
+          }
+          viewer.classList.add("is-focused");
+          viewer.scrollIntoView({ block: "center", behavior: "smooth" });
+        });
+        controlActions.appendChild(fullscreenBtn);
+        controlBox.appendChild(controlActions);
+        toolbar.appendChild(controlBox);
+      } else if (uploadValue && isMarkdownContentType(uploadValue.content_type) && uploadValue.url) {
+        stage.className = "artifact-stage is-document";
+        const mdContainer = h("div", { className: "artifact-document upload-markdown" }, "Loading markdown...");
+        stage.appendChild(mdContainer);
+        fetchUploadText(uploadValue.url)
+          .then(function(text) { appendSafeMarkdown(mdContainer, text); })
+          .catch(function() { mdContainer.textContent = "Could not load markdown file."; });
+      } else if (uploadValue && isTextContentType(uploadValue.content_type) && uploadValue.url) {
+        stage.className = "artifact-stage is-document";
+        const pre = h("div", { className: "artifact-document artifact-text" }, "Loading...");
+        stage.appendChild(pre);
+        fetchUploadText(uploadValue.url)
+          .then(function(text) { pre.textContent = text; })
+          .catch(function() { pre.textContent = "Could not load file."; });
+      } else if (uploadValue) {
+        const card = h("div", { className: "artifact-file-card" });
+        card.appendChild(h("div", { className: "artifact-file-title" }, uploadValue.filename || item.key || "Uploaded file"));
+        const typeBadge = h("div", { className: "detail-badges" });
+        typeBadge.appendChild(h("span", { className: "mini-pill" }, uploadValue.content_type || "file"));
+        typeBadge.appendChild(h("span", { className: "mini-pill neutral" }, formatBytes(uploadValue.size)));
+        card.appendChild(typeBadge);
+        stage.appendChild(card);
+      } else {
+        stage.appendChild(h("div", { className: "artifact-file-card" }, "This context item is not a file upload."));
+      }
+
+      if (toolbar.childElementCount > 0) {
+        // Only PDFs currently add the floating control box to this toolbar.
+        // The embedding shell owns return navigation via the context/all host
+        // command, keeping MCP app headers consistent across widgets.
+        panel.appendChild(toolbar);
+      }
+      panel.appendChild(stage);
+      if (uploadValue) {
+        panel.appendChild(renderArtifactDetails(item, uploadValue));
+      }
+      return panel;
+    }
+
+    function renderDetailPanel() {
+      const panel = h("section", { className: "panel detail-panel context-detail-panel" });
+
+      if (!state.selectedItem) {
+        const header = h("div", { className: "panel-header" });
+        const titleBlock = h("div");
+        titleBlock.appendChild(h("div", { className: "panel-title" }, "Context detail"));
+        titleBlock.appendChild(h("div", { className: "panel-subtitle" }, "Choose an entry to open its full value."));
+        header.appendChild(titleBlock);
+        panel.appendChild(header);
+
+        const empty = h("div", { className: "detail-empty" });
+        empty.appendChild(h("strong", null, "Pick a context row"));
+        empty.appendChild(h(
+          "p",
+          null,
+          "Choose a summary row to inspect the full stored value, metadata, and expiry details."
+        ));
+        panel.appendChild(empty);
+        return panel;
+      }
+
+      const item = state.selectedItem;
+      const displayValue = resolvedItemValue(item);
+      const uploadValue = uploadValueFor(displayValue);
+      const htmlValue = (!uploadValue && shouldRenderHtml()) ? htmlValueFor(displayValue) : null;
+
+      const managementActions = h("div", { className: "detail-action-bar" });
+      const favoriteBtn = h(
+        "button",
+        { className: "btn", type: "button", disabled: state.loadingDetail },
+        isFavoriteItem(item) ? "Favorited" : "Favorite"
+      );
+      favoriteBtn.addEventListener("click", () => toggleFavorite(item));
+      managementActions.appendChild(favoriteBtn);
+      const promoteBtn = h("button", {
+        className: "btn",
+        type: "button",
+        disabled: state.loadingDetail || !canPromoteContext() || isVaultItem(item),
+        title: isVaultItem(item) ? "Already in the vault" : (canPromoteContext() ? "Save this context entry to the durable vault" : readOnlyMessage()),
+      }, isVaultItem(item) ? "In vault" : "Promote to vault");
+      promoteBtn.addEventListener("click", promoteSelected);
+      managementActions.appendChild(promoteBtn);
+      panel.appendChild(managementActions);
+
+      // --- CONTENT-FIRST LAYOUT for sandboxed HTML ---
+      if (htmlValue) {
+        const hero = h("div", { className: "upload-hero" });
+        const chrome = h("div", { className: "html-card-chrome" });
+        chrome.appendChild(h("span", { className: "sandbox-label" }, "Sandboxed HTML"));
+        const toolbar = h("div", { className: "toolbar" });
+        const reloadBtn = h("button", { className: "tool-btn", type: "button", title: "Reload and reset card state" }, "Reload");
+        const rawBtn = h("button", { className: "tool-btn", type: "button", title: "View raw HTML source" }, "View raw");
+        const fullscreenBtn = h("button", {
+          className: "tool-btn",
+          type: "button",
+          title: "Open HTML preview fullscreen",
+          "aria-label": "Open fullscreen",
+        }, "Fullscreen");
+        const copyKeyBtn = h("button", { className: "tool-btn", type: "button", title: "Copy context key" }, "Copy key");
+        toolbar.appendChild(reloadBtn);
+        toolbar.appendChild(rawBtn);
+        toolbar.appendChild(fullscreenBtn);
+        toolbar.appendChild(copyKeyBtn);
+        chrome.appendChild(toolbar);
+        hero.appendChild(chrome);
+
+        const stage = h("div", { className: "html-stage" });
+
+        function createSandboxedIframe() {
+          const frame = document.createElement("iframe");
+          frame.className = "html-iframe";
+          frame.setAttribute("sandbox", "allow-scripts");
+          frame.setAttribute("referrerpolicy", "no-referrer");
+          frame.setAttribute("loading", "lazy");
+          frame.setAttribute("title", "Sandboxed HTML: " + (item.key || "context entry"));
+          frame.setAttribute("data-context-key", item.key || "");
+          frame.srcdoc = htmlValue.html;
+          return frame;
+        }
+
+        function buildIframe() {
+          const frame = createSandboxedIframe();
+          stage.replaceChildren(frame);
+          return frame;
+        }
+        let iframe = buildIframe();
+
+        reloadBtn.addEventListener("click", () => {
+          iframe = buildIframe();
+        });
+
+        let rawShown = false;
+        rawBtn.addEventListener("click", () => {
+          if (rawShown) {
+            iframe = buildIframe();
+            rawBtn.textContent = "View raw";
+            rawShown = false;
+          } else {
+            const pre = document.createElement("pre");
+            pre.className = "html-raw";
+            pre.textContent = htmlValue.html;
+            stage.replaceChildren(pre);
+            rawBtn.textContent = "View rendered";
+            rawShown = true;
+          }
+        });
+
+        fullscreenBtn.addEventListener("click", () => {
+          if (document.querySelector(".html-fullscreen-overlay")) return;
+          const overlay = h("div", {
+            className: "html-fullscreen-overlay",
+            role: "dialog",
+            "aria-modal": "true",
+            "aria-labelledby": "html-fullscreen-title",
+          });
+          const header = h("div", { className: "html-fullscreen-header" });
+          const titleEl = h(
+            "div",
+            { className: "html-fullscreen-title", id: "html-fullscreen-title" },
+            htmlValue.title || item.key || "Sandboxed HTML"
+          );
+          header.appendChild(titleEl);
+          const backToContextBtn = h("button", {
+            className: "html-fullscreen-close",
+            type: "button",
+            "aria-label": "Back to context",
+          }, "Back to context");
+          header.appendChild(backToContextBtn);
+          const closeBtn = h("button", {
+            className: "html-fullscreen-close",
+            type: "button",
+            "aria-label": "Close fullscreen",
+          }, "Close");
+          header.appendChild(closeBtn);
+
+          const fullscreenStage = h("div", { className: "html-fullscreen-stage" });
+          fullscreenStage.appendChild(createSandboxedIframe());
+          overlay.appendChild(header);
+          overlay.appendChild(fullscreenStage);
+          document.body.appendChild(overlay);
+          closeBtn.focus();
+
+          function closeFullscreen(options) {
+            window.removeEventListener("keydown", onFullscreenKeydown);
+            delete overlay.__axCloseFullscreen;
+            overlay.remove();
+            if (options?.backToContext) {
+              clearSelectedItem();
+            } else if (options?.suppressFocus) {
+              // Host-level navigation is replacing the detail view, so there is no stable button to refocus.
+              notifyHostHeight();
+            } else {
+              fullscreenBtn.focus();
+              notifyHostHeight();
+            }
+          }
+          function onFullscreenKeydown(event) {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              closeFullscreen();
+            }
+          }
+          overlay.__axCloseFullscreen = closeFullscreen;
+          closeBtn.addEventListener("click", closeFullscreen, { once: true });
+          backToContextBtn.addEventListener("click", () => closeFullscreen({ backToContext: true }), { once: true });
+          window.addEventListener("keydown", onFullscreenKeydown);
+        });
+
+        copyKeyBtn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(item.key || "");
+            const original = copyKeyBtn.textContent;
+            copyKeyBtn.textContent = "Copied";
+            setTimeout(() => { copyKeyBtn.textContent = original; }, 1200);
+          } catch (_) {
+            // Clipboard can be unavailable in sandboxed hosts.
+          }
+        });
+
+        // Sandboxed srcdoc iframes report event.origin as "null", so source
+        // identity is the trust check. Only bounded resize messages are used.
+        function onIframeMessage(e) {
+          if (!iframe || e.source !== iframe.contentWindow) return;
+          const m = e.data;
+          if (!m || typeof m !== "object" || m.type !== "ax-resize") return;
+          if (typeof m.height !== "number" || !Number.isFinite(m.height)) return;
+          const clamped = Math.min(1200, Math.max(100, Math.round(m.height)));
+          iframe.style.height = clamped + "px";
+          notifyHostHeight();
+        }
+        state.htmlMessageAbortController = new AbortController();
+        window.addEventListener("message", onIframeMessage, {
+          signal: state.htmlMessageAbortController.signal,
+        });
+
+        hero.appendChild(stage);
+        panel.appendChild(hero);
+      }
+
+      // --- STANDARD LAYOUT for non-upload values ---
+      panel.appendChild(h("div", { className: "detail-label" }, state.loadingDetail ? "Loading latest value..." : "Selected entry"));
+      panel.appendChild(h("div", { className: "detail-topic" }, inferTopic(item)));
+      panel.appendChild(h("div", { className: "detail-title" }, item.key || titleForItem(item)));
+      const detailSummary = previewForItem(item);
+      if (detailSummary) {
+        panel.appendChild(h("div", { className: "detail-summary" }, detailSummary));
+      }
+      const alternateTitle = titleForItem(item);
+      if (alternateTitle && alternateTitle !== item.key) {
+        panel.appendChild(h("div", { className: "detail-key" }, alternateTitle));
+      }
+
+      const badges = h("div", { className: "detail-badges" });
+      const detailDate = relDate(item.updated_at || item.created_at);
+      if (detailDate) {
+        badges.appendChild(h("span", { className: "mini-pill neutral" }, detailDate));
+      }
+      if (hasExpiry(item)) {
+        badges.appendChild(h("span", { className: "mini-pill warn" }, ttlLabel(item)));
+      }
+      const sourceLabel = publicSourceLabel(item.source);
+      if (sourceLabel) {
+        badges.appendChild(h("span", { className: "mini-pill" }, "source: " + sourceLabel));
+      }
+      if (badges.children.length) {
+        panel.appendChild(badges);
+      }
+
+      const metaGrid = h("div", { className: "detail-meta-grid" });
+      const metaEntries = [];
+      const topic = inferTopic(item);
+      if (topic) metaEntries.push(["Topic", topic]);
+      if (item.agent_name) metaEntries.push(["Author", item.agent_name]);
+      if (item.created_at) metaEntries.push(["Created", new Date(item.created_at).toLocaleString()]);
+      metaEntries.push(["Expires", contextExpiryLabel(item)]);
+      for (const [label, value] of metaEntries) {
+        const card = h("div", { className: "meta-card" });
+        card.appendChild(h("strong", null, label));
+        card.appendChild(h("span", null, String(value)));
+        metaGrid.appendChild(card);
+      }
+      if (metaGrid.children.length) {
+        panel.appendChild(metaGrid);
+      }
+
+      const valueCard = h("div", { className: "value-card" });
+      const valueHead = h("div", { className: "value-head" });
+      valueHead.appendChild(h("div", { className: "value-title" }, "Stored value"));
+      const kind = displayValue === null || displayValue === undefined
+        ? "empty"
+        : Array.isArray(displayValue)
+          ? "array"
+          : typeof displayValue;
+      valueHead.appendChild(h("div", { className: "value-kind" }, kind));
+      valueCard.appendChild(valueHead);
+      valueCard.appendChild(h("div", { className: "value-body" }, formatValue(displayValue)));
+      panel.appendChild(valueCard);
+
+      const actions = h("div", { className: "action-row" });
+      const refresh = h("button", { className: "btn", type: "button", disabled: state.loadingDetail }, "Refresh");
+      refresh.addEventListener("click", () => openItem(item));
+      actions.appendChild(refresh);
+      appendApprovalActions(actions, item, "entry");
+
+      if (canDeleteContext()) {
+        const deleteBtn = h("button", { className: "btn btn-danger", type: "button", disabled: state.loadingDetail }, "Delete");
+        deleteBtn.addEventListener("click", deleteSelected);
+        actions.appendChild(deleteBtn);
+      }
+      panel.appendChild(actions);
+
+      return panel;
+    }
+
+    function render() {
+      const displayItems = buildDisplayItems();
+      const root = document.getElementById("app");
+      resetHtmlMessageListener();
+      root.textContent = "";
+      const selectedValue = state.selectedItem ? resolvedItemValue(state.selectedItem) : null;
+      const selectedUpload = uploadValueFor(selectedValue);
+      document.body.classList.toggle("artifact-mode", Boolean(selectedUpload));
+      if (selectedUpload) {
+        root.appendChild(renderArtifactPanel());
+        notifyHostHeight();
+        restoreSearchFocusIfNeeded();
+        return;
+      }
+
+      if (state.selectedItem) {
+        renderNotice(root);
+        renderPermissionNotice(root);
+        renderDebug(root);
+        root.appendChild(renderDetailPanel());
+        notifyHostHeight();
+        restoreSearchFocusIfNeeded();
+        return;
+      }
+
+      renderHero(root);
+      renderNotice(root);
+      renderPermissionNotice(root);
+      renderDebug(root);
+
+      if (!displayItems.length) {
+        renderEmpty(root);
+        notifyHostHeight();
+        restoreSearchFocusIfNeeded();
+        return;
+      }
+
+      root.appendChild(renderBrowserPanel());
+      notifyHostHeight();
+      restoreSearchFocusIfNeeded();
+    }
+
+    host.setHostCommandHandler((command) => {
+      if (command === "context/all" || command === "context:return-to-list") {
+        showAllContext();
+      }
+    });
+
+    host.setToolResultHandler(handleToolResult);
+    await host.connect();
+    await loadList();
+  </script>
+</body>
+</html>

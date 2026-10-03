@@ -1,0 +1,3022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Dashboard - Waystation</title>
+  <style>
+    :root {
+      --ax-bg: var(--color-background-primary, #0a0f1a);
+      --ax-surface: var(--color-background-secondary, rgba(15,23,42,0.92));
+      --ax-surface-strong: var(--color-background-tertiary, rgba(30,41,59,0.96));
+      --ax-text: var(--color-foreground-primary, hsl(210, 40%, 98%));
+      --ax-text-dim: var(--color-foreground-secondary, hsl(215, 20.2%, 65.1%));
+      --ax-border: var(--color-border-default, rgba(255,255,255,0.1));
+      --ax-accent: var(--color-accent-primary, #22d3ee);
+      --ax-accent-soft: rgba(6,182,212,0.12);
+      --ax-warning: #fbbf24;
+      --ax-danger: #fb7185;
+      --ax-shadow: 0 12px 24px -8px rgba(0,0,0,0.25);
+      --ax-radius: 16px;
+      --ax-font: var(--font-family-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+    html, body { min-height: 100%; background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); }
+    body { padding: 16px; }
+    .shell { width: 100%; max-width: 1180px; margin: 0 auto; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .header h2 { font-size: 18px; font-weight: 600; }
+    .count { font-size: 13px; color: var(--ax-text-dim); }
+    .count-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .availability-summary { font-size: 11px; color: var(--ax-text-dim); opacity: 0.85; }
+    .availability-line { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 12px; color: var(--ax-text); }
+    .availability-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+    .availability-word { font-weight: 600; letter-spacing: 0.2px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+    .search-input { min-width: 220px; flex: 1; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text); font-size: 13px; }
+    .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-btn { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-dim); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .filter-btn:hover { border-color: var(--ax-accent); color: var(--ax-accent); }
+    .filter-btn.active { background: var(--ax-accent); border-color: var(--ax-accent); color: #fff; }
+    .scope-tabs { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2px; }
+    .scope-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--ax-border); background: rgba(255,255,255,0.03); color: var(--ax-text-dim); font-size: 12px; font-weight: 650; cursor: pointer; transition: all 0.15s; }
+    .scope-tab:hover { border-color: rgba(34,211,238,0.45); color: var(--ax-text); }
+    .scope-tab.active { border-color: rgba(251,191,36,0.45); background: rgba(251,191,36,0.12); color: var(--ax-warning); }
+    .scope-tab-count { font-size: 11px; opacity: 0.72; }
+    .scope-note { width: 100%; margin-top: -4px; margin-bottom: 4px; color: var(--ax-text-dim); font-size: 12px; line-height: 1.45; }
+    .section-title { margin: 0 0 10px; color: var(--ax-text); font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
+    .section-title span { color: var(--ax-text-dim); font-weight: 500; }
+    .owner-section-title { grid-column: 1 / -1; margin: 6px 0 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(34,211,238,0.16); background: rgba(34,211,238,0.06); color: var(--ax-text); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    /* AGENT-LIFECYCLE-UI: collapsible Inactive (dormant) group */
+    .inactive-toggle { grid-column: 1 / -1; margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--ax-border); background: rgba(148,163,184,0.08); color: var(--ax-text-dim); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
+    .inactive-toggle:hover { color: var(--ax-text); }
+    .inactive-toggle-static { cursor: default; }
+    .inactive-toggle-static:hover { color: var(--ax-text-dim); }
+    .agent-card.is-collapsed { display: none; }
+    .lifecycle-badge { margin-top: 10px; font-size: 11px; color: var(--ax-text-dim); }
+    .agent-card { background: var(--ax-surface); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); padding: 16px; cursor: pointer; transition: all 0.15s; position: relative; }
+    .agent-card:hover { border-color: var(--ax-accent); box-shadow: var(--ax-shadow); transform: translateY(-1px); }
+    .agent-card.is-disabled { border-color: rgba(251,113,133,0.4); background: linear-gradient(var(--ax-surface), var(--ax-surface)) padding-box, rgba(251,113,133,0.08); }
+    .agent-card.is-disabled:hover { border-color: var(--ax-danger); }
+    .agent-card.is-disabled .avatar { filter: grayscale(60%); opacity: 0.75; }
+    .disabled-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(251,113,133,0.14); color: var(--ax-danger); border: 1px solid rgba(251,113,133,0.25); }
+    .disabled-badge::before { content: "■"; font-size: 8px; }
+    .disabled-meta { font-size: 11px; color: var(--ax-danger); margin-top: 6px; line-height: 1.3; }
+    .agent-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .avatar {
+      --avatar-radius: 16px;
+      width: 42px;
+      height: 42px;
+      border-radius: var(--avatar-radius);
+      background:
+        radial-gradient(circle at 30% 18%, rgba(255,255,255,0.94), rgba(255,255,255,0.14) 20%, transparent 38%),
+        linear-gradient(135deg, rgba(34,211,238,0.95), rgba(99,102,241,0.92) 55%, rgba(251,191,36,0.72));
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: -0.04em;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.36),
+        inset 0 -14px 24px rgba(2,6,23,0.24),
+        0 12px 28px -18px rgba(34,211,238,0.9);
+    }
+    .avatar::before {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border-radius: calc(var(--avatar-radius) - 3px);
+      border: 1px solid rgba(255,255,255,0.24);
+    }
+    .avatar::after {
+      content: "";
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      right: -18px;
+      bottom: -18px;
+      border-radius: 999px;
+      background: rgba(2,6,23,0.28);
+    }
+    .avatar .avatar-symbol { position: relative; z-index: 1; line-height: 1; text-shadow: 0 1px 10px rgba(2,6,23,0.55); }
+    .avatar .avatar-image { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; object-fit: cover; border-radius: var(--avatar-radius); background: var(--ax-bg); }
+    .avatar.has-image::before,
+    .avatar.has-image::after { display: none; }
+    .avatar.avatar-space {
+      background:
+        radial-gradient(circle at 28% 20%, rgba(255,255,255,0.95), rgba(255,255,255,0.18) 18%, transparent 36%),
+        linear-gradient(135deg, #fbbf24, #22d3ee 48%, #0f172a);
+    }
+    .avatar.avatar-tool {
+      background:
+        radial-gradient(circle at 30% 18%, rgba(255,255,255,0.88), rgba(255,255,255,0.12) 18%, transparent 36%),
+        linear-gradient(135deg, #10b981, #06b6d4 50%, #1e293b);
+    }
+    .avatar.avatar-human {
+      background:
+        radial-gradient(circle at 30% 18%, rgba(255,255,255,0.86), rgba(255,255,255,0.11) 18%, transparent 36%),
+        linear-gradient(135deg, #64748b, #334155);
+    }
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .agent-handle { font-size: 12px; color: var(--ax-text-dim); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    .status-online { background: var(--ax-accent); }
+    .status-offline { background: var(--ax-text-dim); opacity: 0.4; }
+    .status-disabled { background: var(--ax-danger); box-shadow: 0 0 0 4px rgba(251,113,133,0.12); }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .type-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(6,182,212,0.12); color: var(--ax-accent); }
+    .origin-badge { background: rgba(148,163,184,0.16); color: var(--ax-warning); }
+    .model-badge { background: rgba(127,127,127,0.12); color: var(--ax-text-dim); text-transform: none; letter-spacing: 0; }
+    .relationship-badge { background: rgba(34,211,238,0.14); color: var(--ax-accent); }
+    .space-badge { background: rgba(251,191,36,0.12); color: var(--ax-warning); text-transform: none; letter-spacing: 0; }
+    .trust-badge { background: rgba(16,185,129,0.12); color: #34d399; }
+    .readonly-badge { background: rgba(148,163,184,0.12); color: var(--ax-text-dim); }
+    .availability-badge { background: rgba(34,211,238,0.12); color: var(--ax-accent); text-transform: none; letter-spacing: 0; }
+    .availability-badge.is-degraded { background: rgba(251,191,36,0.12); color: var(--ax-warning); }
+    .availability-badge.is-unavailable { background: rgba(251,113,133,0.14); color: var(--ax-danger); }
+    .setup-badge { background: rgba(251,191,36,0.12); color: var(--ax-warning); text-transform: none; letter-spacing: 0; }
+    .setup-badge.is-blocked { background: rgba(148,163,184,0.14); color: var(--ax-text-dim); }
+    .availability-note { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(251,191,36,0.22); background: rgba(251,191,36,0.08); color: var(--ax-warning); font-size: 12px; line-height: 1.45; }
+    .availability-note.is-blocked { border-color: rgba(148,163,184,0.2); background: rgba(148,163,184,0.08); color: var(--ax-text-dim); }
+    .availability-note.is-info { border-color: rgba(34,211,238,0.22); background: rgba(34,211,238,0.08); color: var(--ax-accent); }
+    .agent-bio { font-size: 13px; color: var(--ax-text-dim); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 10px; min-height: 36px; }
+    .tool-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .tool-chip { padding: 3px 8px; border-radius: 999px; font-size: 11px; background: rgba(6,182,212,0.12); color: var(--ax-accent); }
+    .tool-chip.off { background: rgba(127,127,127,0.1); color: var(--ax-text-dim); }
+    .card-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+    .card-actions .btn-secondary { padding: 6px 10px; font-size: 12px; }
+    .back-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-dim); font-size: 13px; cursor: pointer; margin-bottom: 16px; }
+    .back-btn:hover { border-color: var(--ax-accent); color: var(--ax-accent); }
+    .profile-card { background: var(--ax-surface-strong); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); padding: 24px; box-shadow: var(--ax-shadow); }
+    .terminal-card {
+      background:
+        radial-gradient(circle at 20% 0%, rgba(6,182,212,0.16), transparent 34%),
+        var(--ax-surface-strong);
+      border: 1px solid rgba(6,182,212,0.26);
+      border-radius: var(--ax-radius);
+      padding: 24px;
+      box-shadow: var(--ax-shadow);
+    }
+    .terminal-title { font-size: 20px; font-weight: 650; margin-bottom: 8px; }
+    .terminal-copy { font-size: 14px; color: var(--ax-text-dim); line-height: 1.6; margin-bottom: 14px; }
+    .terminal-detail { display: flex; flex-wrap: wrap; gap: 8px; color: var(--ax-text-dim); font-size: 12px; margin-bottom: 14px; }
+    .profile-top { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .profile-avatar { --avatar-radius: 20px; width: 56px; height: 56px; font-size: 18px; }
+    .profile-name { font-size: 20px; font-weight: 600; }
+    .profile-handle { font-size: 14px; color: var(--ax-text-dim); display: flex; align-items: center; gap: 8px; }
+    .profile-bio { font-size: 14px; color: var(--ax-text-dim); line-height: 1.6; margin-bottom: 16px; }
+    .profile-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .field { background: var(--ax-surface); border-radius: 10px; padding: 12px; }
+    .field-label { font-size: 11px; color: var(--ax-text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .field-value { font-size: 14px; font-weight: 500; }
+    .caps-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .cap-tag { padding: 3px 10px; border-radius: 12px; font-size: 12px; background: rgba(6,182,212,0.12); color: var(--ax-accent); }
+    .msg-btn { padding: 8px 18px; border-radius: 8px; border: none; background: var(--ax-accent); color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+    .msg-btn:hover { opacity: 0.9; }
+    .profile-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .btn-secondary { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text); font-size: 13px; cursor: pointer; }
+    .btn-secondary:hover { border-color: var(--ax-accent); color: var(--ax-accent); }
+    .btn-warning { padding: 8px 14px; border-radius: 8px; border: none; background: rgba(182,106,16,0.16); color: var(--ax-warning); font-size: 13px; cursor: pointer; }
+    .btn-warning:hover { opacity: 0.9; }
+    .btn-danger { padding: 8px 14px; border-radius: 8px; border: none; background: rgba(186,59,45,0.12); color: var(--ax-danger); font-size: 13px; cursor: pointer; }
+    .btn-danger:hover { opacity: 0.9; }
+    .loading { text-align: center; padding: 40px; color: var(--ax-text-dim); }
+    .empty { text-align: center; padding: 40px; color: var(--ax-text-dim); font-size: 14px; }
+    .empty strong { display: block; font-size: 16px; color: var(--ax-text); margin-bottom: 8px; }
+    .create-card { background: var(--ax-surface-strong); border: 2px dashed var(--ax-accent); border-radius: var(--ax-radius); padding: 24px; box-shadow: var(--ax-shadow); }
+    .create-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ax-accent); font-weight: 600; margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: var(--ax-text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .compact-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 240px)); gap: 12px; align-items: start; margin: 8px 0 14px; }
+    .compact-form-grid .form-group { margin-bottom: 0; }
+    .field-required { color: var(--ax-warning); margin-left: 4px; font-weight: 700; }
+    .field-help { margin-top: 6px; font-size: 12px; color: var(--ax-text-dim); line-height: 1.4; }
+    .form-input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text); font-size: 14px; font-family: var(--ax-font); }
+    .form-input:focus { outline: none; border-color: var(--ax-accent); }
+    .form-input.is-missing { border-color: var(--ax-warning); box-shadow: 0 0 0 1px rgba(182,106,16,0.18); }
+    .form-input:disabled { opacity: 0.65; cursor: not-allowed; }
+    textarea.form-input { min-height: 80px; resize: vertical; }
+    .create-summary { margin-bottom: 14px; font-size: 13px; color: var(--ax-text-dim); line-height: 1.5; }
+    .form-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .btn-create { padding: 10px 20px; border-radius: 8px; border: none; background: var(--ax-accent); color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-create:hover { opacity: 0.9; }
+    .btn-create:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-discard { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-dim); font-size: 14px; cursor: pointer; }
+    .btn-discard:hover { border-color: var(--ax-danger); color: var(--ax-danger); }
+    .notice { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+    .notice-error { background: rgba(186,59,45,0.12); color: var(--ax-danger); }
+    .notice-info { background: rgba(18,106,82,0.08); color: var(--ax-accent); }
+    .notice-warning { background: rgba(251,191,36,0.08); color: var(--ax-warning); }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .new-btn { padding: 6px 14px; border-radius: 8px; border: none; background: var(--ax-accent); color: #fff; font-size: 12px; font-weight: 500; cursor: pointer; }
+    .new-btn:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app"><div class="loading">Loading agents...</div></div>
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+    const app = new App({ name: "Agent Dashboard", version: "1.0.0" });
+    const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
+    let hostRequestSeq = 0;
+
+    function getOpenAiBridge() {
+      return typeof window !== "undefined" ? window.openai : undefined;
+    }
+
+    const DEFAULT_CREATE_REQUIRED_FIELDS = ["name", "description"];
+    const AGENT_MODE_OPTIONS = ["sandbox", "privileged"];
+
+    let state = { view: "grid", agents: [], count: 0, total: 0, selected: null, search: "", searchCursor: null, restoreSearchFocus: false, agentScopeFilter: "space", statusFilter: "all", originFilter: "all", typeFilter: "all", crossSpaceLoaded: false, crossSpaceScope: "", crossSpaceLoading: false, crossSpaceLoadingScope: "", draft: null, draftFields: {}, draftSending: false, draftRefreshInFlight: false, draftRefreshedFor: "", terminalDraft: null, controlDraft: null, controlSending: false, controlReturnView: "grid", editAgent: null, editFields: {}, editSending: false, notice: null, noticeKind: "info", draftRequiredFields: DEFAULT_CREATE_REQUIRED_FIELDS, permissions: null, spaceContext: null, availableSpaces: [], spacesLoading: false, spacesLoaded: false, viewer: null, hydrated: false, showInactive: false, availabilitySummary: null };
+
+    function normalizeToolResult(result) {
+      if (result && typeof result === "object" && ("structuredContent" in result || "content" in result)) {
+        return result;
+      }
+      return { structuredContent: result };
+    }
+
+    function notifyHostHeight() {
+      const openaiBridge = getOpenAiBridge();
+      if (openaiBridge && typeof openaiBridge.notifyIntrinsicHeight === "function") {
+        requestAnimationFrame(() => {
+          try {
+            const appRoot = document.getElementById("app");
+            const bodyStyles = window.getComputedStyle(document.body);
+            const paddingTop = parseFloat(bodyStyles.paddingTop || "0") || 0;
+            const paddingBottom = parseFloat(bodyStyles.paddingBottom || "0") || 0;
+            const contentHeight = appRoot
+              ? Math.ceil(appRoot.getBoundingClientRect().height + paddingTop + paddingBottom)
+              : Math.ceil(document.body.getBoundingClientRect().height);
+            openaiBridge.notifyIntrinsicHeight(Math.max(120, contentHeight));
+          } catch {}
+        });
+      }
+    }
+
+    function missingCreateFields(fields, requiredFields = DEFAULT_CREATE_REQUIRED_FIELDS) {
+      return requiredFields.filter((key) => {
+        const value = fields[key];
+        if (Array.isArray(value)) return value.length === 0;
+        return !String(value || "").trim();
+      });
+    }
+
+    const host = {
+      _toolResultHandler: null,
+      _globalsListener: null,
+      setToolResultHandler(handler) {
+        this._toolResultHandler = handler;
+        app.ontoolresult = handler;
+        window.addEventListener("message", (event) => {
+          let msg = event.data;
+          if (!msg) return;
+          if (typeof msg === "string") {
+            try { msg = JSON.parse(msg); } catch { return; }
+          }
+          if (typeof msg !== "object") return;
+          if (msg.method === "ui/notifications/tool-result" && msg.params) {
+            handler(normalizeToolResult(msg.params));
+            return;
+          }
+          if (msg.type === "tool_result" && (msg.initial_data || msg.structuredContent || msg.content)) {
+            handler(normalizeToolResult(msg.initial_data || msg));
+            return;
+          }
+          if (msg.structuredContent || msg.kind) {
+            handler(normalizeToolResult(msg));
+          }
+        });
+      },
+      _deliverToolOutput(globals) {
+        const openaiBridge = getOpenAiBridge();
+        const output = globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")
+          ? globals.toolOutput
+          : openaiBridge?.toolOutput;
+        if (this._toolResultHandler && output !== undefined) {
+          this._toolResultHandler(normalizeToolResult(output));
+        }
+      },
+      async connect() {
+        if (!this._globalsListener) {
+          this._globalsListener = (event) => {
+            const globals = event?.detail?.globals;
+            if (globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")) {
+              this._deliverToolOutput(globals);
+            }
+            notifyHostHeight();
+          };
+          window.addEventListener(OPENAI_SET_GLOBALS_EVENT, this._globalsListener, { passive: true });
+        }
+        await app.connect();
+        this._deliverToolOutput();
+        notifyHostHeight();
+      },
+      async callServerTool(name, args) {
+        const openaiBridge = getOpenAiBridge();
+        if (openaiBridge && typeof openaiBridge.callTool === "function") {
+          return normalizeToolResult(await openaiBridge.callTool(name, args));
+        }
+        return app.callServerTool({ name, arguments: args });
+      },
+      requestHost(method, params) {
+        return new Promise((resolve, reject) => {
+          const id = "agent-dashboard:" + Date.now() + ":" + (++hostRequestSeq);
+          let finished = false;
+          const cleanup = () => {
+            finished = true;
+            window.clearTimeout(timeoutId);
+            window.removeEventListener("message", handleMessage);
+          };
+          const handleMessage = (event) => {
+            let msg = event.data;
+            if (!msg) return;
+            if (typeof msg === "string") {
+              try { msg = JSON.parse(msg); } catch { return; }
+            }
+            if (!msg || typeof msg !== "object" || msg.id !== id) return;
+            cleanup();
+            if (msg.error) {
+              reject(new Error(msg.error.message || (method + " failed.")));
+              return;
+            }
+            resolve(msg.result || { ok: true });
+          };
+          const timeoutId = window.setTimeout(() => {
+            if (finished) return;
+            cleanup();
+            reject(new Error(method + " timed out."));
+          }, 2000);
+          window.addEventListener("message", handleMessage);
+          window.parent.postMessage({
+            jsonrpc: "2.0",
+            id,
+            method,
+            params,
+          }, "*");
+        });
+      },
+      async openCompose(params) {
+        await this.requestHost("ui/open-compose", params);
+        return { ok: true };
+      },
+    };
+
+    function initials(name) {
+      if (!name) return "?";
+      return name.split(/[\s_-]+/).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    }
+
+    function agentAvatarRaw(agent) {
+      return [
+        agent?.type,
+        agent?.agent_type,
+        agent?.origin,
+        agent?.role_label,
+        agent?.template_type,
+      ].join(" ").toLowerCase();
+    }
+
+    const AVATAR_RESOURCE_ORIGINS = new Set([
+      "https://avatars.githubusercontent.com",
+      "https://github.com",
+      "https://raw.githubusercontent.com",
+      "https://user-images.githubusercontent.com",
+      "https://unpkg.com",
+    ]);
+    const AVATAR_UPLOAD_ORIGINS = new Set([
+      window.location.origin,
+    ]);
+    const AVATAR_UPLOAD_PATH_PREFIX = "/api/v1/uploads/files/";
+
+    function safeAvatarUrl(value) {
+      if (typeof value !== "string") return "";
+      const url = value.trim();
+      if (!url) return "";
+      const lower = url.toLowerCase();
+      if (lower.startsWith("data:image/")) return url;
+      try {
+        const parsed = new URL(url, window.location.href);
+        if (parsed.protocol === "https:" && AVATAR_RESOURCE_ORIGINS.has(parsed.origin)) return url;
+        if (
+          parsed.protocol === "https:"
+          && AVATAR_UPLOAD_ORIGINS.has(parsed.origin)
+          && parsed.pathname.startsWith(AVATAR_UPLOAD_PATH_PREFIX)
+        ) {
+          return parsed.href;
+        }
+      } catch (_) {
+        return "";
+      }
+      return "";
+    }
+
+    function agentAvatarUrl(agent) {
+      return safeAvatarUrl(
+        agent?.avatar_url
+          || agent?.avatarUrl
+          || agent?.profile?.avatar_url
+          || agent?.profile?.avatarUrl
+      );
+    }
+
+    function agentEmojiIcon(agent) {
+      const value = agent?.avatar_emoji || agent?.avatarEmoji || agent?.emoji || agent?.icon;
+      return typeof value === "string" && value.trim().length <= 16 ? value.trim() : "";
+    }
+
+    // @test-extract:start quickActionAgentEmoji
+    function quickActionAgentEmoji(handle, displayName) {
+      const key = [handle, displayName].filter(Boolean).join(" ").toLowerCase();
+      if (!key) return "🤖";
+      if (key === "waystation" || /(^|\s)waystation(\s|$)/.test(key) || key === "ax" || key === "a_x" || /(^|\s)(ax|a_x)(\s|$)/.test(key) || key.includes("space agent")) return "✨";
+      if (key.includes("claude")) return "🖥️";
+      if (key.includes("atlas")) return "🗺️";
+      if (key.includes("daimon")) return "🛰️";
+      if (key.includes("zephyr")) return "🌬️";
+      if (key.includes("peach")) return "🍑";
+      if (key.includes("hermes")) return "🪽";
+      if (key.includes("nyx")) return "🌘";
+      if (key.includes("code_weaver") || key.includes("codex")) return "🛠️";
+      if (key.includes("stack")) return "🧱";
+      if (key.includes("canary")) return "🐤";
+      if (key.includes("anvil")) return "⚒️";
+      if (key.includes("god")) return "🔱";
+      if (key.includes("audit")) return "🔎";
+      if (key.includes("protocol")) return "🧭";
+      if (key.includes("canvas")) return "🎨";
+      if (key.includes("cipher")) return "🧠";
+      if (key.includes("ranger")) return "🏹";
+      if (key.includes("sentinel")) return "🛡️";
+      return "🤖";
+    }
+    // @test-extract:end quickActionAgentEmoji
+
+    function agentAvatarSymbol(agent, title) {
+      const emojiIcon = agentEmojiIcon(agent);
+      if (emojiIcon) return emojiIcon;
+      const quickActionEmoji = quickActionAgentEmoji(publicId(agent), title);
+      if (quickActionEmoji && quickActionEmoji !== "🤖") return quickActionEmoji;
+      if (isSpaceAgent(agent)) return "✦";
+      const raw = agentAvatarRaw(agent);
+      if (raw.includes("backend") || raw.includes("api")) return "⌬";
+      if (raw.includes("frontend") || raw.includes("ui")) return "◈";
+      if (raw.includes("mcp")) return "◆";
+      if (raw.includes("cli")) return "⌁";
+      if (raw.includes("sentinel") || raw.includes("security")) return "◇";
+      const fallback = initials(title);
+      return fallback === "A" || fallback === "AG" ? "✶" : fallback;
+    }
+
+    function agentAvatarElement(agent, title, className = "") {
+      const raw = agentAvatarRaw(agent);
+      const avatarUrl = agentAvatarUrl(agent);
+      const tone = isSpaceAgent(agent)
+        ? "avatar-space"
+        : raw.includes("mcp")
+          || raw.includes("backend")
+          || raw.includes("frontend")
+          || raw.includes("cli")
+          || raw.includes("sentinel")
+          || raw.includes("security")
+          ? "avatar-tool"
+          : "avatar-human";
+      const avatar = h("div", {
+        className: ["avatar", tone, avatarUrl ? "has-image" : "", className].filter(Boolean).join(" "),
+        title: title || "Agent",
+        "aria-label": (title || "Agent") + " avatar",
+      });
+      if (avatarUrl) {
+        avatar.appendChild(h("img", { className: "avatar-image", src: avatarUrl, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }));
+      } else {
+        avatar.appendChild(h("span", { className: "avatar-symbol" }, agentAvatarSymbol(agent, title)));
+      }
+      return avatar;
+    }
+
+    function publicId(entity) {
+      if (!entity || typeof entity !== "object") return "agent";
+      const candidates = [
+        entity.handle,
+        entity.username,
+        entity.login,
+        entity.agent_name,
+        entity.name && !/\s/.test(entity.name) ? entity.name : "",
+      ];
+      for (const value of candidates) {
+        if (typeof value === "string" && value.trim()) return value.trim();
+      }
+      if (entity.id) return String(entity.id).slice(0, 8);
+      return "agent";
+    }
+
+    function displayName(agent) {
+      return agent?.display_name || agent?.name || ("@" + publicId(agent));
+    }
+
+    function handleLabel(agent) {
+      const handle = publicId(agent);
+      if (!handle || handle === "agent") return "";
+      const title = displayName(agent);
+      if (title === "@" + handle || title === handle) return "@" + handle;
+      return "@" + handle;
+    }
+
+    function agentSummary(agent) {
+      return (
+        agent?.bio
+        || agent?.specialization
+        || agent?.description
+        || (agent?.model ? "Runs on " + friendlyModel(agent.model) : "")
+        || "No profile summary yet."
+      );
+    }
+
+    const ACRONYMS = new Set(["mcp", "cli", "api", "llm", "ai", "sse", "rls", "jwt", "aws", "gcp"]);
+    function humanizeLabel(value) {
+      if (!value) return "";
+      return String(value)
+        .replace(/[_-]+/g, " ")
+        .toLowerCase()
+        .split(" ")
+        .map((word) => ACRONYMS.has(word) ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    }
+
+    function agentControl(agent) {
+      return agent?.control && typeof agent.control === "object" ? agent.control : {};
+    }
+
+    function agentAvailability(agent) {
+      return agent?.availability && typeof agent.availability === "object" ? agent.availability : {};
+    }
+
+    function agentSetup(agent) {
+      return agent?.setup && typeof agent.setup === "object" ? agent.setup : {};
+    }
+
+    function availabilityStateLabel(agent) {
+      const state = String(agentAvailability(agent).state || "").toLowerCase();
+      if (state === "available") return "Available";
+      if (state === "degraded") return "Limited";
+      if (state === "unavailable") return "Not available";
+      return "";
+    }
+
+    function availabilityReasonLabel(reason) {
+      const normalized = String(reason || "").toLowerCase();
+      if (normalized === "connected") return "connected";
+      if (normalized === "recently_seen") return "recently seen";
+      if (normalized === "warming") return "warming up";
+      if (normalized === "offline") return "offline";
+      if (normalized === "on_break") return "on break";
+      if (normalized === "disabled") return "disabled";
+      return humanizeLabel(reason);
+    }
+
+    function setupStateLabel(agent) {
+      const state = String(agentSetup(agent).state || "").toLowerCase();
+      if (state === "ready") return "Ready";
+      if (state === "needs_setup") return "Setup required";
+      if (state === "blocked") return "Owner setup required";
+      return "";
+    }
+
+    function availabilityBadge(agent) {
+      const label = availabilityStateLabel(agent);
+      if (!label) return null;
+      const state = String(agentAvailability(agent).state || "").toLowerCase();
+      return {
+        label,
+        className: 'availability-badge' + (state ? ' is-' + state : ''),
+      };
+    }
+
+    function setupBadge(agent) {
+      const setup = agentSetup(agent);
+      if (!setup || !setup.required) return null;
+      const label = setupStateLabel(agent);
+      if (!label) return null;
+      const state = String(setup.state || "").toLowerCase();
+      return {
+        label,
+        className: 'setup-badge' + (state ? ' is-' + state : ''),
+      };
+    }
+
+    function availabilityDetail(agent) {
+      const availability = agentAvailability(agent);
+      const setup = agentSetup(agent);
+      const availabilityState = String(availability.state || "").toLowerCase();
+      const availabilityReason = String(availability.reason || "").toLowerCase();
+      const setupState = String(setup.state || "").toLowerCase();
+      const reasonLabel = availabilityReasonLabel(availabilityReason);
+
+      if (setupState === "needs_setup") {
+        return {
+          tone: "warning",
+          message: "Setup required — reconnect this runtime to make the agent available.",
+        };
+      }
+      if (setupState === "blocked") {
+        return {
+          tone: "blocked",
+          message: "Not available — only the owner can reconnect or finish setup for this agent.",
+        };
+      }
+      if (availabilityState === "degraded") {
+        return {
+          tone: "info",
+          message: reasonLabel ? 'Availability is limited — ' + reasonLabel + '.' : 'Availability is limited right now.',
+        };
+      }
+      if (availabilityState === "unavailable" && reasonLabel && !agentIsDisabled(agent)) {
+        return {
+          tone: "blocked",
+          message: 'Currently not available — ' + reasonLabel + '.',
+        };
+      }
+      return null;
+    }
+
+    // @test-extract:start availabilityLabelKey
+    // AGENT-LIFECYCLE-UI: single-word availability label sourced from the MCP
+    // tool (messageability.availability_label). One of online | idle | dormant |
+    // needs_setup | disabled. Falls back to deriving from availability.state for
+    // older payloads so the widget never reverts to "warming up".
+    var AVAILABILITY_LABEL_META = {
+      online:      { text: "Online",          dot: "#22c55e" },
+      idle:        { text: "Routable/queued", dot: "#eab308" },
+      dormant:     { text: "Dormant",         dot: "#9ca3af" },
+      needs_setup: { text: "Needs setup",     dot: "#f97316" },
+      disabled:    { text: "Disabled",        dot: "#ef4444" },
+    };
+
+    function availabilityLabelKey(agent) {
+      var m = agent && agent.messageability;
+      // Control-disabled/owner-blocked state must win over any stale backend
+      // availability label so disabled cards never render as Online/Idle.
+      if (agentIsDisabled(agent)) return "disabled";
+      if (agentSetup(agent).required) return "needs_setup";
+      var label = m && m.availability_label;
+      if (label && AVAILABILITY_LABEL_META[label]) return label;
+      // Fallback derivation for payloads without availability_label.
+      var state = String(agentAvailability(agent).state || "").toLowerCase();
+      if (state === "available") return "online";
+      if (state === "degraded") return "idle";
+      var lifecycle = String((m && m.lifecycle_state) || agent.lifecycle_state || "").toLowerCase();
+      if (lifecycle === "dormant") return "dormant";
+      return "dormant";
+    }
+    // @test-extract:end availabilityLabelKey
+
+    function availabilityLabelMeta(agent) {
+      return AVAILABILITY_LABEL_META[availabilityLabelKey(agent)] || AVAILABILITY_LABEL_META.dormant;
+    }
+
+    function presenceSortRank(agent) {
+      if (agentIsDisabled(agent)) return 4;
+      const key = availabilityLabelKey(agent);
+      if (key === "online") return 0;
+      if (key === "idle") return 1;
+      if (key === "needs_setup") return 2;
+      if (key === "dormant") return 3;
+      if (key === "disabled") return 4;
+      // Unknown future labels should not outrank known live/idle agents.
+      return 3;
+    }
+
+    function comparePresenceThenName(a, b) {
+      const rankDiff = presenceSortRank(a) - presenceSortRank(b);
+      if (rankDiff) return rankDiff;
+      const scoreA = Number(a?.messageability?.score || 0);
+      const scoreB = Number(b?.messageability?.score || 0);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return displayName(a).localeCompare(displayName(b));
+    }
+
+    // AGENT-LIFECYCLE-UI: map raw Bedrock/provider model ids to short friendly
+    // names. Already-friendly ids (e.g. "sonnet-4.6") pass through unchanged.
+    function friendlyModel(model) {
+      var raw = String(model || "").trim();
+      if (!raw) return "";
+      var low = raw.toLowerCase();
+      var pairs = [
+        ["claude-3-5-haiku", "Claude 3.5 Haiku"],
+        ["claude-3-5-sonnet", "Claude 3.5 Sonnet"],
+        ["claude-3-7-sonnet", "Claude 3.7 Sonnet"],
+        ["claude-3-haiku", "Claude 3 Haiku"],
+        ["claude-3-opus", "Claude 3 Opus"],
+        ["claude-3-sonnet", "Claude 3 Sonnet"],
+        ["claude-opus-4", "Claude Opus 4"],
+        ["claude-sonnet-4", "Claude Sonnet 4"],
+        ["nova-lite", "Nova Lite"],
+        ["nova-pro", "Nova Pro"],
+        ["nova-micro", "Nova Micro"],
+        ["gemini-2.0-flash", "Gemini 2.0 Flash"],
+        ["gemini-1.5-flash", "Gemini 1.5 Flash"],
+        ["gemini-1.5-pro", "Gemini 1.5 Pro"],
+      ];
+      // Only rewrite ids that look like raw provider ids (region prefixes,
+      // version suffixes, slashes, colons). Leave short friendly ids alone.
+      var looksRaw = /[:/]/.test(raw) || /^[a-z]{2}\./.test(low) || /-v\d+:?\d*$/.test(low) || /\d{8}/.test(low);
+      if (!looksRaw) return raw;
+      for (var i = 0; i < pairs.length; i++) {
+        if (low.indexOf(pairs[i][0]) !== -1) return pairs[i][1];
+      }
+      return raw;
+    }
+
+    function availabilitySummaryFromData(agents) {
+      // Prefer counting the actually-visible agents so the header always matches
+      // the rendered list. The backend availability_summary covers the FULL
+      // payload, which over-counts in client-filtered scopes (Other users /
+      // cross-space). Fall back to the payload summary only when no agents are
+      // passed or labels are absent (older backend).
+      var s;
+      if (Array.isArray(agents)) {
+        var counts = { online: 0, idle: 0, dormant: 0, needs_setup: 0, disabled: 0 };
+        var sawLabel = false;
+        for (var j = 0; j < agents.length; j++) {
+          var m = agents[j] && agents[j].messageability;
+          var label = m && m.availability_label;
+          if (label && Object.prototype.hasOwnProperty.call(counts, label)) { counts[label]++; sawLabel = true; }
+        }
+        s = sawLabel ? counts : state.availabilitySummary;
+      } else {
+        s = state.availabilitySummary;
+      }
+      if (!s || typeof s !== "object") return "";
+      var order = [
+        ["online", "online"],
+        ["idle", "idle"],
+        ["dormant", "dormant"],
+        ["needs_setup", "need setup"],
+        ["disabled", "disabled"],
+      ];
+      var parts = [];
+      for (var i = 0; i < order.length; i++) {
+        var n = s[order[i][0]];
+        if (n) parts.push(n + " " + order[i][1]);
+      }
+      return parts.join("  ·  ");
+    }
+
+    function agentIsDisabled(agent) {
+      const control = agentControl(agent);
+      const controlState = String(control.state || control.status || control.kind || "").toLowerCase();
+      return Boolean(
+        control.is_disabled
+        || control.disabled
+        || agent?.is_disabled
+        || agent?.disabled
+        || controlState === "break"
+        || controlState === "disabled"
+      );
+    }
+
+    function disabledMetaText(agent, detailed) {
+      if (!agentIsDisabled(agent)) return "";
+      const control = agentControl(agent);
+      const reason = control.disabled_reason || control.reason || "Disabled";
+      const untilValue =
+        control.disabled_until
+        || control.until
+        || control.break_until_ts
+        || agent?.pause_expires_at;
+      let untilText = "";
+      if (untilValue) {
+        try {
+          const until = new Date(untilValue);
+          if (detailed) {
+            untilText = " — until " + until.toLocaleString();
+          } else {
+            const now = new Date();
+            const mins = Math.round((until.getTime() - now.getTime()) / 60000);
+            if (mins > 0 && mins < 60) untilText = " (" + mins + "m remaining)";
+            else if (mins >= 60 && mins < 1440) untilText = " (" + Math.round(mins / 60) + "h remaining)";
+            else if (mins >= 1440) untilText = " (until " + until.toLocaleDateString() + ")";
+          }
+        } catch {
+          // ignore parse errors from malformed timestamps
+        }
+      }
+      return reason + untilText;
+    }
+
+    // @test-extract:start normalizedStatus
+    function normalizedStatus(agent) {
+      if (agentIsDisabled(agent)) return "disabled";
+      const availabilityKey = availabilityLabelKey(agent);
+      if (availabilityKey === "online" || availabilityKey === "idle") return "active";
+      const status = String(agent?.status || "").toLowerCase();
+      if (status === "active" || status === "online") return "active";
+      if (agent?.is_online) return "active";
+      return "inactive";
+    }
+    // @test-extract:end normalizedStatus
+
+    function replaceAgentInState(updatedAgent) {
+      if (!updatedAgent || !updatedAgent.id) return;
+      state.agents = state.agents.map((agent) => agent.id === updatedAgent.id ? updatedAgent : agent);
+      if (state.selected && state.selected.id === updatedAgent.id) {
+        state.selected = updatedAgent;
+      }
+    }
+
+    function draftValues(draft) {
+      return {
+        draft_id: draft?.draft_id || "",
+        version: draft?.version,
+        status: draft?.status || "",
+        name: draft?.name || draft?.agent?.name || "",
+        description: draft?.description || draft?.agent?.description || "",
+        system_prompt: draft?.system_prompt || draft?.agent?.system_prompt || "",
+        model: draft?.model || draft?.agent?.model || "",
+        agent_mode: draft?.agent_mode || "sandbox",
+      };
+    }
+
+    const TERMINAL_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+
+    function terminalDraftKey(draftId) {
+      return "ax:mcp:agents:terminal-draft:" + String(draftId || "");
+    }
+
+    function readTerminalDraft(draftId) {
+      if (!draftId || typeof window === "undefined" || !window.sessionStorage) return null;
+      try {
+        const raw = window.sessionStorage.getItem(terminalDraftKey(draftId));
+        if (!raw) return null;
+        const value = JSON.parse(raw);
+        if (!value || Date.now() - Number(value.saved_at || 0) > TERMINAL_DRAFT_TTL_MS) {
+          window.sessionStorage.removeItem(terminalDraftKey(draftId));
+          return null;
+        }
+        return value;
+      } catch {
+        return null;
+      }
+    }
+
+    function storeTerminalDraft(draftId, terminal) {
+      if (!draftId || !terminal || typeof window === "undefined" || !window.sessionStorage) return;
+      try {
+        const created = terminal.created || terminal.agent || {};
+        // Only persist display fields needed to suppress replay after approval.
+        // Never cache raw tool results here; future payloads may gain auth or
+        // delegation metadata that does not belong in browser storage.
+        window.sessionStorage.setItem(terminalDraftKey(draftId), JSON.stringify({
+          draft_id: draftId,
+          saved_at: Date.now(),
+          status: terminal.status || "",
+          name: terminal.name || created.name || "",
+          created: {
+            id: created.id || "",
+            name: created.name || "",
+            agent_type: created.agent_type || "",
+          },
+        }));
+      } catch {
+        // sessionStorage can be unavailable in restricted browser contexts.
+      }
+    }
+
+    function startLocalCreateDraft() {
+      const draft = {
+        name: "",
+        description: "",
+        system_prompt: "",
+        model: "",
+        agent_mode: "sandbox",
+      };
+      state.draft = draft;
+      state.draftFields = draftValues(draft);
+      state.draftRequiredFields = DEFAULT_CREATE_REQUIRED_FIELDS;
+      state.notice = null;
+      render();
+    }
+
+    function applyDraftPayload(draft, requiredFields) {
+      const normalized = draftValues(draft || {});
+      state.draft = { ...(draft || {}), ...normalized };
+      state.controlDraft = null;
+      state.draftFields = { ...normalized };
+      state.draftRequiredFields = requiredFields || DEFAULT_CREATE_REQUIRED_FIELDS;
+      state.notice = null;
+    }
+
+    function applyTerminalDraft(terminal) {
+      state.terminalDraft = terminal;
+      state.draft = null;
+      state.draftFields = {};
+      state.draftRequiredFields = DEFAULT_CREATE_REQUIRED_FIELDS;
+      state.draftSending = false;
+      state.draftRefreshInFlight = false;
+      state.controlDraft = null;
+      state.selected = null;
+      state.view = "terminal";
+      state.notice = null;
+    }
+
+    async function refreshDraftStatus(draftId) {
+      if (!draftId || state.draftRefreshInFlight || state.draftRefreshedFor === draftId) return;
+      state.draftRefreshInFlight = true;
+      state.draftRefreshedFor = draftId;
+      try {
+        const result = await host.callServerTool("agents", { action: "get_draft", draft_id: draftId });
+        handleToolResult(result, "draft-refresh");
+      } catch (err) {
+        state.draftRefreshedFor = "";
+        state.notice = err instanceof Error ? err.message : "Could not refresh draft status.";
+        state.noticeKind = "error";
+        render();
+      } finally {
+        state.draftRefreshInFlight = false;
+      }
+    }
+
+    function draftEditableChanges() {
+      const current = state.draft || {};
+      const changes = {};
+      const nextName = (state.draftFields.name || "").trim();
+      const nextDescription = (state.draftFields.description || "").trim();
+      const nextMode = (state.draftFields.agent_mode || "sandbox").trim();
+      if (nextName && nextName !== (current.name || "")) changes["agent.name"] = nextName;
+      if (nextDescription !== (current.description || "")) changes["agent.description"] = nextDescription;
+      if (nextMode && nextMode !== (current.agent_mode || "sandbox")) changes.agent_mode = nextMode;
+      return changes;
+    }
+
+    function mergedControlAgent(payload) {
+      if (payload?.agent && payload.agent.id) return payload.agent;
+      const control = payload?.control;
+      if (!control || typeof control !== "object") return null;
+      const agentId =
+        payload?.agent_id
+        || state.controlDraft?.agent_id
+        || state.selected?.id
+        || null;
+      if (!agentId) return null;
+      const existing =
+        state.agents.find((agent) => agent.id === agentId)
+        || (state.selected && state.selected.id === agentId ? state.selected : null);
+      if (!existing) return null;
+      return { ...existing, control: { ...agentControl(existing), ...control } };
+    }
+
+    function applyControlApplied(payload) {
+      const updatedAgent = mergedControlAgent(payload);
+      if (!updatedAgent) return false;
+      const controlAction = payload?.control_action || (agentIsDisabled(updatedAgent) ? "disable" : "enable");
+      replaceAgentInState(updatedAgent);
+      state.selected = updatedAgent;
+      state.view = "profile";
+      state.controlDraft = null;
+      state.controlSending = false;
+      state.notice = controlAction === "enable"
+        ? "Agent re-enabled."
+        : "Agent disabled successfully.";
+      state.noticeKind = "info";
+      render();
+      return true;
+    }
+
+    // queueControlReview removed — will be added with GOVERN-001 agent control actions
+
+    function enabledToolNames(agent) {
+      const enabled = agent?.enabled_tools;
+      if (!enabled || typeof enabled !== "object") return [];
+      return Object.entries(enabled)
+        .filter(([, value]) => Boolean(value))
+        .map(([key]) => humanizeLabel(key))
+        .slice(0, 4);
+    }
+
+    function agentActionCapabilities(agent) {
+      const sources = [
+        agent?.action_capabilities,
+        agent?.action_permissions,
+        agent?.permissions,
+        agent?.controls,
+        agent,
+      ];
+      if (agent?.capabilities && !Array.isArray(agent.capabilities) && typeof agent.capabilities === "object") {
+        sources.push(agent.capabilities);
+      }
+      return sources.find((value) => value && typeof value === "object" && !Array.isArray(value)) || null;
+    }
+
+    function explicitBool(source, keys) {
+      if (!source || typeof source !== "object") return undefined;
+      for (const key of keys) {
+        if (typeof source[key] === "boolean") return source[key];
+      }
+      return undefined;
+    }
+
+    function isSpaceAgent(agent) {
+      const type = normalizeIdentifier(agent?.agent_type || agent?.type || agent?.role || agent?.kind);
+      return type === "space_agent" || type === "space-agent";
+    }
+
+    function canControlAgent(agent, action) {
+      const caps = agentActionCapabilities(agent);
+      const actionKeys = action === "enable"
+        ? ["can_enable", "can_reenable", "enable"]
+        : ["can_disable", "disable"];
+      const explicitAction = explicitBool(caps, actionKeys);
+      if (explicitAction !== undefined) return explicitAction;
+      const explicitControl = explicitBool(caps, ["can_control", "control", "can_manage"]);
+      if (explicitControl !== undefined) return explicitControl;
+      if (isSpaceAgent(agent)) return false;
+      return viewerOwnsAgent(agent);
+    }
+
+    function canUpdateAgent(agent) {
+      const caps = agentActionCapabilities(agent);
+      const explicitUpdate = explicitBool(caps, ["can_update", "update", "can_edit", "edit", "can_manage"]);
+      if (explicitUpdate !== undefined) return explicitUpdate;
+      return viewerOwnsAgent(agent);
+    }
+
+    function agentCapabilityTags(agent) {
+      if (!Array.isArray(agent?.capabilities)) return [];
+      return agent.capabilities.filter(Boolean);
+    }
+
+    function labelForRelationship(value) {
+      const normalized = String(value || "").toLowerCase();
+      if (["owned", "owner", "self", "mine", "owned_by_viewer"].includes(normalized)) return "Owned by you";
+      if (["other_user", "member", "external_user"].includes(normalized)) return "Other user";
+      if (["space_agent", "space"].includes(normalized)) return "Space agent";
+      if (["ax_moderated", "moderated", "moderator"].includes(normalized)) return "Waystation moderated";
+      return value ? humanizeLabel(value) : "";
+    }
+
+    function agentRelationshipBadges(agent) {
+      const badges = [];
+      if (isSpaceAgent(agent)) {
+        badges.push({ label: "Space-owned", className: "relationship-badge" });
+      } else if (viewerOwnsAgent(agent)) {
+        badges.push({ label: "Owned by you", className: "relationship-badge" });
+      } else if (agent?.owner_username) {
+        badges.push({
+          label: "Owner @" + String(agent.owner_username).replace(/^@/, ""),
+          className: "relationship-badge",
+        });
+      }
+
+      const trust =
+        agent?.trust_badge
+        || agent?.trust_status
+        || agent?.trust_level_label
+        || "";
+      if (trust) badges.push({ label: humanizeLabel(trust), className: "trust-badge" });
+
+      const rawBadges = Array.isArray(agent?.badges) ? agent.badges : [];
+      for (const badge of rawBadges) {
+        const label = humanizeLabel(badge);
+        if (!label) continue;
+        const lower = String(badge).toLowerCase();
+        const className = lower.includes("trust") || lower.includes("verified")
+          ? "trust-badge"
+          : lower.includes("read") || lower.includes("limited")
+            ? "readonly-badge"
+            : "relationship-badge";
+        badges.push({ label, className });
+      }
+      return badges;
+    }
+
+    function currentSpaceId() {
+      return state.spaceContext?.id || state.spaceContext?.space_id || "";
+    }
+
+    function agentMergeKey(agent) {
+      return String(agent?.id || agent?.agent_id || agent?.name || agent?.display_name || "").trim();
+    }
+
+    function mergeAgentLists(existingAgents, incomingAgents) {
+      const merged = [];
+      const indexByKey = new Map();
+      for (const source of [existingAgents, incomingAgents]) {
+        const agents = Array.isArray(source) ? source : [];
+        for (const agent of agents) {
+          if (!agent || typeof agent !== "object") continue;
+          const key = agentMergeKey(agent);
+          if (!key) continue;
+          if (!indexByKey.has(key)) {
+            indexByKey.set(key, merged.length);
+            merged.push({ ...agent });
+            continue;
+          }
+          const index = indexByKey.get(key);
+          merged[index] = { ...merged[index], ...agent };
+        }
+      }
+      return merged;
+    }
+
+    function normalizeIdentifier(value) {
+      return String(value || "").trim().replace(/^@/, "").toLowerCase();
+    }
+
+    function viewerIdentifiers() {
+      const viewer = state.viewer || {};
+      const permissions = permissionState();
+      return [
+        viewer.user_id,
+        viewer.username,
+        viewer.email,
+        viewer.agent_id,
+        viewer.agent_name,
+        permissions.viewer_id,
+        permissions.viewer_username,
+        permissions.viewer_handle,
+      ].map(normalizeIdentifier).filter(Boolean);
+    }
+
+    function agentOwnerIdentifiers(agent) {
+      return [
+        agent?.owner_user_id,
+        agent?.user_id,
+        agent?.owner_username,
+      ].map(normalizeIdentifier).filter(Boolean);
+    }
+
+    function agentHasOwnershipSignal(agent) {
+      if (!agent || typeof agent !== "object") return false;
+      if (isSpaceAgent(agent)) return true;
+      if (typeof agent.is_own === "boolean" || typeof agent.can_control === "boolean" || typeof agent.can_update === "boolean") return true;
+      return Boolean(agent?.owner_username || agentOwnerIdentifiers(agent).length);
+    }
+
+    function viewerOwnsAgent(agent) {
+      if (!agent || typeof agent !== "object") return false;
+      if (isSpaceAgent(agent)) return false;
+      return agent.is_own === true || agent.can_control === true || agent.can_update === true;
+    }
+
+    function isOtherUserAgent(agent) {
+      if (isSpaceAgent(agent)) return false;
+      if (viewerOwnsAgent(agent)) return false;
+      return agentHasOwnershipSignal(agent);
+    }
+
+    function spaceOwnerLabel(agent) {
+      const displayId = displaySpaceIdForAgent(agent);
+      const name = displayId ? spaceLabel(agent, displayId) : agent?.space_name;
+      return name ? name + " space" : "Current space";
+    }
+
+    function ownerLabel(agent) {
+      if (isSpaceAgent(agent)) return spaceOwnerLabel(agent);
+      if (viewerOwnsAgent(agent)) return "You";
+      if (agent?.owner_username) return "@" + String(agent.owner_username).replace(/^@/, "");
+      const ownerId = agent?.owner_user_id || agent?.user_id;
+      if (ownerId) return "User " + String(ownerId).slice(0, 8);
+      return "Other user";
+    }
+
+    function ownerSectionTitle(agent) {
+      if (isSpaceAgent(agent)) return "Space agents";
+      const label = ownerLabel(agent);
+      return label === "You" ? "Your agents" : label + "'s agents";
+    }
+
+    function isSharedSpace() {
+      const context = state.spaceContext || {};
+      if (context.scope) return context.scope === "shared_space";
+      return context.is_personal === false;
+    }
+
+    function spaceNameFromAccess(agent, id) {
+      if (!id) return "";
+      const access = Array.isArray(agent?.space_access) ? agent.space_access : [];
+      const row = access.find((entry) => String(entry?.space_id || entry?.id || "") === String(id));
+      return row?.name || row?.space_name || "";
+    }
+
+    function globalSpaceName(id) {
+      if (!id) return "";
+      const row = (state.availableSpaces || []).find((space) => String(space?.id || space?.space_id || "") === String(id));
+      return row?.name || row?.space_name || row?.workspace_name || "";
+    }
+
+    function shortSpaceId(id) {
+      return id ? String(id).slice(0, 8) : "";
+    }
+
+    function spaceLabel(agent, id) {
+      const raw = String(id || "");
+      if (!raw) return "";
+      if (String(agent?.space_id || "") === raw && agent?.space_name) return agent.space_name;
+      const direct = spaceNameFromAccess(agent, raw) || globalSpaceName(raw);
+      if (direct) return direct;
+      return shortSpaceId(raw);
+    }
+
+    function uniqueSpaceIds(values) {
+      const seen = new Set();
+      const ids = [];
+      for (const value of values) {
+        const id = String(value || "").trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        ids.push(id);
+      }
+      return ids;
+    }
+
+    function explicitAgentPlacementSpaceIds(agent) {
+      const values = [
+        agent?.effective_space_id,
+        agent?.current_space_id,
+        agent?.placement_space_id,
+        agent?.assigned_space_id,
+      ];
+      for (const source of [agent?.effective_space, agent?.current_space, agent?.placement, agent?.assigned_space]) {
+        if (source && typeof source === "object") values.push(source.space_id || source.id);
+      }
+      return uniqueSpaceIds(values);
+    }
+
+    function displaySpaceIdForAgent(agent) {
+      const explicitIds = explicitAgentPlacementSpaceIds(agent);
+      return explicitIds[0] || agent?.space_id || "";
+    }
+
+    function agentSpaceBadges(agent) {
+      const badges = [];
+      const mobility = agent?.mobility_mode || agent?.space_mode || "";
+      const directSpaceName = agent?.space_name || "";
+      const displayId = displaySpaceIdForAgent(agent);
+      const displayName = displayId ? spaceLabel(agent, displayId) : directSpaceName;
+
+      if (mobility) badges.push({ label: humanizeLabel(mobility), className: "space-badge" });
+      if (displayName) {
+        badges.push({ label: "Space: " + displayName, className: "space-badge" });
+      }
+      if (agent?.space_locked) {
+        badges.push({ label: "Pinned", className: "space-badge" });
+      }
+      return badges;
+    }
+
+    function agentSpaceIds(agent) {
+      const values = [agent?.space_id];
+      const access = Array.isArray(agent?.space_access) ? agent.space_access : [];
+      for (const entry of access) values.push(entry?.space_id || entry?.id);
+      return values.map((value) => String(value || "").trim()).filter(Boolean);
+    }
+
+    function agentPlacementSpaceIds(agent) {
+      const explicitIds = explicitAgentPlacementSpaceIds(agent);
+      if (explicitIds.length) return explicitIds;
+      return uniqueSpaceIds([agent?.space_id]);
+    }
+
+    function agentInCurrentSpace(agent) {
+      const currentId = currentSpaceId();
+      if (!currentId) return true;
+      const ids = agentPlacementSpaceIds(agent);
+      // Access means the agent is allowed to move there; placement means the
+      // agent is currently in the space. The default view must use placement.
+      if (!ids.length) return true;
+      return ids.some((id) => String(id) === String(currentId));
+    }
+
+    function isCrossSpaceScope(scope) {
+      return ["mine", "others", "all"].includes(scope);
+    }
+
+    function requestedCrossSpaceScope(scope) {
+      // "Other users" needs the full visible cross-space roster, then filters client-side.
+      return scope === "mine" ? "mine" : "all";
+    }
+
+    function crossSpaceDataCoversScope(scope) {
+      if (!isCrossSpaceScope(scope)) return true;
+      if (!state.crossSpaceLoaded) return false;
+      const loadedScope = state.crossSpaceScope || "all";
+      return loadedScope === "all" || loadedScope === scope;
+    }
+
+    function crossSpaceLoadingCoversScope(scope) {
+      if (!isCrossSpaceScope(scope) || !state.crossSpaceLoading) return false;
+      const loadingScope = state.crossSpaceLoadingScope || "all";
+      return loadingScope === requestedCrossSpaceScope(scope) || state.agentScopeFilter === scope;
+    }
+
+    function scopeFilteredAgents() {
+      if (isCrossSpaceScope(state.agentScopeFilter) && !crossSpaceDataCoversScope(state.agentScopeFilter)) return [];
+      return state.agents.filter((agent) => {
+        if (state.agentScopeFilter === "mine") return viewerOwnsAgent(agent);
+        if (state.agentScopeFilter === "others") return isOtherUserAgent(agent);
+        if (state.agentScopeFilter === "space") return agentInCurrentSpace(agent);
+        return true;
+      });
+    }
+
+    function agentScopeCounts() {
+      const counts = { space: 0, mine: 0, others: 0, all: state.agents.length };
+      for (const agent of state.agents) {
+        if (agentInCurrentSpace(agent)) counts.space += 1;
+        if (viewerOwnsAgent(agent)) counts.mine += 1;
+        if (isOtherUserAgent(agent)) counts.others += 1;
+      }
+      return counts;
+    }
+
+    function agentScopeCountLabel(scope, count) {
+      if (!isCrossSpaceScope(scope)) return String(count);
+      if (crossSpaceDataCoversScope(scope)) return String(count);
+      return crossSpaceLoadingCoversScope(scope) ? "..." : "";
+    }
+
+    function availableTypes() {
+      const values = new Set();
+      for (const agent of state.agents) {
+        const value = String(agent?.type || agent?.agent_type || "").trim().toLowerCase();
+        if (value) values.add(value);
+      }
+      return ["all", ...Array.from(values).sort()];
+    }
+
+    function availableOrigins() {
+      const values = new Set();
+      for (const agent of state.agents) {
+        const value = String(agent?.origin || "").trim().toLowerCase();
+        if (value) values.add(value);
+      }
+      return ["all", ...Array.from(values).sort()];
+    }
+
+    function displayedAgents() {
+      const query = state.search.trim().toLowerCase();
+      return scopeFilteredAgents().filter((agent) => {
+        if (!agentMatchesStatusFilter(agent, state.statusFilter)) return false;
+        const origin = String(agent.origin || "").toLowerCase();
+        if (state.originFilter !== "all" && origin !== state.originFilter) return false;
+        const type = String(agent.type || agent.agent_type || "").toLowerCase();
+        if (state.typeFilter !== "all" && type !== state.typeFilter) return false;
+        if (!query) return true;
+        const haystack = [
+          publicId(agent),
+          agent.display_name,
+          agent.bio,
+          agent.description,
+          agent.specialization,
+          agent.model,
+          agent.origin,
+          agent.agent_type,
+          agent.owner_username,
+          agent.mobility_mode,
+          agent.space_id,
+          agent.space_name,
+          agent?.availability?.state,
+          agent?.availability?.reason,
+          agent?.setup?.state,
+          agent?.setup?.reason,
+          ...(Array.isArray(agent.space_access) ? agent.space_access.map((space) => space?.name || space?.space_name || space?.space_id) : []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(query);
+      });
+    }
+
+    // Safe DOM builder: creates element with attributes and text (uses textContent, not innerHTML)
+    function h(tag, attrs, text) {
+      const e = document.createElement(tag);
+      if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === "className") e.className = v;
+        else if (k.startsWith("data-")) e.setAttribute(k, v);
+        else if (k === "style") e.style.cssText = v;
+        else e.setAttribute(k, v);
+      });
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    // AGENT-LIFECYCLE-UI: lifecycle helpers (shadow mode — group/collapse only)
+    function agentLifecycleState(agent) {
+      const m = agent && agent.messageability;
+      const v = (m && m.lifecycle_state) || (agent && agent.lifecycle_state) || "";
+      return String(v || "").toLowerCase();
+    }
+    function agentIsDormant(agent) {
+      // Fold into Inactive only when both live availability and lifecycle agree.
+      // Lifecycle can remain dormant briefly after an SSE connection becomes routable.
+      return availabilityLabelKey(agent) === "dormant"
+        && agentLifecycleState(agent) === "dormant";
+    }
+    function agentMatchesStatusFilter(agent, filter) {
+      if (filter === "all") return true;
+      const availabilityKey = availabilityLabelKey(agent);
+      if (filter === "online") return availabilityKey === "online";
+      // "Routable/queued" is the user-facing name for the backend "idle" key.
+      if (filter === "routable") return availabilityKey === "idle";
+      if (filter === "needs_setup") return availabilityKey === "needs_setup";
+      if (filter === "disabled") return agentIsDisabled(agent);
+      if (filter === "inactive") return normalizedStatus(agent) === "inactive" || agentIsDormant(agent);
+      // Keep the normalized-status fallback for defensive/programmatic callers
+      // even though the current UI status row only exposes the explicit filters above.
+      if (filter === "active" && agentIsDormant(agent)) return false;
+      return normalizedStatus(agent) === filter;
+    }
+    function dormantRevealForcedByView() {
+      return Boolean(state.statusFilter === "all" || state.search.trim() || state.statusFilter === "inactive");
+    }
+    function dormantRevealRequested() {
+      // All means the complete selected-scope universe, not the old online/default
+      // fold. Keep the Inactive divider as structure, but expand it by default for
+      // All so dormant/offline/on-demand agents and controls are visible/searchable.
+      return Boolean(dormantRevealForcedByView() || state.showInactive);
+    }
+    function lastActiveLabel(agent) {
+      const m = agent && agent.messageability;
+      const raw = (m && m.last_active_at) || (agent && agent.last_active_at);
+      if (!raw) return "";
+      const t = new Date(raw).getTime();
+      if (!isFinite(t)) return "";
+      const days = Math.floor((Date.now() - t) / 86400000);
+      if (days <= 0) return "active today";
+      if (days === 1) return "active 1d ago";
+      if (days < 30) return "active " + days + "d ago";
+      const months = Math.floor(days / 30);
+      return "active " + months + "mo ago";
+    }
+
+    function permissionState() {
+      return state.permissions || {};
+    }
+
+    function isReadOnlyMode() {
+      return Boolean(permissionState().read_only);
+    }
+
+    function canCreateAgents() {
+      return canUseHitlApproval();
+    }
+
+    function canUseHitlApproval() {
+      return Boolean(permissionState().can_use_hitl_approval);
+    }
+
+    function canControlAgents() {
+      return Boolean(permissionState().can_control);
+    }
+
+    function readOnlyMessage() {
+      const blocked = permissionState().blocked_reason || "";
+      if (blocked === "Agent-authored actions require user approval. Use a user quick action to make changes.") {
+        return blocked;
+      }
+      return blocked || "You can manage agents you own. Agents owned by other users stay read-only.";
+    }
+
+    function agentReadOnlyMessage(agent) {
+      const caps = agentActionCapabilities(agent);
+      return caps?.blocked_reason
+        || caps?.reason
+        || agent?.blocked_reason
+        || agent?.control_blocked_reason
+        || readOnlyMessage();
+    }
+
+    function startControlDraft(agent, action, durationMinutes, durationLabel, returnView) {
+      state.selected = agent || state.selected;
+      state.controlDraft = {
+        action,
+        agent_id: agent?.id,
+        agent_name: agent?.name || agent?.display_name || "agent",
+        duration_minutes: typeof durationMinutes === "number" ? durationMinutes : null,
+        duration_label: durationLabel || (durationMinutes == null ? "until you re-enable it" : durationLabel),
+        reason: "",
+      };
+      state.controlReturnView = returnView || (state.view === "profile" ? "profile" : "grid");
+      render();
+    }
+
+    function capabilityInputValue(agent) {
+      return agentCapabilityTags(agent).join(", ");
+    }
+
+    function editableToolKeys(agent) {
+      const keys = new Set(["ax_mcp", "web_fetch", "brave_search", "image_gen"]);
+      const enabled = agent?.enabled_tools;
+      if (enabled && typeof enabled === "object" && !Array.isArray(enabled)) {
+        for (const key of Object.keys(enabled)) keys.add(key);
+      }
+      return Array.from(keys).sort();
+    }
+
+    function startEditAgent(agent) {
+      if (!canUpdateAgent(agent)) return;
+      const shouldLoadSpaces = !state.spacesLoaded && !state.spacesLoading;
+      if (shouldLoadSpaces) state.spacesLoading = true;
+      const enabledTools = {};
+      const sourceTools = agent?.enabled_tools && typeof agent.enabled_tools === "object" && !Array.isArray(agent.enabled_tools)
+        ? agent.enabled_tools
+        : {};
+      for (const key of editableToolKeys(agent)) enabledTools[key] = Boolean(sourceTools[key]);
+      const placementSpaceId = String(
+        displaySpaceIdForAgent(agent)
+        || ""
+      );
+      state.editAgent = agent;
+      state.editFields = {
+        description: agent?.description || "",
+        bio: agent?.bio || "",
+        specialization: agent?.specialization || "",
+        model: agent?.model || "",
+        status: normalizedStatus(agent) === "inactive" ? "inactive" : String(agent?.status || normalizedStatus(agent) || "active").toLowerCase(),
+        capabilities: capabilityInputValue(agent),
+        enabled_tools: enabledTools,
+        placement_space_id: placementSpaceId,
+        pinned: Boolean(agent?.space_locked),
+      };
+      state.editSending = false;
+      state.view = "edit";
+      render();
+      if (shouldLoadSpaces) void loadAvailableSpaces();
+    }
+
+    function applyUpdatedAgent(agent) {
+      if (!agent || typeof agent !== "object") return false;
+      state.agents = state.agents.map((existing) => {
+        const sameId = agent.id && existing.id && String(existing.id) === String(agent.id);
+        const sameName = agent.name && existing.name && String(existing.name) === String(agent.name);
+        return sameId || sameName ? { ...existing, ...agent } : existing;
+      });
+      state.selected = { ...(state.selected || {}), ...agent };
+      state.editAgent = null;
+      state.editFields = {};
+      state.editSending = false;
+      state.view = "profile";
+      state.notice = "Agent profile saved.";
+      state.noticeKind = "info";
+      render();
+      return true;
+    }
+
+    function controlDraftAgent() {
+      const agentId = state.controlDraft?.agent_id;
+      if (agentId) {
+        const existing = state.agents.find((agent) => String(agent.id) === String(agentId));
+        if (existing) return existing;
+      }
+      return state.selected || null;
+    }
+
+    function syncPermissionState(data) {
+      const payload = unwrapV2(data);
+      state.permissions = payload?.permissions || data?.permissions || state.permissions;
+      state.spaceContext = payload?.space_context || data?.space_context || state.spaceContext;
+      const spaces = Array.isArray(payload?.spaces)
+        ? payload.spaces
+        : (Array.isArray(data?.spaces) ? data.spaces : null);
+      if (spaces) {
+        state.availableSpaces = spaces;
+        state.spacesLoaded = true;
+        state.spacesLoading = false;
+      }
+      state.viewer = payload?.viewer || data?.viewer || state.viewer;
+      return payload;
+    }
+
+    function renderTerminalDraft(root) {
+      const terminal = state.terminalDraft || {};
+      const created = terminal.created || terminal.agent || {};
+      const dismissed = terminal.status === "dismissed";
+      const card = h("div", { className: "terminal-card", "data-testid": "agents-terminal-draft-view" });
+      card.appendChild(h("div", { className: "create-label" }, dismissed ? "Draft closed" : "Agent created"));
+      card.appendChild(h("div", { className: "terminal-title" }, dismissed ? "This draft has been dismissed." : "Agent '" + (created.name || terminal.name || "New agent") + "' is ready."));
+      card.appendChild(h("div", { className: "terminal-copy" }, dismissed ? "The review window is closed. You can keep browsing agents." : "The draft was approved and will not reopen when this widget lazy-loads again."));
+
+      if (!dismissed) {
+        const detail = h("div", { className: "terminal-detail" });
+        if (created.name) detail.appendChild(h("span", null, "@" + created.name));
+        if (created.agent_type) detail.appendChild(h("span", null, created.agent_type));
+        if (created.id) detail.appendChild(h("span", null, "ID " + String(created.id).slice(0, 8)));
+        card.appendChild(detail);
+      }
+
+      const actions = h("div", { className: "form-actions" });
+      if (!dismissed && created.id) {
+        const openBtn = h("button", { className: "btn-create", type: "button" }, "Open profile");
+        openBtn.addEventListener("click", () => {
+          state.terminalDraft = null;
+          state.selected = created;
+          state.view = "profile";
+          render();
+        });
+        actions.appendChild(openBtn);
+      }
+      const browseBtn = h("button", { className: "btn-discard", type: "button" }, "Back to agents");
+      browseBtn.addEventListener("click", () => {
+        state.terminalDraft = null;
+        state.view = "grid";
+        state.notice = null;
+        render();
+        void refreshAgentsList();
+      });
+      actions.appendChild(browseBtn);
+      card.appendChild(actions);
+      root.appendChild(card);
+    }
+
+    function render() {
+      const root = document.getElementById("app");
+      root.textContent = "";
+      if (state.notice) {
+        root.appendChild(h("div", { className: "notice notice-" + state.noticeKind }, state.notice));
+      }
+      if (state.terminalDraft) { renderTerminalDraft(root); notifyHostHeight(); return; }
+      if (state.draft) { renderCreate(root); notifyHostHeight(); return; }
+      if (state.controlDraft) { renderControl(root); notifyHostHeight(); return; }
+      if (state.view === "edit" && state.editAgent) { renderEdit(root); notifyHostHeight(); return; }
+      if (state.view === "profile" && state.selected) { renderProfile(root); notifyHostHeight(); return; }
+      renderGrid(root);
+      notifyHostHeight();
+    }
+
+    function renderGrid(root) {
+      const visibleAgents = displayedAgents();
+      if (state.agentScopeFilter === "others") {
+        visibleAgents.sort((a, b) => ownerLabel(a).localeCompare(ownerLabel(b)) || comparePresenceThenName(a, b));
+      } else {
+        visibleAgents.sort(comparePresenceThenName);
+      }
+      // AGENT-LIFECYCLE-UI: stable-partition so dormant agents fold to the end
+      // under Inactive for every scope. Dormant cards stay hidden from the
+      // normal list unless explicitly searched, filtered, or expanded.
+      let firstDormantIndex = -1;
+      const revealDormant = dormantRevealRequested();
+      const dormantRevealForced = dormantRevealForcedByView();
+      const activeList = [];
+      const dormantList = [];
+      for (const a of visibleAgents) {
+        // Disabled agents are lifecycle/control-disabled, not dormant. Keep them
+        // in the normal partition (sorted after live/idle/setup by rank). Fold
+        // under Inactive only when live availability and lifecycle both report dormant.
+        (agentIsDormant(a) ? dormantList : activeList).push(a);
+      }
+      if (dormantList.length > 0) {
+        firstDormantIndex = activeList.length;
+        visibleAgents.length = 0;
+        visibleAgents.push(...activeList, ...dormantList);
+      }
+      const dormantCount = firstDormantIndex >= 0 ? visibleAgents.length - firstDormantIndex : 0;
+      const header = h("div", { className: "header" });
+      header.appendChild(h("h2", null, "Agents"));
+      const countLabel = isCrossSpaceScope(state.agentScopeFilter) && !crossSpaceDataCoversScope(state.agentScopeFilter)
+        ? (crossSpaceLoadingCoversScope(state.agentScopeFilter) ? "Loading agents..." : "")
+        : visibleAgents.length === state.count
+        ? state.count + " agents"
+        : visibleAgents.length + " of " + state.count + " agents";
+      const headerRight = h("div", { className: "header-right" });
+      if (countLabel) {
+        const countWrap = h("div", { className: "count-wrap" });
+        countWrap.appendChild(h("span", { className: "count" }, countLabel));
+        // AGENT-LIFECYCLE-UI: live availability roll-up (e.g. "4 online · 7 idle · 163 dormant").
+        const summaryLine = availabilitySummaryFromData(visibleAgents);
+        if (summaryLine) countWrap.appendChild(h("span", { className: "availability-summary" }, summaryLine));
+        headerRight.appendChild(countWrap);
+      }
+      if (canCreateAgents()) {
+        const newBtn = h("button", { className: "new-btn", type: "button" }, "+ New Agent");
+        newBtn.addEventListener("click", startLocalCreateDraft);
+        headerRight.appendChild(newBtn);
+      }
+      header.appendChild(headerRight);
+      root.appendChild(header);
+
+      if (isReadOnlyMode()) {
+        root.appendChild(h("div", { className: "notice notice-info", "data-testid": "agents-read-only-notice" }, readOnlyMessage()));
+      }
+
+      const toolbar = h("div", { className: "toolbar" });
+      const search = h("input", { className: "search-input", type: "search", placeholder: "Search agents, models, specializations..." });
+      search.value = state.search;
+      search.addEventListener("input", (event) => {
+        const target = event.target;
+        state.searchCursor = typeof target.selectionStart === "number" ? target.selectionStart : null;
+        state.restoreSearchFocus = true;
+        state.search = event.target.value || "";
+        render();
+      });
+      toolbar.appendChild(search);
+      if (state.restoreSearchFocus) {
+        const cursor = typeof state.searchCursor === "number" ? state.searchCursor : search.value.length;
+        requestAnimationFrame(() => {
+          search.focus({ preventScroll: true });
+          try { search.setSelectionRange(cursor, cursor); } catch {}
+          state.restoreSearchFocus = false;
+        });
+      }
+
+      const scopeCounts = agentScopeCounts();
+      const scopeTabs = h("div", { className: "scope-tabs", role: "group", "aria-label": "Agent scope" });
+      const scopes = [
+        ["space", "In this space", scopeCounts.space],
+        ["mine", "My agents", scopeCounts.mine],
+        ["others", "Other users", scopeCounts.others],
+        ["all", "All agents", scopeCounts.all],
+      ];
+      for (const [scope, label, count] of scopes) {
+        const btn = h("button", {
+          className: "scope-tab" + (state.agentScopeFilter === scope ? " active" : ""),
+          type: "button",
+          "data-testid": "agent-scope-" + scope,
+        });
+        btn.appendChild(h("span", null, label));
+        const countLabel = agentScopeCountLabel(scope, count);
+        if (countLabel) {
+          btn.appendChild(h("span", { className: "scope-tab-count" }, countLabel));
+        }
+        btn.addEventListener("click", () => {
+          state.agentScopeFilter = scope;
+          if (isCrossSpaceScope(scope) && !crossSpaceDataCoversScope(scope) && !state.crossSpaceLoading) {
+            void loadCrossSpaceAgents(scope);
+          }
+          render();
+        });
+        scopeTabs.appendChild(btn);
+      }
+      toolbar.appendChild(scopeTabs);
+
+      const scopeCopy = state.agentScopeFilter === "space"
+        ? "Default view: agents currently placed in this space."
+        : state.agentScopeFilter === "mine"
+          ? "Your agents can be managed when backend ownership permissions allow it."
+          : state.agentScopeFilter === "others"
+            ? "Agents owned by other users are shown for awareness and stay read-only."
+            : "All visible agents across your accessible spaces.";
+      toolbar.appendChild(h("div", { className: "scope-note" }, scopeCopy));
+      if (isCrossSpaceScope(state.agentScopeFilter) && crossSpaceLoadingCoversScope(state.agentScopeFilter)) {
+        toolbar.appendChild(h("div", { className: "scope-note" }, "Loading the rest of your agents across spaces..."));
+      }
+
+      // Single filter row: status pills + type pills (no separate "All" per group)
+      const filterGroup = h("div", { className: "filter-group" });
+
+      // Status/lifecycle filters are independent from scope. "All" is explicit
+      // and shows the complete selected universe; Online/Routable/Dormant refine it.
+      const statusFilters = [
+        ["all", "All"],
+        ["online", "Online"],
+        ["routable", "Routable/queued"],
+        ["needs_setup", "Needs setup"],
+        ["inactive", "Dormant/offline"],
+        ["disabled", "Disabled"],
+      ];
+      for (const [filter, label] of statusFilters) {
+        const btn = h("button", {
+          className: "filter-btn" + (state.statusFilter === filter ? " active" : ""),
+          type: "button",
+          "data-testid": "agent-status-" + filter,
+        }, label);
+        btn.addEventListener("click", () => {
+          state.statusFilter = filter;
+          render();
+        });
+        filterGroup.appendChild(btn);
+      }
+
+      // Type filters with one "All" at the front
+      for (const type of availableTypes()) {
+        const btn = h("button", { className: "filter-btn" + (state.typeFilter === type ? " active" : ""), type: "button" }, humanizeLabel(type));
+        btn.addEventListener("click", () => {
+          state.typeFilter = type;
+          if (type === "all") { state.originFilter = "all"; }
+          render();
+        });
+        filterGroup.appendChild(btn);
+      }
+      toolbar.appendChild(filterGroup);
+
+      root.appendChild(toolbar);
+
+      if (state.agentScopeFilter === "others" && visibleAgents.length > 0) {
+        root.appendChild(h("div", { className: "section-title" }, "Other users' agents — read-only"));
+      } else if (state.agentScopeFilter === "mine" && visibleAgents.length > 0) {
+        root.appendChild(h("div", { className: "section-title" }, "My agents"));
+      } else if (state.agentScopeFilter === "space" && visibleAgents.length > 0) {
+        const label = state.spaceContext?.name ? "In " + state.spaceContext.name : "In this space";
+        root.appendChild(h("div", { className: "section-title" }, label));
+      }
+
+      const grid = h("div", { className: "grid" });
+      if (visibleAgents.length === 0) {
+        const empty = h("div", { className: "empty" });
+        if (isCrossSpaceScope(state.agentScopeFilter) && crossSpaceLoadingCoversScope(state.agentScopeFilter)) {
+          empty.appendChild(h("strong", null, "Loading agents across spaces"));
+          empty.appendChild(h("div", null, "This view will fill in once the broader agent list returns."));
+        } else {
+          empty.appendChild(h("strong", null, "No agents match these filters"));
+          empty.appendChild(h("div", null, "Try a different status, origin, or search term."));
+        }
+        grid.appendChild(empty);
+      }
+      let lastOwnerHeader = "";
+      for (let i = 0; i < visibleAgents.length; i++) {
+        const a = visibleAgents[i];
+        if (state.agentScopeFilter === "others") {
+          const ownerHeader = ownerSectionTitle(a);
+          if (ownerHeader !== lastOwnerHeader) {
+            grid.appendChild(h("div", { className: "section-title owner-section-title" }, ownerHeader));
+            lastOwnerHeader = ownerHeader;
+          }
+        }
+        // AGENT-LIFECYCLE-UI: "Inactive (N)" divider before the first
+        // dormant card. It is only clickable when it can actually collapse or
+        // expand rows; All/search/Inactive-filter views force dormant rows open,
+        // so they render a non-interactive structural divider instead.
+        if (i === firstDormantIndex) {
+          if (dormantRevealForced) {
+            grid.appendChild(h(
+              "div",
+              {
+                className: "inactive-toggle inactive-toggle-static",
+                "data-testid": "inactive-toggle",
+              },
+              "▾  Inactive (" + dormantCount + ")"
+            ));
+          } else {
+            const toggle = h(
+              "button",
+              {
+                className: "inactive-toggle",
+                type: "button",
+                "aria-expanded": revealDormant ? "true" : "false",
+                "data-testid": "inactive-toggle",
+              },
+              (revealDormant ? "▾" : "▸") + "  Inactive (" + dormantCount + ")"
+            );
+            toggle.addEventListener("click", () => {
+              state.showInactive = !state.showInactive;
+              render();
+            });
+            grid.appendChild(toggle);
+          }
+        }
+        const isDormantRow = firstDormantIndex >= 0 && i >= firstDormantIndex;
+        const isDisabled = agentIsDisabled(a);
+        const availabilityKey = availabilityLabelKey(a);
+        const livenessOnline = !isDisabled && (availabilityKey === "online" || availabilityKey === "idle");
+        const livenessLabel = isDisabled ? "Disabled" : livenessOnline ? availabilityLabelMeta(a).text : "Offline";
+        const type = a.type || a.agent_type || "";
+        const typeLabel = humanizeLabel(type) || "Agent";
+        const originLabel = humanizeLabel(a.origin || "");
+        const tools = enabledToolNames(a);
+
+        const card = h("div", {
+          className: "agent-card" + (isDisabled ? " is-disabled" : "")
+            + (isDormantRow ? " lifecycle-inactive" : "")
+            + (isDormantRow && !revealDormant ? " is-collapsed" : ""),
+          "data-idx": String(i),
+          "data-testid": "agent-card-" + (a.id || a.name || i),
+        });
+        const top = h("div", { className: "agent-top" });
+
+        const publicName = publicId(a);
+        const title = displayName(a);
+        const handle = handleLabel(a);
+        top.appendChild(agentAvatarElement(a, title));
+
+        const info = h("div", { className: "agent-info" });
+        info.appendChild(h("div", { className: "agent-name" }, title));
+        info.appendChild(h("div", { className: "agent-handle" }, handle || ""));
+        top.appendChild(info);
+
+        top.appendChild(h("div", {
+          className: "status-dot " + (isDisabled ? "status-disabled" : livenessOnline ? "status-online" : "status-offline"),
+          title: livenessLabel,
+          "aria-label": livenessLabel,
+        }));
+        card.appendChild(top);
+
+        const badgeRow = h("div", { className: "badge-row" });
+        // Disabled badge takes priority — most important signal for the operator
+        if (isDisabled) {
+          badgeRow.appendChild(h("span", { className: "disabled-badge" }, "Disabled"));
+        }
+        if (type) badgeRow.appendChild(h("span", { className: "type-badge" }, typeLabel));
+        // Only show origin badge if it differs from type (avoid "MCP MCP")
+        if (originLabel && originLabel.toLowerCase() !== typeLabel.toLowerCase()) {
+          badgeRow.appendChild(h("span", { className: "type-badge origin-badge" }, originLabel));
+        }
+        if (a.model) badgeRow.appendChild(h("span", { className: "type-badge model-badge" }, friendlyModel(a.model)));
+        const setupStatusBadge = setupBadge(a);
+        if (setupStatusBadge) {
+          badgeRow.appendChild(h("span", { className: "type-badge " + setupStatusBadge.className }, setupStatusBadge.label));
+        }
+        for (const badge of agentRelationshipBadges(a)) {
+          badgeRow.appendChild(h("span", { className: "type-badge " + badge.className }, badge.label));
+        }
+        for (const badge of agentSpaceBadges(a)) {
+          badgeRow.appendChild(h("span", { className: "type-badge " + badge.className }, badge.label));
+        }
+        if (badgeRow.children.length) card.appendChild(badgeRow);
+
+        // When disabled, surface the reason and break-until below the badges so
+        // the operator can see at a glance why the agent is silent.
+        const disabledMeta = disabledMetaText(a, false);
+        if (disabledMeta) {
+          card.appendChild(h("div", { className: "disabled-meta" }, disabledMeta));
+        }
+        // AGENT-LIFECYCLE-UI: single-word availability line with a color dot,
+        // replacing the uniform "Availability is limited — warming up" note.
+        const labelMeta = availabilityLabelMeta(a);
+        const availabilityLine = h("div", { className: "availability-line" });
+        availabilityLine.appendChild(h("span", {
+          className: "availability-dot",
+          style: "background:" + labelMeta.dot + ";",
+        }));
+        availabilityLine.appendChild(h("span", { className: "availability-word" }, labelMeta.text));
+        card.appendChild(availabilityLine);
+
+        card.appendChild(h("div", { className: "agent-bio" }, agentSummary(a)));
+
+        if (tools.length) {
+          const toolList = h("div", { className: "tool-chips" });
+          for (const tool of tools) toolList.appendChild(h("span", { className: "tool-chip" }, tool));
+          card.appendChild(toolList);
+        }
+
+        if (isDisabled && canControlAgent(a, "enable")) {
+          const cardActions = h("div", { className: "card-actions" });
+          const reenableBtn = h(
+            "button",
+            { className: "btn-secondary", type: "button", "data-testid": "agent-card-reenable" },
+            "Re-enable"
+          );
+          reenableBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            startControlDraft(a, "enable", null, null, "grid");
+          });
+          cardActions.appendChild(reenableBtn);
+          card.appendChild(cardActions);
+        }
+
+        card.addEventListener("click", () => {
+          state.selected = a;
+          state.view = "profile";
+          render();
+        });
+        if (isDormantRow) {
+          const la = lastActiveLabel(a);
+          if (la) card.appendChild(h("div", { className: "lifecycle-badge" }, la));
+        }
+        grid.appendChild(card);
+      }
+      root.appendChild(grid);
+    }
+
+    function renderProfile(root) {
+      const a = state.selected;
+      const isProfileDisabled = agentIsDisabled(a);
+      const normalized = normalizedStatus(a);
+      const online = !isProfileDisabled && normalized === "active";
+      const type = a.type || a.agent_type || "";
+      const typeLabel = humanizeLabel(type) || "Agent";
+      const title = displayName(a);
+      const handle = handleLabel(a);
+
+      const backBtn = h("button", { className: "back-btn" }, "\u2190 Back");
+      backBtn.addEventListener("click", () => { state.view = "grid"; state.selected = null; render(); });
+      root.appendChild(backBtn);
+
+      const card = h("div", { className: "profile-card" });
+
+      const top = h("div", { className: "profile-top" });
+      top.appendChild(agentAvatarElement(a, title, "profile-avatar"));
+      const nameBlock = h("div");
+      nameBlock.appendChild(h("div", { className: "profile-name" }, title));
+      const handleRow = h("div", { className: "profile-handle" }, (handle || typeLabel) + " ");
+      handleRow.appendChild(h("span", { className: "status-dot " + (isProfileDisabled ? "status-disabled" : online ? "status-online" : "status-offline") }));
+      nameBlock.appendChild(handleRow);
+      top.appendChild(nameBlock);
+      card.appendChild(top);
+
+      const profileBadges = h("div", { className: "badge-row", style: "margin-bottom:14px" });
+      const profileAvailabilityBadge = availabilityBadge(a);
+      if (profileAvailabilityBadge) {
+        profileBadges.appendChild(h("span", { className: "type-badge " + profileAvailabilityBadge.className }, profileAvailabilityBadge.label));
+      }
+      const profileSetupBadge = setupBadge(a);
+      if (profileSetupBadge) {
+        profileBadges.appendChild(h("span", { className: "type-badge " + profileSetupBadge.className }, profileSetupBadge.label));
+      }
+      for (const badge of agentRelationshipBadges(a)) {
+        profileBadges.appendChild(h("span", { className: "type-badge " + badge.className }, badge.label));
+      }
+      for (const badge of agentSpaceBadges(a)) {
+        profileBadges.appendChild(h("span", { className: "type-badge " + badge.className }, badge.label));
+      }
+      if (profileBadges.children.length) card.appendChild(profileBadges);
+
+      card.appendChild(h("div", { className: "profile-bio" }, agentSummary(a)));
+
+      const fields = h("div", { className: "profile-fields" });
+      if (type) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Type"));
+        f.appendChild(h("div", { className: "field-value" }, typeLabel));
+        fields.appendChild(f);
+      }
+      if (a.origin) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Origin"));
+        f.appendChild(h("div", { className: "field-value" }, humanizeLabel(a.origin)));
+        fields.appendChild(f);
+      }
+      if (a.model) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Model"));
+        f.appendChild(h("div", { className: "field-value" }, friendlyModel(a.model)));
+        fields.appendChild(f);
+      }
+      const statusField = h("div", { className: "field" });
+      statusField.appendChild(h("div", { className: "field-label" }, "Status"));
+      statusField.appendChild(h("div", { className: "field-value" }, normalized === "inactive" ? "Offline" : humanizeLabel(normalized)));
+      fields.appendChild(statusField);
+      const availabilityField = h("div", { className: "field" });
+      availabilityField.appendChild(h("div", { className: "field-label" }, "Availability"));
+      availabilityField.appendChild(h("div", { className: "field-value" }, availabilityStateLabel(a) || "Unknown"));
+      fields.appendChild(availabilityField);
+      const setupField = h("div", { className: "field" });
+      setupField.appendChild(h("div", { className: "field-label" }, "Setup"));
+      setupField.appendChild(h("div", { className: "field-value" }, setupStateLabel(a) || "Unknown"));
+      fields.appendChild(setupField);
+      if (a.specialization) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Specialization"));
+        f.appendChild(h("div", { className: "field-value" }, a.specialization));
+        fields.appendChild(f);
+      }
+      if (a.trust_level != null) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Trust Level"));
+        f.appendChild(h("div", { className: "field-value" }, String(a.trust_level)));
+        fields.appendChild(f);
+      }
+      if (ownerLabel(a)) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Owner"));
+        f.appendChild(h("div", { className: "field-value" }, ownerLabel(a)));
+        fields.appendChild(f);
+      }
+      const displaySpaceId = displaySpaceIdForAgent(a);
+      const displaySpaceName = displaySpaceId ? spaceLabel(a, displaySpaceId) : a.space_name;
+      if (displaySpaceName) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Space"));
+        f.appendChild(h("div", { className: "field-value" }, displaySpaceName));
+        fields.appendChild(f);
+      }
+      if (a.mobility_mode || a.space_mode) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Mobility"));
+        f.appendChild(h("div", { className: "field-value" }, humanizeLabel(a.mobility_mode || a.space_mode)));
+        fields.appendChild(f);
+      }
+      card.appendChild(fields);
+
+      const profileAvailabilitySummary = availabilityDetail(a);
+      if (profileAvailabilitySummary) {
+        card.appendChild(h("div", { className: "availability-note" + (profileAvailabilitySummary.tone === "blocked" ? " is-blocked" : profileAvailabilitySummary.tone === "info" ? " is-info" : "") }, profileAvailabilitySummary.message));
+      }
+
+      const capabilityTags = agentCapabilityTags(a);
+      if (capabilityTags.length > 0) {
+        const capsSection = h("div", { style: "margin-bottom:12px" });
+        capsSection.appendChild(h("div", { className: "field-label", style: "margin-bottom:6px" }, "Capabilities"));
+        const capsList = h("div", { className: "caps-list" });
+        for (const c of capabilityTags) capsList.appendChild(h("span", { className: "cap-tag" }, c));
+        capsSection.appendChild(capsList);
+        card.appendChild(capsSection);
+      }
+
+      const tools = enabledToolNames(a);
+      if (tools.length) {
+        const toolsSection = h("div", { style: "margin-bottom:12px" });
+        toolsSection.appendChild(h("div", { className: "field-label", style: "margin-bottom:6px" }, "Enabled Tools"));
+        const toolList = h("div", { className: "tool-chips" });
+        for (const tool of tools) toolList.appendChild(h("span", { className: "tool-chip" }, tool));
+        toolsSection.appendChild(toolList);
+        card.appendChild(toolsSection);
+      }
+
+      const msgBtn = h("button", { className: "msg-btn" }, "Message " + (handle || title));
+      msgBtn.addEventListener("click", async () => {
+        try {
+          await host.openCompose({
+            handle: handle || title,
+            title,
+          });
+        } catch {
+          await host.callServerTool("messages", { action: "draft", content: (handle ? handle + " " : title + " ") });
+        }
+      });
+      card.appendChild(msgBtn);
+
+      // Kill switch controls. Shows "Re-enable" when the agent is currently
+      // disabled (user can flip it back on in one click) or a set of quick
+      // disable options when active. This is the operator's primary surface
+      // for finding and re-enabling disabled agents — per madtank 2026-04-09.
+      const actionsRow = h("div", { className: "profile-actions" });
+      if (canUpdateAgent(a)) {
+        const editBtn = h("button", { className: "btn-secondary", type: "button" }, "Edit profile");
+        editBtn.addEventListener("click", () => startEditAgent(a));
+        actionsRow.appendChild(editBtn);
+      }
+
+      if (!canControlAgent(a, isProfileDisabled ? "enable" : "disable")) {
+        actionsRow.appendChild(h("div", { className: "notice notice-info", style: "width:100%;margin-top:0;" }, agentReadOnlyMessage(a)));
+      } else {
+        if (isProfileDisabled) {
+          const reenableBtn = h("button", { className: "btn-secondary" }, "Re-enable agent");
+          reenableBtn.addEventListener("click", () => startControlDraft(a, "enable", null, null, "profile"));
+          actionsRow.appendChild(reenableBtn);
+
+          // Show disabled metadata inline on profile for context
+          const disabledProfileMeta = disabledMetaText(a, true);
+          if (disabledProfileMeta) {
+            const meta = h("div", { className: "disabled-meta", style: "margin-top:4px;width:100%" }, disabledProfileMeta);
+            actionsRow.appendChild(meta);
+          }
+        } else {
+          const break5Btn = h("button", { className: "btn-warning" }, "Take a 5 min break");
+          break5Btn.addEventListener("click", () => startControlDraft(a, "disable", 5, "5 minutes", "profile"));
+          actionsRow.appendChild(break5Btn);
+
+          const break30Btn = h("button", { className: "btn-warning" }, "Take a 30 min break");
+          break30Btn.addEventListener("click", () => startControlDraft(a, "disable", 30, "30 minutes", "profile"));
+          actionsRow.appendChild(break30Btn);
+
+          const disableBtn = h("button", { className: "btn-danger" }, "Disable indefinitely");
+          disableBtn.addEventListener("click", () => startControlDraft(a, "disable", null, "until you re-enable it", "profile"));
+          actionsRow.appendChild(disableBtn);
+        }
+      }
+
+      card.appendChild(actionsRow);
+
+      root.appendChild(card);
+    }
+
+    function renderEdit(root) {
+      const agent = state.editAgent || state.selected;
+      if (!agent || !canUpdateAgent(agent)) {
+        root.appendChild(h("div", { className: "notice notice-error" }, agentReadOnlyMessage(agent)));
+        return;
+      }
+
+      const backBtn = h("button", { className: "back-btn", type: "button" }, "\u2190 Back to profile");
+      backBtn.addEventListener("click", () => {
+        state.editAgent = null;
+        state.editFields = {};
+        state.editSending = false;
+        state.view = "profile";
+        render();
+      });
+      root.appendChild(backBtn);
+
+      const card = h("div", { className: "create-card" });
+      card.appendChild(h("div", { className: "create-label" }, "Edit Agent Profile"));
+      card.appendChild(h("div", { className: "create-summary" }, "Update profile, status, tools, and space placement for agents you own."));
+
+      const identity = h("div", { className: "profile-fields" });
+      const nameField = h("div", { className: "field" });
+      nameField.appendChild(h("div", { className: "field-label" }, "Agent"));
+      nameField.appendChild(h("div", { className: "field-value" }, displayName(agent)));
+      identity.appendChild(nameField);
+
+      const ownerField = h("div", { className: "field" });
+      ownerField.appendChild(h("div", { className: "field-label" }, "Owner"));
+      ownerField.appendChild(h("div", { className: "field-value" }, ownerLabel(agent)));
+      identity.appendChild(ownerField);
+
+      card.appendChild(identity);
+
+      const compactGrid = h("div", { className: "compact-form-grid" });
+      const statusGroup = h("div", { className: "form-group" });
+      statusGroup.appendChild(h("label", null, "Status"));
+      const statusSelect = document.createElement("select");
+      statusSelect.className = "form-input";
+      for (const optionValue of ["active", "inactive", "paused", "disabled"]) {
+        const option = document.createElement("option");
+        option.value = optionValue;
+        option.textContent = humanizeLabel(optionValue);
+        statusSelect.appendChild(option);
+      }
+      statusSelect.value = state.editFields.status || "active";
+      statusSelect.disabled = !!state.editSending;
+      statusSelect.addEventListener("change", (event) => {
+        state.editFields.status = event.target.value;
+      });
+      statusGroup.appendChild(statusSelect);
+      statusGroup.appendChild(h("div", { className: "field-help" }, "Status correction."));
+      compactGrid.appendChild(statusGroup);
+
+      const placementGroup = h("div", { className: "form-group" });
+      placementGroup.appendChild(h("label", null, "Space"));
+      const placementSelect = document.createElement("select");
+      placementSelect.className = "form-input";
+      const placementSpaces = Array.isArray(state.availableSpaces) ? state.availableSpaces : [];
+      const currentPlacementId = String(state.editFields.placement_space_id || "");
+      const placementOptions = [];
+      const seenPlacementIds = new Set();
+      if (currentPlacementId) {
+        placementOptions.push({ id: currentPlacementId, label: spaceLabel(agent, currentPlacementId) });
+        seenPlacementIds.add(currentPlacementId);
+      }
+      for (const space of placementSpaces) {
+        const sid = String(space?.id || space?.space_id || "").trim();
+        if (!sid || seenPlacementIds.has(sid)) continue;
+        placementOptions.push({ id: sid, label: space?.name || space?.space_name || shortSpaceId(sid) });
+        seenPlacementIds.add(sid);
+      }
+      for (const optionDef of placementOptions) {
+        const option = document.createElement("option");
+        option.value = optionDef.id;
+        option.textContent = optionDef.label;
+        placementSelect.appendChild(option);
+      }
+      if (!currentPlacementId && placementOptions.length) {
+        state.editFields.placement_space_id = placementOptions[0].id;
+      }
+      placementSelect.value = state.editFields.placement_space_id || "";
+      placementSelect.disabled = !!state.editSending || !!state.spacesLoading || placementOptions.length === 0;
+      placementSelect.addEventListener("change", (event) => {
+        state.editFields.placement_space_id = event.target.value;
+      });
+      placementGroup.appendChild(placementSelect);
+      placementGroup.appendChild(h("div", { className: "field-help" }, state.spacesLoading
+        ? "Loading visible spaces..."
+        : placementOptions.length
+        ? "Choose any space you can access. The MCP action calls the canonical placement endpoint."
+        : "No visible spaces available for placement."));
+      compactGrid.appendChild(placementGroup);
+
+      const pinnedGroup = h("div", { className: "form-group" });
+      pinnedGroup.appendChild(h("label", null, "Placement"));
+      const pinnedRow = h("label", { style: "display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--ax-border);border-radius:12px;text-transform:none;letter-spacing:0;color:var(--ax-text);" });
+      const pinnedCheckbox = document.createElement("input");
+      pinnedCheckbox.type = "checkbox";
+      pinnedCheckbox.checked = Boolean(state.editFields.pinned);
+      pinnedCheckbox.disabled = !!state.editSending;
+      pinnedCheckbox.addEventListener("change", (event) => {
+        state.editFields.pinned = Boolean(event.target.checked);
+      });
+      pinnedRow.appendChild(pinnedCheckbox);
+      pinnedRow.appendChild(document.createTextNode("Pin this agent to the selected space"));
+      pinnedGroup.appendChild(pinnedRow);
+      pinnedGroup.appendChild(h("div", { className: "field-help" }, "Pinned agents set space_locked=true so they stay in their assigned space."));
+      compactGrid.appendChild(pinnedGroup);
+      card.appendChild(compactGrid);
+
+      const formDef = [
+        { key: "description", label: "Description", tag: "textarea", ph: "What does this agent do?" },
+        { key: "bio", label: "Bio", tag: "textarea", ph: "Longer profile shown to users and agents." },
+        { key: "specialization", label: "Specialization", tag: "input", ph: "Security review, support triage, MCP testing..." },
+        { key: "model", label: "Model", tag: "input", ph: "Leave blank to keep default" },
+        { key: "capabilities", label: "Capabilities", tag: "input", ph: "testing, review, triage" },
+      ];
+
+      for (const f of formDef) {
+        const group = h("div", { className: "form-group" });
+        group.appendChild(h("label", null, f.label));
+        const input = document.createElement(f.tag === "textarea" ? "textarea" : "input");
+        input.className = "form-input";
+        input.placeholder = f.ph;
+        input.value = state.editFields[f.key] || "";
+        input.disabled = !!state.editSending;
+        input.addEventListener("input", (event) => {
+          state.editFields[f.key] = event.target.value;
+        });
+        group.appendChild(input);
+        if (f.key === "capabilities") {
+          group.appendChild(h("div", { className: "field-help" }, "Comma-separated tags. Keep these descriptive, not permission-like."));
+        }
+        card.appendChild(group);
+      }
+
+      const tools = editableToolKeys(agent);
+      if (tools.length) {
+        const toolsGroup = h("div", { className: "form-group" });
+        toolsGroup.appendChild(h("label", null, "Enabled Tools"));
+        const list = h("div", { style: "display:flex;flex-wrap:wrap;gap:8px;" });
+        for (const toolKey of tools) {
+          const row = h("label", { style: "display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--ax-border);border-radius:999px;text-transform:none;letter-spacing:0;color:var(--ax-text);" });
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = Boolean(state.editFields.enabled_tools?.[toolKey]);
+          checkbox.disabled = !!state.editSending;
+          checkbox.addEventListener("change", (event) => {
+            state.editFields.enabled_tools = { ...(state.editFields.enabled_tools || {}), [toolKey]: Boolean(event.target.checked) };
+          });
+          row.appendChild(checkbox);
+          row.appendChild(document.createTextNode(humanizeLabel(toolKey)));
+          list.appendChild(row);
+        }
+        toolsGroup.appendChild(list);
+        toolsGroup.appendChild(h("div", { className: "field-help" }, "Tool changes still go through backend validation for role/template compatibility."));
+        card.appendChild(toolsGroup);
+      }
+
+      card.appendChild(h("div", { className: "field-help" }, "Space changes use the dedicated placement endpoint so roster placement, agent_space_access, and legacy agents.space_id stay in sync."));
+
+      const actions = h("div", { className: "form-actions" });
+      const saveBtn = h("button", { className: "btn-create", type: "button" }, state.editSending ? "Saving..." : "Save profile");
+      saveBtn.disabled = !!state.editSending;
+      saveBtn.addEventListener("click", async () => {
+        if (state.editSending) return;
+        state.editSending = true;
+        state.notice = null;
+        render();
+        try {
+          const agentTarget = agent.id || agent.agent_id || agent.name;
+          const updateArgs = {
+            action: "update",
+            target: agentTarget,
+          };
+          for (const key of ["description", "bio", "specialization", "model"]) {
+            const value = (state.editFields[key] || "").trim();
+            updateArgs[key] = value;
+          }
+          updateArgs.status = state.editFields.status || "active";
+          const caps = String(state.editFields.capabilities || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+          updateArgs.declared_capabilities = caps;
+          updateArgs.enabled_tools = { ...(state.editFields.enabled_tools || {}) };
+
+          const placementArgs = {
+            action: "set_placement",
+            agent_id: agentTarget,
+            space_id: String(state.editFields.placement_space_id || "").trim(),
+            pinned: Boolean(state.editFields.pinned),
+          };
+
+          const profileResult = await host.callServerTool("agents", updateArgs);
+          const profilePayload = extractPayload(profileResult);
+          if (profilePayload?.error) {
+            throw new Error(profilePayload.hint || profilePayload.error || "Agent profile update failed.");
+          }
+
+          const placementResult = await host.callServerTool("agents", placementArgs);
+          const placementPayload = extractPayload(placementResult);
+          state.editSending = false;
+          if (placementPayload?.error) {
+            throw new Error(placementPayload.hint || placementPayload.error || "Agent placement update failed.");
+          }
+
+          const updatedAgent =
+            (Array.isArray(placementPayload?.items) && placementPayload.items[0])
+            || (placementPayload?.agent && typeof placementPayload.agent === "object" ? placementPayload.agent : null)
+            || (Array.isArray(profilePayload?.items) && profilePayload.items[0])
+            || (profilePayload?.agent && typeof profilePayload.agent === "object" ? profilePayload.agent : null);
+          if (updatedAgent) {
+            applyUpdatedAgent(updatedAgent);
+            state.notice = "Agent profile and placement saved.";
+            state.noticeKind = "info";
+            render();
+            return;
+          }
+          state.notice = placementPayload?.hint || profilePayload?.hint || "Agent save returned an unexpected response.";
+          state.noticeKind = "error";
+          render();
+        } catch (err) {
+          state.editSending = false;
+          state.notice = err instanceof Error ? err.message : "Failed to save agent profile.";
+          state.noticeKind = "error";
+          render();
+        }
+      });
+      actions.appendChild(saveBtn);
+
+      const cancelBtn = h("button", { className: "btn-discard", type: "button" }, "Cancel");
+      cancelBtn.addEventListener("click", () => {
+        if (state.editSending) return;
+        state.editAgent = null;
+        state.editFields = {};
+        state.view = "profile";
+        render();
+      });
+      actions.appendChild(cancelBtn);
+      card.appendChild(actions);
+      root.appendChild(card);
+    }
+
+    function renderControl(root) {
+      const draftAgent = controlDraftAgent();
+      const controlAction = state.controlDraft?.action === "enable" ? "enable" : "disable";
+      if (!canControlAgent(draftAgent, controlAction)) {
+        const blocked = h("div", { className: "notice notice-error", "data-testid": "agents-control-read-only" }, agentReadOnlyMessage(draftAgent));
+        root.appendChild(blocked);
+        return;
+      }
+      const control = state.controlDraft || {};
+      const action = control.action || "disable";
+      const title = action === "enable" ? "Re-enable Agent" : "Disable Agent";
+      const subtitle = action === "enable"
+        ? "This will allow the agent to respond again."
+        : "Use timed breaks for noisy agents. Use indefinite disable when the user should explicitly re-enable later.";
+
+      const backBtn = h("button", { className: "back-btn" }, "\u2190 Back");
+      backBtn.addEventListener("click", () => {
+        state.controlDraft = null;
+        state.controlSending = false;
+        state.view = state.controlReturnView === "profile" && state.selected ? "profile" : "grid";
+        render();
+      });
+      root.appendChild(backBtn);
+
+      const card = h("div", { className: "create-card" });
+      card.appendChild(h("div", { className: "create-label" }, title));
+      card.appendChild(h("div", { className: "create-summary" }, subtitle));
+
+      const summary = h("div", { className: "profile-fields" });
+      const agentField = h("div", { className: "field" });
+      agentField.appendChild(h("div", { className: "field-label" }, "Agent"));
+      agentField.appendChild(h("div", { className: "field-value" }, control.agent_name || "agent"));
+      summary.appendChild(agentField);
+
+      if (action === "disable") {
+        const durationField = h("div", { className: "field" });
+        durationField.appendChild(h("div", { className: "field-label" }, "Duration"));
+        durationField.appendChild(h("div", { className: "field-value" }, control.duration_label || "until you re-enable it"));
+        summary.appendChild(durationField);
+      }
+
+      card.appendChild(summary);
+
+      const reasonGroup = h("div", { className: "form-group" });
+      reasonGroup.appendChild(h("label", null, action === "enable" ? "Reason (optional)" : "Reason"));
+      const reasonInput = document.createElement("textarea");
+      reasonInput.className = "form-input";
+      reasonInput.placeholder = action === "enable" ? "Optional note for the audit trail..." : "Why disable this agent?";
+      reasonInput.value = control.reason || "";
+      reasonInput.disabled = !!state.controlSending;
+      reasonInput.addEventListener("input", (e) => { state.controlDraft.reason = e.target.value; });
+      reasonGroup.appendChild(reasonInput);
+      card.appendChild(reasonGroup);
+
+      const actions = h("div", { className: "form-actions" });
+      const confirmBtn = h(
+        "button",
+        { className: action === "enable" ? "btn-secondary" : "btn-danger", type: "button" },
+        state.controlSending ? (action === "enable" ? "Re-enabling..." : "Disabling...") : (action === "enable" ? "Re-enable Agent" : "Disable Agent")
+      );
+      confirmBtn.disabled = !!state.controlSending;
+      confirmBtn.addEventListener("click", async () => {
+        if (state.controlSending) return;
+        state.controlSending = true;
+        state.notice = null;
+        render();
+        try {
+          const args = {
+            action,
+            target: control.agent_id,
+            confirmed: true,
+          };
+          if (typeof control.duration_minutes === "number") args.duration_minutes = control.duration_minutes;
+          const reason = (state.controlDraft.reason || "").trim();
+          if (reason) args.reason = reason;
+
+          const res = await host.callServerTool("agents", args);
+          const data = extractPayload(res);
+          state.controlSending = false;
+          if (data?.scope === "control_applied" && applyControlApplied(data)) return;
+          state.notice = data?.hint || "The agent control action did not complete.";
+          state.noticeKind = "error";
+          render();
+        } catch (err) {
+          state.controlSending = false;
+          state.notice = err instanceof Error ? err.message : "Failed to apply agent control.";
+          state.noticeKind = "error";
+          render();
+        }
+      });
+      actions.appendChild(confirmBtn);
+
+      const cancelBtn = h("button", { className: "btn-discard", type: "button" }, "Cancel");
+      cancelBtn.addEventListener("click", () => {
+        if (state.controlSending) return;
+        state.controlDraft = null;
+        state.view = state.controlReturnView === "profile" && state.selected ? "profile" : "grid";
+        render();
+      });
+      actions.appendChild(cancelBtn);
+      card.appendChild(actions);
+      root.appendChild(card);
+    }
+
+    function renderCreate(root) {
+      const backBtn = h("button", { className: "back-btn" }, "\u2190 Back to Agents");
+      backBtn.addEventListener("click", () => {
+        state.draft = null; state.draftFields = {}; state.draftRefreshedFor = ""; state.notice = null; render();
+      });
+      root.appendChild(backBtn);
+
+      if (!canUseHitlApproval()) {
+        root.appendChild(h("div", { className: "notice notice-error", "data-testid": "agents-create-read-only" }, readOnlyMessage()));
+        return;
+      }
+      const fields = state.draftFields;
+      const requiredFields = state.draftRequiredFields || DEFAULT_CREATE_REQUIRED_FIELDS;
+      const missing = missingCreateFields(fields, requiredFields);
+      const isPersistedDraft = Boolean(fields.draft_id || state.draft?.draft_id);
+      const draftVersion = Number(fields.version || state.draft?.version || 0);
+      const draftId = fields.draft_id || state.draft?.draft_id || "";
+
+      const card = h("div", { className: "create-card" });
+      card.appendChild(h("div", { className: "create-label" }, isPersistedDraft ? "Review Agent Draft" : "New Agent Proposal"));
+      card.appendChild(h(
+        "div",
+        { className: "create-summary" },
+        isPersistedDraft
+          ? "This draft is waiting for user approval. Edit the supported fields, then approve to create the agent with your user session."
+          : "Create a review draft first. The actual agent is not created until the user approves it."
+      ));
+      if (isPersistedDraft) {
+        card.appendChild(h(
+          "div",
+          { className: "field-help", style: "margin-bottom:14px" },
+          "Draft ", draftId.slice(0, 8), " · version ", String(draftVersion), " · status ", (state.draft?.status || "under_review")
+        ));
+      }
+
+      const formDef = [
+        { key: "name", label: "Agent Name", tag: "input", ph: "e.g. scout, reviewer, analyst" },
+        { key: "description", label: "Description", tag: "input", ph: "Short one-line description" },
+        { key: "agent_mode", label: "Agent Mode", tag: "select", options: AGENT_MODE_OPTIONS, help: "Sandbox is safest. Privileged drafts require explicit approval and may grant more platform capability." },
+        { key: "system_prompt", label: "System Prompt", tag: "textarea", ph: "Optional advanced instructions for this agent...", help: "Optional. Keep this blank unless custom behavior or constraints are genuinely useful." },
+        { key: "model", label: "Model (optional)", tag: "input", ph: "Leave blank for default" },
+      ];
+
+      for (const f of formDef) {
+        const group = h("div", { className: "form-group" });
+        const label = h("label", null, f.label);
+        if (requiredFields.includes(f.key)) {
+          label.appendChild(h("span", { className: "field-required" }, "*"));
+        }
+        group.appendChild(label);
+        const input = document.createElement(f.tag === "textarea" ? "textarea" : f.tag === "select" ? "select" : "input");
+        input.className = "form-input" + (missing.includes(f.key) ? " is-missing" : "");
+        if (f.tag !== "select") {
+          input.placeholder = f.ph;
+        }
+        if (f.tag === "select") {
+          for (const optionValue of (f.options || [])) {
+            const option = document.createElement("option");
+            option.value = optionValue;
+            option.textContent = optionValue;
+            input.appendChild(option);
+          }
+        }
+        input.value = fields[f.key] || (f.tag === "select" ? "sandbox" : "");
+        input.disabled = !!state.draftSending || (isPersistedDraft && !["name", "description", "agent_mode"].includes(f.key));
+        input.addEventListener("input", (e) => { state.draftFields[f.key] = e.target.value; });
+        group.appendChild(input);
+        if (f.help) group.appendChild(h("div", { className: "field-help" }, f.help));
+        if (isPersistedDraft && !["name", "description", "agent_mode"].includes(f.key)) {
+          group.appendChild(h("div", { className: "field-help" }, "Advanced fields are locked after draft creation in this v1 flow."));
+        }
+        card.appendChild(group);
+      }
+
+      const actions = h("div", { className: "form-actions" });
+
+      const createBtn = h(
+        "button",
+        { className: "btn-create" },
+        state.draftSending
+          ? (isPersistedDraft ? "Approving..." : "Creating draft...")
+          : (isPersistedDraft ? "Approve and create" : "Create review draft")
+      );
+      createBtn.disabled = state.draftSending;
+      createBtn.addEventListener("click", async () => {
+        if (state.draftSending) return;
+        const name = (state.draftFields.name || "").trim();
+        if (!name) { state.notice = "Agent name is required."; state.noticeKind = "error"; render(); return; }
+        const currentMissing = missingCreateFields(state.draftFields, requiredFields);
+        if (currentMissing.length > 0) {
+          state.notice = "Fill in the core profile before creating: " + currentMissing.join(", ") + ".";
+          state.noticeKind = "error";
+          render();
+          return;
+        }
+        state.draftSending = true; state.notice = null; render();
+        try {
+          let data;
+          if (!isPersistedDraft) {
+            const args = {
+              action: "create_draft",
+              name,
+              agent_mode: state.draftFields.agent_mode || "sandbox",
+            };
+            for (const k of ["description", "system_prompt", "model"]) {
+              const v = (state.draftFields[k] || "").trim();
+              if (v) args[k] = v;
+            }
+            const res = await host.callServerTool("agents", args);
+            data = extractPayload(res);
+          } else {
+            let nextDraftId = draftId;
+            let nextVersion = draftVersion;
+            const changes = draftEditableChanges();
+            if (Object.keys(changes).length > 0) {
+              const editRes = await host.callServerTool("agents", {
+                action: "edit_draft",
+                draft_id: nextDraftId,
+                version: nextVersion,
+                changes,
+              });
+              const editData = extractPayload(editRes);
+              if (editData?.scope === "create" && editData.draft) {
+                nextDraftId = editData.draft.draft_id;
+                nextVersion = Number(editData.draft.version || nextVersion);
+                applyDraftPayload(editData.draft, editData.required_fields);
+              } else if (editData?.scope === "create_error" || editData?.error) {
+                data = editData;
+              }
+            }
+            if (!data) {
+              const approveRes = await host.callServerTool("agents", {
+                action: "approve_draft",
+                draft_id: nextDraftId,
+                version: nextVersion,
+              });
+              data = extractPayload(approveRes);
+            }
+          }
+          if (data && data.error) {
+            state.draftSending = false; state.notice = typeof data.error === "string" ? data.error : JSON.stringify(data.error); state.noticeKind = "error"; render(); return;
+          }
+          if (data && (data.scope === "create_blocked" || data.scope === "create_error")) {
+            state.draftSending = false;
+            state.notice = data.hint || "Agent creation is not available right now.";
+            state.noticeKind = "error";
+            render();
+            return;
+          }
+          if (data && data.scope === "create" && data.draft) {
+            state.draftSending = false;
+            applyDraftPayload(data.draft, data.required_fields);
+            state.notice = "Draft ready for review.";
+            state.noticeKind = "info";
+            render();
+            return;
+          }
+          state.draftSending = false;
+          if (data && data.scope === "created" && data.created) {
+            state.draft = null;
+            state.draftFields = {};
+            state.selected = data.created;
+            state.view = "profile";
+            state.notice = "Agent '" + (data.created.name || name) + "' created!";
+            state.noticeKind = "info";
+            if (data.items && data.items.length) {
+              state.agents = [...state.agents, ...data.items.filter(a => !state.agents.some(e => e.id === a.id || e.name === a.name))];
+              state.count = state.agents.length;
+            }
+          } else {
+            state.notice = "The draft action returned an unexpected response.";
+            state.noticeKind = "error";
+            state.view = "grid";
+          }
+          render();
+        } catch (err) {
+          state.draftSending = false; state.notice = err instanceof Error ? err.message : "Failed to create agent."; state.noticeKind = "error"; render();
+        }
+      });
+      actions.appendChild(createBtn);
+
+      const discardBtn = h("button", { className: "btn-discard" }, isPersistedDraft ? "Reject draft" : "Discard");
+      discardBtn.addEventListener("click", async () => {
+        if (state.draftSending) return;
+        if (isPersistedDraft) {
+          state.draftSending = true;
+          state.notice = null;
+          render();
+          try {
+            const res = await host.callServerTool("agents", {
+              action: "reject_draft",
+              draft_id: draftId,
+              version: draftVersion,
+            });
+            const data = extractPayload(res);
+            state.draftSending = false;
+            if (data?.scope === "draft_dismissed") {
+              state.draft = null;
+              state.draftFields = {};
+              state.notice = "Draft dismissed.";
+              state.noticeKind = "info";
+              state.view = "grid";
+              render();
+              return;
+            }
+            state.notice = data?.hint || "Failed to reject draft.";
+            state.noticeKind = "error";
+            render();
+            return;
+          } catch (err) {
+            state.draftSending = false;
+            state.notice = err instanceof Error ? err.message : "Failed to reject draft.";
+            state.noticeKind = "error";
+            render();
+            return;
+          }
+        }
+        state.draft = null; state.draftFields = {}; state.draftRefreshedFor = ""; state.notice = null; render();
+      });
+      actions.appendChild(discardBtn);
+
+      card.appendChild(actions);
+      if (missing.length > 0) {
+        card.appendChild(
+          h(
+            "div",
+            { className: "field-help", style: "margin-top:12px" },
+            "Still missing: ", missing.join(", "), "."
+          )
+        );
+      }
+      root.appendChild(card);
+    }
+
+    function extractData(result) {
+      if (result.structuredContent) return result.structuredContent;
+      const text = result.content?.find(c => c.type === "text");
+      if (!text) return null;
+      try {
+        const parsed = JSON.parse(text.text);
+        return parsed.structuredContent || parsed;
+      } catch { return null; }
+    }
+
+    function unwrapV2(data) {
+      // Unwrap v2 envelope: {kind, version, state, data: {...}, actions}
+      if (data && data.version && data.data && typeof data.data === "object") return data.data;
+      return data;
+    }
+
+    function extractPayload(result) {
+      return unwrapV2(extractData(result));
+    }
+
+
+    function handleToolResult(result, source = "tool") {
+      const data = extractData(result);
+      if (!data) return;
+      const payload = syncPermissionState(data) || data;
+      state.hydrated = true;
+
+      // Draft detection — create proposal from concierge
+      if (payload?.draft && payload.scope === "create") {
+        const draftId = payload.draft.draft_id || "";
+        const terminal = readTerminalDraft(draftId);
+        if (terminal) {
+          applyTerminalDraft(terminal);
+          render();
+          return;
+        }
+        applyDraftPayload(payload.draft, payload.required_fields);
+        state.notice = null;
+        render();
+        if (draftId && state.draftRefreshedFor !== draftId && !state.draftRefreshInFlight) {
+          refreshDraftStatus(draftId);
+        }
+        return;
+      }
+
+      // Created agent — show the profile immediately
+      if (payload?.scope === "created" && payload.created) {
+        const draftId = payload?.draft?.draft_id || state.draft?.draft_id || "";
+        if (draftId) {
+          const terminal = { status: "created", created: payload.created };
+          storeTerminalDraft(draftId, terminal);
+          applyTerminalDraft(terminal);
+          if (payload.items && payload.items.length) {
+            state.agents = [...state.agents, ...payload.items.filter(a => !state.agents.some(e => e.id === a.id || e.name === a.name))];
+            state.count = state.agents.length;
+          }
+          render();
+          return;
+        }
+        state.draft = null;
+        state.draftFields = {};
+        state.draftRequiredFields = DEFAULT_CREATE_REQUIRED_FIELDS;
+        state.draftRefreshedFor = "";
+        state.controlDraft = null;
+        state.selected = payload.created;
+        state.view = "profile";
+        state.notice = "Agent '" + (payload.created.name || "") + "' created!";
+        state.noticeKind = "info";
+        // Also put it in the agents list so Back works
+        if (payload.items && payload.items.length) {
+          state.agents = [...state.agents, ...payload.items.filter(a => !state.agents.some(e => e.id === a.id || e.name === a.name))];
+          state.count = state.agents.length;
+        }
+        render();
+        return;
+      }
+
+      if (payload?.scope === "draft_dismissed") {
+        const draftId = payload?.draft?.draft_id || state.draft?.draft_id || "";
+        if (draftId) {
+          const terminal = { status: "dismissed", hint: payload.hint || "Draft dismissed." };
+          storeTerminalDraft(draftId, terminal);
+          applyTerminalDraft(terminal);
+          render();
+          return;
+        }
+        state.draft = null;
+        state.draftFields = {};
+        state.draftRequiredFields = DEFAULT_CREATE_REQUIRED_FIELDS;
+        state.draftRefreshedFor = "";
+        state.controlDraft = null;
+        state.view = "grid";
+        state.notice = payload.hint || "Draft dismissed.";
+        state.noticeKind = "info";
+        render();
+        return;
+      }
+
+      if (payload?.scope === "create_blocked" || payload?.scope === "create_error") {
+        state.draft = null;
+        state.draftFields = {};
+        state.draftRequiredFields = DEFAULT_CREATE_REQUIRED_FIELDS;
+        state.draftRefreshedFor = "";
+        state.controlDraft = null;
+        state.view = "grid";
+        state.notice = payload.hint || "Agent creation is not available right now.";
+        state.noticeKind = "error";
+        render();
+        return;
+      }
+
+      if (payload?.scope === "control_review" && payload.control) {
+        state.controlDraft = payload.control;
+        state.controlSending = false;
+        state.controlReturnView = state.view === "profile" ? "profile" : "grid";
+        state.notice = null;
+        render();
+        return;
+      }
+
+      if (payload?.scope === "control_applied" && applyControlApplied(payload)) return;
+
+      if (payload?.scope === "control_blocked" || payload?.scope === "control_error") {
+        state.controlDraft = null;
+        state.controlSending = false;
+        state.notice = payload.hint || "That control action is not available here.";
+        state.noticeKind = "error";
+        render();
+        return;
+      }
+
+      // Default: agent list — unwrap v2 envelope if present. If this widget
+      // opened on a HITL draft, background/bootstrap list refreshes must not
+      // dismiss the review surface.
+      const payloadScope = payload.view_scope || payload.scope || "space";
+      const payloadItems = Array.isArray(payload.items) ? payload.items : [];
+      state.agents = isCrossSpaceScope(payloadScope)
+        ? mergeAgentLists(state.agents, payloadItems)
+        : payloadItems;
+      state.count = payload.count ?? (isCrossSpaceScope(payloadScope) ? payloadItems.length : state.agents.length);
+      state.total = payload.total ?? state.count;
+      // AGENT-LIFECYCLE-UI: capture the availability_summary for the header line.
+      // Always (re)assign — reset to null when a payload lacks it (scope switch /
+      // older backend / cross-space fallback) so a stale prior count can't linger.
+      state.availabilitySummary = (payload.availability_summary && typeof payload.availability_summary === "object")
+        ? payload.availability_summary
+        : null;
+      state.crossSpaceLoading = false;
+      state.crossSpaceLoadingScope = "";
+      state.crossSpaceLoaded = isCrossSpaceScope(payloadScope)
+        ? (Boolean(payload.cross_space_loaded) || state.crossSpaceLoaded)
+        : false;
+      state.crossSpaceScope = state.crossSpaceLoaded ? payloadScope : "";
+      if (state.draft) {
+        state.controlDraft = null;
+        state.controlSending = false;
+        render();
+        return;
+      }
+      state.draft = null;
+      state.draftFields = {};
+      state.draftRequiredFields = DEFAULT_CREATE_REQUIRED_FIELDS;
+      state.draftRefreshedFor = "";
+      state.controlDraft = null;
+      state.controlSending = false;
+      state.view = "grid";
+      render();
+    }
+
+    async function bootstrapAgents() {
+      if (state.hydrated) return;
+      try {
+        const result = await host.callServerTool("agents", { action: "list" });
+        handleToolResult(result, "bootstrap");
+      } catch (err) {
+        state.notice = err instanceof Error ? err.message : "Failed to load agents.";
+        state.noticeKind = "error";
+        render();
+      }
+    }
+
+    async function loadCrossSpaceAgents(scope = state.agentScopeFilter) {
+      const viewScope = requestedCrossSpaceScope(scope);
+      state.crossSpaceLoading = true;
+      state.crossSpaceLoadingScope = viewScope;
+      render();
+      let shouldLoadActiveScope = false;
+      try {
+        const result = await host.callServerTool("agents", {
+          action: "list",
+          limit: 200,
+          offset: 0,
+          view_scope: viewScope,
+        });
+        handleToolResult(result, "cross-space");
+        const activeScope = state.agentScopeFilter;
+        shouldLoadActiveScope = isCrossSpaceScope(activeScope) && !crossSpaceDataCoversScope(activeScope);
+      } catch (err) {
+        state.notice = err instanceof Error ? err.message : "Failed to load agents across spaces.";
+        state.noticeKind = "error";
+      } finally {
+        state.crossSpaceLoading = false;
+        state.crossSpaceLoadingScope = "";
+        if (shouldLoadActiveScope) {
+          void loadCrossSpaceAgents(state.agentScopeFilter);
+        } else {
+          render();
+        }
+      }
+    }
+
+    async function loadAvailableSpaces() {
+      state.spacesLoading = true;
+      render();
+      try {
+        const result = await host.callServerTool("spaces", { action: "list" });
+        const payload = extractPayload(result) || {};
+        const spaces = Array.isArray(payload.items)
+          ? payload.items
+          : (Array.isArray(payload.spaces) ? payload.spaces : []);
+        state.availableSpaces = spaces;
+        state.spacesLoaded = true;
+        state.spacesLoading = false;
+        render();
+      } catch (err) {
+        state.spacesLoading = false;
+        state.notice = err instanceof Error ? err.message : "Failed to load visible spaces.";
+        state.noticeKind = "error";
+        render();
+      }
+    }
+
+    async function refreshAgentsList() {
+      try {
+        state.crossSpaceLoaded = false;
+        state.crossSpaceLoading = false;
+        state.crossSpaceScope = "";
+        state.crossSpaceLoadingScope = "";
+        const result = await host.callServerTool("agents", { action: "list" });
+        handleToolResult(result, "list");
+      } catch (err) {
+        state.notice = err instanceof Error ? err.message : "Failed to refresh agents.";
+        state.noticeKind = "error";
+        render();
+      }
+    }
+
+    host.setToolResultHandler((result) => {
+      handleToolResult(result, "push");
+    });
+
+    await host.connect();
+    if (!state.hydrated) {
+      await bootstrapAgents();
+    }
+  </script>
+</body>
+</html>

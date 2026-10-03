@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Board - Waystation</title>
+  <style>
+    :root {
+      --bg: var(--color-background-primary, #080a0d);
+      --panel: var(--color-background-secondary, #11151a);
+      --panel-2: var(--color-background-tertiary, #171d22);
+      --border: var(--color-border-default, #29313a);
+      --text: var(--color-foreground-primary, #eef2f4);
+      --muted: var(--color-foreground-secondary, #9aa5ad);
+      --dim: var(--color-foreground-secondary, #66717a);
+      --green: #5ee6a8;
+      --red: #ff7676;
+      --yellow: #e9c46a;
+      --blue: var(--color-accent-primary, #65b8ff);
+      --cell: var(--color-background-primary, #0c1014);
+      --status-bg: var(--color-background-tertiary, #0b120f);
+      --tab-active-bg: var(--color-background-tertiary, #0b1812);
+      --hover-bg: var(--color-background-tertiary, #0d1712);
+      --code-bg: var(--color-background-primary, #07090b);
+      --font: var(--font-family-body, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif);
+      --mono: var(--font-family-mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
+    body { padding: 16px; }
+    button { font: inherit; }
+    .shell { max-width: 960px; margin: 0 auto; display: grid; gap: 12px; }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 12px;
+    }
+    .title { min-width: 0; }
+    .title h1 { margin: 0; font-size: 18px; letter-spacing: 0; }
+    .sub { margin-top: 3px; color: var(--muted); font-size: 13px; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--green);
+      background: var(--status-bg);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tab, .small-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .tab.active { color: var(--text); border-color: var(--green); background: var(--tab-active-bg); }
+    .small-btn:hover, .tab:hover { border-color: var(--green); color: var(--text); }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .panel-body { padding: 12px; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(72px, 1fr));
+      gap: 8px;
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    .cell {
+      aspect-ratio: 1;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--cell);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 46px;
+      font-weight: 800;
+      letter-spacing: 0;
+      cursor: pointer;
+      min-width: 0;
+    }
+    .cell.empty:hover { border-color: var(--green); background: var(--hover-bg); }
+    .cell.x { color: var(--green); }
+    .cell.o { color: var(--blue); }
+    .cell.win { outline: 2px solid var(--yellow); }
+    .meta-grid { display: grid; gap: 8px; }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding-bottom: 8px;
+      font-size: 13px;
+    }
+    .row span:first-child { color: var(--dim); }
+    .row span:last-child { color: var(--text); text-align: right; }
+    .notice {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--muted);
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .notice.error { color: var(--red); border-color: rgba(255,118,118,0.45); }
+    .notice.info { color: var(--green); border-color: rgba(94,230,168,0.35); }
+    .question { display: grid; gap: 12px; }
+    .question h2 { margin: 0; font-size: 22px; line-height: 1.25; letter-spacing: 0; }
+    .choices { display: grid; gap: 8px; }
+    .choice {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--cell);
+      color: var(--text);
+      text-align: left;
+      padding: 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .choice:hover { border-color: var(--green); background: var(--hover-bg); }
+    .choice:disabled { cursor: default; opacity: 0.6; }
+    .article {
+      display: grid;
+      gap: 10px;
+      color: var(--text);
+      line-height: 1.6;
+      max-width: 820px;
+    }
+    .article h2, .article h3 { margin: 8px 0 0; letter-spacing: 0; }
+    .article p { margin: 0; color: var(--text); }
+    .article ul { margin: 0; padding-left: 22px; color: var(--text); }
+    .article code {
+      font-family: var(--mono);
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 5px;
+    }
+    .source-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .source-link { color: var(--blue); font-size: 13px; overflow-wrap: anywhere; }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 520px;
+      overflow: auto;
+    }
+    .events { display: grid; gap: 8px; }
+    .event {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      background: var(--panel-2);
+      font-size: 13px;
+    }
+    .event-type { color: var(--green); font-weight: 800; }
+    .event-detail { color: var(--muted); margin-top: 4px; }
+    .empty { color: var(--muted); font-size: 14px; padding: 24px; text-align: center; }
+
+    @media (max-width: 760px) {
+      body { padding: 12px; }
+      .layout { grid-template-columns: 1fr; }
+      .top { align-items: flex-start; flex-direction: column; }
+      .status { white-space: normal; }
+      .cell { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app"></div>
+  <div class="shell" id="load-fallback" hidden>
+    <div class="notice error">Failed to load game widget assets. Please retry in a moment.</div>
+  </div>
+  <script>
+    window.__gameBoardLoaded = false;
+    window.setTimeout(() => {
+      const app = document.getElementById("app");
+      const fallback = document.getElementById("load-fallback");
+      if (!window.__gameBoardLoaded && fallback && app && app.childElementCount === 0) {
+        fallback.hidden = false;
+      }
+    }, 2500);
+  </script>
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+    const app = new App({ name: "Game Board", version: "1.0.0" });
+    const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
+
+    function getOpenAiBridge() {
+      return typeof window !== "undefined" ? window.openai : undefined;
+    }
+
+    function normalizeToolResult(result) {
+      if (result && typeof result === "object" && ("structuredContent" in result || "content" in result)) {
+        return result;
+      }
+      return { structuredContent: result };
+    }
+
+    function notifyHostHeight() {
+      const openaiBridge = getOpenAiBridge();
+      if (openaiBridge && typeof openaiBridge.notifyIntrinsicHeight === "function") {
+        requestAnimationFrame(() => {
+          try {
+            const root = document.getElementById("app");
+            const styles = window.getComputedStyle(document.body);
+            const y = (parseFloat(styles.paddingTop || "0") || 0) + (parseFloat(styles.paddingBottom || "0") || 0);
+            openaiBridge.notifyIntrinsicHeight(Math.max(220, Math.ceil((root?.getBoundingClientRect().height || 0) + y)));
+          } catch {}
+        });
+      }
+    }
+
+    const host = {
+      _toolResultHandler: null,
+      _globalsListener: null,
+      setToolResultHandler(handler) {
+        this._toolResultHandler = handler;
+        app.ontoolresult = handler;
+        window.addEventListener("message", (event) => {
+          let msg = event.data;
+          if (!msg) return;
+          if (typeof msg === "string") {
+            try { msg = JSON.parse(msg); } catch { return; }
+          }
+          if (typeof msg !== "object") return;
+          if (msg.method === "ui/notifications/tool-result" && msg.params) {
+            handler(normalizeToolResult(msg.params));
+            return;
+          }
+          if (msg.type === "tool_result" && (msg.initial_data || msg.structuredContent || msg.content)) {
+            handler(normalizeToolResult(msg.initial_data || msg));
+            return;
+          }
+          if (msg.structuredContent || msg.kind) {
+            handler(normalizeToolResult(msg));
+          }
+        });
+      },
+      _deliverToolOutput(globals) {
+        const openaiBridge = getOpenAiBridge();
+        const output = globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")
+          ? globals.toolOutput
+          : openaiBridge?.toolOutput;
+        if (this._toolResultHandler && output !== undefined) {
+          this._toolResultHandler(normalizeToolResult(output));
+        }
+      },
+      async connect() {
+        if (!this._globalsListener) {
+          this._globalsListener = (event) => {
+            const globals = event?.detail?.globals;
+            if (globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")) {
+              this._deliverToolOutput(globals);
+            }
+            notifyHostHeight();
+          };
+          window.addEventListener(OPENAI_SET_GLOBALS_EVENT, this._globalsListener, { passive: true });
+        }
+        await app.connect();
+        this._deliverToolOutput();
+        notifyHostHeight();
+      },
+      async callServerTool(name, args) {
+        const openaiBridge = getOpenAiBridge();
+        if (openaiBridge && typeof openaiBridge.callTool === "function") {
+          return normalizeToolResult(await openaiBridge.callTool(name, args));
+        }
+        return app.callServerTool({ name, arguments: args });
+      },
+    };
+
+    let state = {
+      game: null,
+      legalMoves: [],
+      currentQuestion: null,
+      tab: "game",
+      notice: null,
+      busyCell: null,
+      busyAnswer: null,
+      error: null,
+    };
+
+    function h(tag, attrs, text) {
+      const e = document.createElement(tag);
+      if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === "className") e.className = v;
+        else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2), v);
+        else e.setAttribute(k, v);
+      });
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    function extractData(result) {
+      if (result?.structuredContent) return result.structuredContent;
+      const text = result?.content?.find?.((c) => c.type === "text");
+      if (!text) return result;
+      try {
+        const parsed = JSON.parse(text.text);
+        return parsed.structuredContent || parsed;
+      } catch {
+        return result;
+      }
+    }
+
+    function handleToolResult(result) {
+      const payload = extractData(result);
+      const data = payload?.data || payload;
+      if (data?.game) {
+        state.game = data.game;
+        state.legalMoves = Array.isArray(data.legal_moves) ? data.legal_moves : [];
+        state.currentQuestion = data.current_question || null;
+        state.notice = payload.notice || null;
+        state.error = null;
+      } else if (payload?.error) {
+        state.error = payload.error;
+      }
+      state.busyCell = null;
+      state.busyAnswer = null;
+      render();
+    }
+
+    function playerLabel(mark) {
+      const player = state.game?.players?.find?.((p) => p.mark === mark);
+      return player?.display_name || player?.handle || player?.id || mark;
+    }
+
+    function statusText() {
+      const game = state.game;
+      if (!game) return "No game loaded";
+      if (game.game === "ax_trivia") {
+        const total = game.questions?.length || 0;
+        if (game.status === "complete") return "Score: " + (game.score || 0) + "/" + total;
+        return "Question " + ((game.current_question_index || 0) + 1) + " of " + total;
+      }
+      if (game.status === "complete" && game.winner) return playerLabel(game.winner) + " wins";
+      if (game.status === "draw") return "Draw";
+      if (game.status === "error") return "Could not load game";
+      return "Turn: " + (game.turn?.player || playerLabel(game.turn?.mark));
+    }
+
+    function gameTitle() {
+      const gameKey = state.game?.game;
+      if (!gameKey) return "Game Board";
+      if (gameKey === "tic_tac_toe") return "Tic-Tac-Toe";
+      if (gameKey === "ax_trivia") return "Waystation Trivia";
+      return gameKey
+        .replace(/^ax_/, "Waystation ")
+        .split(/[_-]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    }
+
+    function safeSourceHref(value) {
+      if (typeof value !== "string") return null;
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      try {
+        const url = new URL(trimmed);
+        return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+      } catch {
+        return null;
+      }
+    }
+
+    async function makeMove(cell) {
+      if (!state.game || !cell || state.busyCell) return;
+      state.busyCell = cell;
+      render();
+      try {
+        const result = await host.callServerTool("games", {
+          action: "move",
+          game_id: state.game.game_id,
+          cell,
+          player: state.game.turn?.player,
+        });
+        handleToolResult(result);
+      } catch (err) {
+        state.busyCell = null;
+        state.error = String(err?.message || err);
+        render();
+      }
+    }
+
+    async function answerTrivia(choice) {
+      if (!state.game || state.busyAnswer !== null) return;
+      state.busyAnswer = choice;
+      render();
+      try {
+        const result = await host.callServerTool("games", {
+          action: "answer",
+          game_id: state.game.game_id,
+          choice,
+        });
+        handleToolResult(result);
+      } catch (err) {
+        state.busyAnswer = null;
+        state.error = String(err?.message || err);
+        render();
+      }
+    }
+
+    async function refreshGame() {
+      if (!state.game?.game_id) return;
+      try {
+        handleToolResult(await host.callServerTool("games", { action: "get", game_id: state.game.game_id }));
+      } catch (err) {
+        state.error = String(err?.message || err);
+        render();
+      }
+    }
+
+    function renderBoard(root) {
+      const panel = h("section", { className: "panel" });
+      panel.appendChild(h("div", { className: "panel-head" }, "Board"));
+      const body = h("div", { className: "panel-body" });
+      const board = h("div", { className: "board" });
+      const cells = state.game?.board || [[null, null, null], [null, null, null], [null, null, null]];
+      const wins = new Set(state.game?.winning_line || []);
+      for (let row = 0; row < 3; row += 1) {
+        for (let col = 0; col < 3; col += 1) {
+          const cell = String.fromCharCode(97 + col) + String(row + 1);
+          const value = cells[row]?.[col] || "";
+          const empty = !value && state.legalMoves.includes(cell) && state.game?.status === "active";
+          const classes = ["cell", value ? value.toLowerCase() : "empty"];
+          if (wins.has(cell)) classes.push("win");
+          const button = h("button", {
+            className: classes.join(" "),
+            type: "button",
+            "aria-label": value ? cell + " " + value : "Move " + cell,
+            onclick: () => empty && makeMove(cell),
+          }, state.busyCell === cell ? "..." : value);
+          button.disabled = !empty || Boolean(state.busyCell);
+          board.appendChild(button);
+        }
+      }
+      body.appendChild(board);
+      panel.appendChild(body);
+      root.appendChild(panel);
+    }
+
+    function renderTrivia(root) {
+      const panel = h("section", { className: "panel" });
+      panel.appendChild(h("div", { className: "panel-head" }, "Trivia"));
+      const body = h("div", { className: "panel-body question" });
+      const question = state.currentQuestion;
+      if (!question || state.game?.status === "complete") {
+        body.appendChild(h("h2", null, "Trivia complete"));
+        body.appendChild(h("div", { className: "notice info" }, "Final score: " + (state.game?.score || 0) + "/" + (state.game?.questions?.length || 0)));
+      } else {
+        body.appendChild(h("h2", null, question.prompt || "Question"));
+        const choices = h("div", { className: "choices" });
+        (question.choices || []).forEach((choice, index) => {
+          const btn = h("button", {
+            className: "choice",
+            type: "button",
+            onclick: () => answerTrivia(index),
+          }, state.busyAnswer === index ? "Checking..." : choice);
+          btn.disabled = state.busyAnswer !== null;
+          choices.appendChild(btn);
+        });
+        body.appendChild(choices);
+      }
+      panel.appendChild(body);
+      root.appendChild(panel);
+    }
+
+    function renderMeta(root) {
+      const panel = h("section", { className: "panel" });
+      const head = h("div", { className: "panel-head" });
+      head.appendChild(h("span", {}, "Game State"));
+      const refresh = h("button", { className: "small-btn", type: "button", onclick: refreshGame }, "Refresh");
+      head.appendChild(refresh);
+      panel.appendChild(head);
+      const body = h("div", { className: "panel-body meta-grid" });
+      const rows = state.game?.game === "ax_trivia"
+        ? [
+            ["Game", "Waystation trivia"],
+            ["Game ID", state.game?.game_id || ""],
+            ["Player", state.game?.players?.[0]?.handle || ""],
+            ["Score", String(state.game?.score || 0) + "/" + String(state.game?.questions?.length || 0)],
+            ["Question", String(Math.min((state.game?.current_question_index || 0) + 1, state.game?.questions?.length || 1))],
+            ["Source", state.game?.source?.title || "Built-in Waystation trivia"],
+            ["Status", state.game?.status || "active"],
+          ]
+        : [
+            ["Game", state.game?.game || "tic-tac-toe"],
+            ["Game ID", state.game?.game_id || ""],
+            ["X", playerLabel("X")],
+            ["O", playerLabel("O")],
+            ["Move", String(state.game?.move_number || 0)],
+            ["Status", state.game?.status || "active"],
+          ];
+      rows.forEach(([k, v]) => {
+        const row = h("div", { className: "row" });
+        row.appendChild(h("span", {}, k));
+        row.appendChild(h("span", {}, v));
+        body.appendChild(row);
+      });
+      if (state.notice || state.error) {
+        const n = state.notice;
+        const notice = h("div", { className: "notice " + ((n?.severity || (state.error ? "error" : "info"))) }, state.error || n?.message || "");
+        body.appendChild(notice);
+      }
+      panel.appendChild(body);
+      root.appendChild(panel);
+    }
+
+    function appendMarkdownArticle(root, text) {
+      const article = h("div", { className: "article" });
+      const lines = String(text || "").split(/\r?\n/);
+      let list = null;
+      let inCode = false;
+      let codeLines = [];
+      function flushCode() {
+        if (codeLines.length) {
+          article.appendChild(h("pre", {}, codeLines.join("\n")));
+          codeLines = [];
+        }
+      }
+      function flushList() {
+        if (list) {
+          article.appendChild(list);
+          list = null;
+        }
+      }
+      lines.forEach((line) => {
+        if (line.trim().startsWith("```")) {
+          if (inCode) flushCode();
+          inCode = !inCode;
+          return;
+        }
+        if (inCode) {
+          codeLines.push(line);
+          return;
+        }
+        const heading = line.match(/^\s{0,3}(#{1,3})\s+(.+)$/);
+        if (heading) {
+          flushList();
+          article.appendChild(h(heading[1].length === 1 ? "h2" : "h3", {}, heading[2].replace(/\s+#*$/, "")));
+          return;
+        }
+        const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+        if (bullet) {
+          if (!list) list = h("ul");
+          list.appendChild(h("li", {}, bullet[1]));
+          return;
+        }
+        if (!line.trim()) {
+          flushList();
+          return;
+        }
+        flushList();
+        article.appendChild(h("p", {}, line.trim()));
+      });
+      flushCode();
+      flushList();
+      root.appendChild(article);
+    }
+
+    function renderSource(root) {
+      const panel = h("section", { className: "panel" });
+      const source = state.game?.source || {};
+      panel.appendChild(h("div", { className: "panel-head" }, source.title || "Source"));
+      const body = h("div", { className: "panel-body" });
+      if (source.text || source.excerpt) {
+        appendMarkdownArticle(body, source.text || source.excerpt);
+      } else {
+        body.appendChild(h("div", { className: "empty" }, "No source was loaded for this game."));
+      }
+      if (Array.isArray(source.links) && source.links.length) {
+        const links = h("div", { className: "source-links" });
+        source.links.forEach((link) => {
+          const href = safeSourceHref(link);
+          if (href) {
+            links.appendChild(h("a", { className: "source-link", href, target: "_blank", rel: "noopener noreferrer" }, link));
+            return;
+          }
+          links.appendChild(h("span", { className: "source-link" }, String(link)));
+        });
+        body.appendChild(links);
+      }
+      panel.appendChild(body);
+      root.appendChild(panel);
+    }
+
+    function renderCode(root) {
+      const panel = h("section", { className: "panel" });
+      panel.appendChild(h("div", { className: "panel-head" }, "<> Code"));
+      const body = h("div", { className: "panel-body" });
+      body.appendChild(h("pre", {}, JSON.stringify(state.game || {}, null, 2)));
+      panel.appendChild(body);
+      root.appendChild(panel);
+    }
+
+    function renderEvents(root) {
+      const panel = h("section", { className: "panel" });
+      panel.appendChild(h("div", { className: "panel-head" }, "Events"));
+      const body = h("div", { className: "panel-body events" });
+      const events = state.game?.events || [];
+      if (!events.length) {
+        body.appendChild(h("div", { className: "empty" }, "No events yet."));
+      }
+      events.slice().reverse().forEach((event) => {
+        const card = h("div", { className: "event" });
+        card.appendChild(h("div", { className: "event-type" }, event.type || "event"));
+        const detail = event.summary || [event.actor, event.mark, event.cell].filter(Boolean).join(" ");
+        card.appendChild(h("div", { className: "event-detail" }, detail || JSON.stringify(event)));
+        body.appendChild(card);
+      });
+      panel.appendChild(body);
+      root.appendChild(panel);
+    }
+
+    function render() {
+      const root = document.getElementById("app");
+      const fallback = document.getElementById("load-fallback");
+      window.__gameBoardLoaded = true;
+      if (fallback) fallback.hidden = true;
+      root.innerHTML = "";
+      const top = h("div", { className: "top" });
+      const title = h("div", { className: "title" });
+      title.appendChild(h("h1", {}, gameTitle()));
+      title.appendChild(h("div", { className: "sub" }, state.game?.context_key || "MCP game app"));
+      top.appendChild(title);
+      top.appendChild(h("div", { className: "status" }, statusText()));
+      root.appendChild(top);
+
+      const tabs = h("div", { className: "tabs" });
+      const labels = { game: "Game", source: "Source", code: "<> Code", events: "Events" };
+      const views = state.game?.render?.views || ["game", "code", "events"];
+      views.forEach((id) => {
+        const label = labels[id] || id;
+        tabs.appendChild(h("button", {
+          className: "tab " + (state.tab === id ? "active" : ""),
+          type: "button",
+          onclick: () => { state.tab = id; render(); },
+        }, label));
+      });
+      root.appendChild(tabs);
+
+      if (!state.game) {
+        root.appendChild(h("div", { className: "empty" }, "Create or open a game to start."));
+        notifyHostHeight();
+        return;
+      }
+
+      if (state.tab === "code") {
+        renderCode(root);
+      } else if (state.tab === "events") {
+        renderEvents(root);
+      } else if (state.tab === "source") {
+        renderSource(root);
+      } else if (state.game?.game === "ax_trivia") {
+        const layout = h("div", { className: "layout" });
+        renderTrivia(layout);
+        renderMeta(layout);
+        root.appendChild(layout);
+      } else {
+        const layout = h("div", { className: "layout" });
+        renderBoard(layout);
+        renderMeta(layout);
+        root.appendChild(layout);
+      }
+      notifyHostHeight();
+    }
+
+    host.setToolResultHandler(handleToolResult);
+    host.connect().then(() => render()).catch(() => render());
+  </script>
+</body>
+</html>

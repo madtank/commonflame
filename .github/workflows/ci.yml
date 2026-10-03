@@ -1,0 +1,97 @@
+name: Local stack
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/backend
+    env:
+      ENVIRONMENT: test
+      AUTH_MODE: local
+      JWT_SECRET_KEY: unit-test-only-session-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: services/backend/requirements.txt
+      - name: Install runtime and focused test dependencies
+        run: python -m pip install -r requirements.txt pytest==8.4.1 pytest-asyncio==1.1.0 pytest-mock==3.14.1
+      - name: Local authentication and agent security regressions
+        run: >-
+          python -m pytest -q
+          -m 'not integration'
+          tests/
+  mcp-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/mcp-server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            services/mcp-server/requirements.txt
+            services/mcp-server/requirements-dev.txt
+      - name: Install MCP runtime and test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: MCP protocol, authentication and widget regressions
+        run: python -m pytest -q
+  frontend-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: services/frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Type check
+        run: npm run type-check
+      - name: Frontend unit regressions
+        run: npm run test:run
+      - name: Production build
+        run: npm run build
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Credential pattern check
+        run: python3 scripts/check-secrets.py
+      - name: Gitleaks source scan
+        run: >-
+          docker run --rm -v "$PWD:/source:ro"
+          ghcr.io/gitleaks/gitleaks:v8.24.2
+          detect --source=/source --no-git --redact --exit-code=1
+      - name: Start isolated stack
+        run: docker compose up --build -d --wait --wait-timeout 300
+      - name: Full-stack smoke
+        run: python3 scripts/smoke-test.py
+      - name: Service status
+        if: always()
+        run: docker compose ps
+      - name: Stop test stack
+        if: always()
+        run: docker compose down

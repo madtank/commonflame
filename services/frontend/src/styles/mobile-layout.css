@@ -1,0 +1,336 @@
+/* Mobile-specific layout improvements */
+
+/* Prevent body scrolling and ensure fixed viewport on mobile */
+@media (max-width: 768px) {
+  /* Scroll locking now opt-in via body.app-scroll-locked to avoid breaking standalone pages (help, docs, etc.) */
+  body.app-scroll-locked {
+    position: fixed;
+    inset: 0;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    height: -webkit-fill-available;
+  }
+
+  body.app-scroll-locked #root {
+    height: 100vh;
+    height: -webkit-fill-available;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* MOBILE_SIDEBAR_SCROLL_FIX: Ensure sidebar can scroll even when body is scroll-locked (messages tab) */
+  body.app-scroll-locked aside {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+
+  .mobile-friendly-container {
+    overflow-x: auto;
+  }
+
+  /* Ensure filter buttons wrap nicely on small screens */
+  .filter-button-group {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  /* Optimize button sizes for touch */
+  .mobile-filter-btn {
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* Improve sidebar overlay z-index */
+  .mobile-sidebar-overlay {
+    z-index: 1000;
+  }
+
+  /* Ensure filter dropdowns appear above other content on mobile */
+  .filter-button-group {
+    position: relative;
+    z-index: 10;
+    background-color: white;
+  }
+
+  .dark .filter-button-group {
+    background-color: rgb(31 41 55);
+  }
+
+  /* Mobile filter dropdown improvements */
+  .filter-button-group > div {
+    position: relative;
+  }
+
+  /* Messages container improvements */
+  .messages-container {
+    padding-bottom: 80px; /* Account for fixed chat input */
+  }
+
+  /* Fix floating message window on iPhone */
+  .flex-col.h-full {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Ensure message list container stays in place */
+  .overflow-y-auto {
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* MOBILE_MESSAGE_HORIZONTAL_DRIFT_FIX:
+     Keep the transcript locked to the viewport width on touch devices so
+     sideways swipes do not drag the message rail right-to-left. */
+  .messages-scroll {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .messages-scroll [data-messages-content] {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .messages-scroll [data-post-id],
+  .messages-scroll [data-post-id] > * {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+}
+
+/* Tablet-specific adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-layout {
+    padding: 1rem;
+  }
+}
+
+/* Desktop-specific improvements */
+@media (min-width: 1024px) {
+  .desktop-sidebar {
+    width: 16rem;
+    flex-shrink: 0;
+  }
+
+  .desktop-main-content {
+    margin-left: 0;
+  }
+}
+
+/* Filter bar animations */
+.filter-expand-animation {
+  transition: max-height 0.3s ease-in-out;
+}
+
+.filter-expand-animation[data-expanded="true"] {
+  max-height: 500px;
+}
+
+.filter-expand-animation[data-expanded="false"] {
+  max-height: 0;
+  overflow: hidden;
+}
+
+/* Improve touch targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Better focus states for keyboard navigation */
+.focus-ring:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Line clamp utility for truncating text */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Mobile task cards improvements */
+@media (max-width: 768px) {
+  .mobile-task-card {
+    border-radius: 0.5rem;
+    box-shadow:
+      0 1px 3px 0 rgba(0, 0, 0, 0.1),
+      0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  .mobile-task-card:hover {
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Better spacing for mobile filters */
+  .mobile-filter-controls {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .mobile-filter-controls > * {
+    min-width: 0;
+    flex-shrink: 0;
+  }
+
+  /* Optimize select dropdowns for mobile */
+  .mobile-filter-controls select {
+    font-size: 14px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* Mobile task list optimizations */
+  .mobile-task-list {
+    /* Add momentum scrolling for iOS */
+    -webkit-overflow-scrolling: touch;
+    /* Optimize scroll performance */
+    scroll-behavior: smooth;
+  }
+
+  /* Reduce animations on mobile for better performance */
+  .mobile-task-card .transition-colors {
+    transition-duration: 150ms;
+  }
+
+  /* Better mobile focus states */
+  .mobile-task-card:focus-within {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  /* Ensure proper touch feedback */
+  .mobile-task-card:active {
+    transform: scale(0.995);
+    transition: transform 0.1s ease;
+  }
+
+  /* Optimize spacing for smaller screens */
+  .mobile-compact-spacing {
+    gap: 0.75rem;
+  }
+
+  /* Better button spacing on mobile */
+  .mobile-action-buttons {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .mobile-action-buttons button {
+    min-height: 44px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+/* Loading states for mobile */
+@media (max-width: 768px) {
+  .mobile-loading-skeleton {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+}
+
+/* Mobile-specific dark mode adjustments */
+@media (max-width: 768px) {
+  .dark .mobile-task-card {
+    border-color: rgb(55 65 81);
+    background-color: rgb(31 41 55);
+  }
+
+  .dark .mobile-task-card:hover {
+    background-color: rgb(55 65 81);
+  }
+}
+
+/* iPhone Safari and Chrome specific fixes */
+/* MOBILE_SCROLL_PADDING_FIX / IPHONE_VIEWPORT_SAFE_AREA: coordinated with MessageList.tsx & ChatInput.tsx */
+@supports (-webkit-touch-callout: none) {
+  /* iPhone Safari/Chrome detection using WebKit-specific property */
+  :root {
+    --vh: 1vh; /* Fallback value */
+  }
+
+  /* Override viewport units with custom properties for iPhone */
+  body {
+    height: calc(var(--vh, 1vh) * 100);
+    min-height: calc(var(--vh, 1vh) * 100);
+  }
+
+  #root {
+    height: calc(var(--vh, 1vh) * 100);
+    min-height: calc(var(--vh, 1vh) * 100);
+  }
+
+  /* More reliable safe area handling for iPhone */
+  .iphone-safe-bottom {
+    padding-bottom: max(100px, env(safe-area-inset-bottom, 0px) + 80px);
+  }
+
+  /* Prevent viewport jumping on scroll */
+  .iphone-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+
+  /* Better touch scrolling for iPhone */
+  .iphone-scroll {
+    -webkit-overflow-scrolling: touch;
+    transform: translateZ(0); /* Force hardware acceleration */
+  }
+}
+
+/* Additional iPhone Pro Max and newer models */
+@media screen and (max-width: 430px) and (-webkit-min-device-pixel-ratio: 3) {
+  .iphone-safe-bottom {
+    padding-bottom: max(120px, env(safe-area-inset-bottom, 0px) + 100px);
+  }
+}
+
+/* TEXT_SELECTION_FIX: Ensure text selection works properly on mobile */
+/* body position:fixed + overflow:hidden can break native text selection */
+@media (max-width: 768px) {
+  body.app-scroll-locked [data-messages-container] {
+    -webkit-user-select: text;
+    user-select: text;
+    /* Allow both scroll and text selection - don't restrict touch-action */
+    touch-action: auto;
+  }
+
+  /* Ensure selection handles aren't clipped by parent overflow */
+  body.app-scroll-locked [data-messages-container] * {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Allow native long-press context menu for copy on mobile */
+  body.app-scroll-locked [data-messages-container] .select-text {
+    -webkit-touch-callout: default;
+  }
+}

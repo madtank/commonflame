@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Identity - Waystation</title>
+  <style>
+    :root {
+      --ax-bg: var(--color-background-primary, #0b0d10);
+      --ax-panel: var(--color-background-secondary, #12151a);
+      --ax-panel-2: var(--color-background-tertiary, #171b21);
+      --ax-border: var(--color-border-default, #242a33);
+      --ax-border-strong: var(--color-border-default, #2f3640);
+      --ax-text: var(--color-foreground-primary, #e6e9ee);
+      --ax-text-muted: var(--color-foreground-secondary, #8a93a0);
+      --ax-text-dim: var(--color-foreground-secondary, #5f6773);
+      --ax-gold: #d6b26b;
+      --ax-gold-strong: #e7c680;
+      --ax-accent: var(--color-accent-primary, #6aa9ff);
+      --ax-green: #4fc08d;
+      --ax-red: #e5686b;
+      --ax-chip: var(--color-background-secondary, #1c2129);
+      --ax-chip-active: var(--color-background-tertiary, #2b3342);
+      --ax-hover: var(--color-background-tertiary, #1a1f27);
+      --ax-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --ax-radius: 16px;
+      --ax-font: var(--font-family-body, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif);
+      --ax-mono: var(--font-family-mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      min-height: 100%;
+      margin: 0;
+      background: var(--ax-bg);
+      color: var(--ax-text);
+      font-family: var(--ax-font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body { padding: 16px; }
+
+    .shell {
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      border: 1px solid var(--ax-border);
+      border-radius: var(--ax-radius);
+      background: var(--ax-panel);
+      overflow: hidden;
+      box-shadow: var(--ax-shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--ax-border);
+      background: linear-gradient(180deg, var(--ax-panel-2) 0%, var(--ax-panel) 100%);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .panel-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, var(--ax-gold), #a87e2e);
+      flex-shrink: 0;
+    }
+
+    .panel-heading {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .panel-subtitle {
+      font-size: 12px;
+      color: var(--ax-text-muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .panel-body {
+      padding: 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+      padding: 18px;
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(214, 178, 107, 0.14), rgba(18, 21, 26, 0.3)),
+        var(--ax-panel-2);
+      border: 1px solid var(--ax-border);
+    }
+
+    .avatar {
+      width: 108px;
+      height: 108px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--ax-gold-strong), #6b4a1a);
+      color: #1a1408;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      font-weight: 800;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+    }
+
+    .identity-main {
+      min-width: 0;
+    }
+
+    .display-name {
+      font-size: 24px;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .handle-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+      color: var(--ax-text-muted);
+      font-size: 13px;
+    }
+
+    .handle {
+      color: var(--ax-gold-strong);
+      font-family: var(--ax-mono);
+    }
+
+    .status-pill,
+    .role-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid var(--ax-border-strong);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .status-pill {
+      background: rgba(79, 192, 141, 0.14);
+      color: #8fe0b5;
+    }
+
+    .status-pill.offline {
+      background: rgba(138, 147, 160, 0.14);
+      color: var(--ax-text-muted);
+    }
+
+    .role-pill {
+      background: rgba(106, 169, 255, 0.12);
+      color: #a8c8ff;
+    }
+
+    .hero-note {
+      margin-top: 12px;
+      color: var(--ax-text-muted);
+      font-size: 13px;
+      line-height: 1.55;
+      max-width: 72ch;
+    }
+
+    .tab-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: -4px;
+    }
+
+    .tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--ax-border);
+      background: var(--ax-chip);
+      color: var(--ax-text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab:hover {
+      background: var(--ax-hover);
+      color: var(--ax-text);
+    }
+
+    .tab.active {
+      background: var(--ax-chip-active);
+      border-color: var(--ax-border-strong);
+      color: var(--ax-text);
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      background: var(--ax-panel-2);
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .card.full {
+      grid-column: 1 / -1;
+    }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ax-text-dim);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      border: 1px solid var(--ax-border);
+      border-radius: 12px;
+      background: rgba(10, 13, 16, 0.22);
+      padding: 12px 13px;
+      min-width: 0;
+    }
+
+    .field-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ax-text-dim);
+    }
+
+    .field-value {
+      margin-top: 4px;
+      font-size: 14px;
+      color: var(--ax-text);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .field-value.mono {
+      font-family: var(--ax-mono);
+      font-size: 13px;
+    }
+
+    .empty-copy,
+    .body-copy {
+      color: var(--ax-text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .empty-copy {
+      color: var(--ax-text-dim);
+    }
+
+    .cap-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .cap-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: rgba(106, 169, 255, 0.12);
+      color: #a8c8ff;
+      border: 1px solid rgba(106, 169, 255, 0.28);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .memory-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .memory-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .memory-item {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--ax-border);
+      border-radius: 12px;
+      background: var(--ax-panel-2);
+      padding: 12px 14px;
+      cursor: pointer;
+      color: inherit;
+    }
+
+    .memory-item:hover {
+      border-color: var(--ax-border-strong);
+      background: var(--ax-hover);
+    }
+
+    .memory-item.active {
+      border-color: rgba(214, 178, 107, 0.5);
+      box-shadow: inset 0 0 0 1px rgba(214, 178, 107, 0.18);
+    }
+
+    .memory-key {
+      font-family: var(--ax-mono);
+      font-size: 12px;
+      color: var(--ax-gold-strong);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .memory-preview {
+      margin-top: 5px;
+      font-size: 13px;
+      color: var(--ax-text-muted);
+      line-height: 1.5;
+    }
+
+    .memory-meta {
+      margin-top: 7px;
+      font-size: 11px;
+      color: var(--ax-text-dim);
+    }
+
+    .memory-detail-value {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--ax-text);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .memory-empty {
+      border: 1px dashed var(--ax-border-strong);
+      border-radius: 14px;
+      background: rgba(10, 13, 16, 0.18);
+      padding: 18px;
+      color: var(--ax-text-dim);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .form-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .form-field label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ax-text-dim);
+      font-weight: 700;
+    }
+
+    .form-field input,
+    .form-field textarea {
+      width: 100%;
+      border: 1px solid var(--ax-border);
+      border-radius: 12px;
+      background: rgba(10, 13, 16, 0.3);
+      color: var(--ax-text);
+      padding: 11px 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    .form-field input:focus,
+    .form-field textarea:focus {
+      border-color: rgba(214, 178, 107, 0.5);
+      box-shadow: 0 0 0 3px rgba(214, 178, 107, 0.12);
+    }
+
+    .form-field textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .field-help {
+      font-size: 12px;
+      color: var(--ax-text-dim);
+      line-height: 1.5;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      border: none;
+      background: linear-gradient(180deg, var(--ax-gold-strong), var(--ax-gold));
+      color: #1a1408;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 16px rgba(214, 178, 107, 0.18);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.04);
+    }
+
+    .btn-secondary {
+      border: 1px solid var(--ax-border-strong);
+      background: transparent;
+      color: var(--ax-text-muted);
+    }
+
+    .btn-secondary:hover {
+      color: var(--ax-text);
+      background: var(--ax-hover);
+    }
+
+    .notice {
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .notice.info {
+      background: rgba(106, 169, 255, 0.12);
+      border-color: rgba(106, 169, 255, 0.25);
+      color: #a8c8ff;
+    }
+
+    .notice.error {
+      background: rgba(229, 104, 107, 0.12);
+      border-color: rgba(229, 104, 107, 0.25);
+      color: var(--ax-red);
+    }
+
+    .loading-state,
+    .error-state {
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      background: var(--ax-panel);
+      padding: 26px;
+      text-align: center;
+      color: var(--ax-text-muted);
+    }
+
+    .error-title {
+      color: var(--ax-text);
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 12px; }
+
+      .panel-body,
+      .hero,
+      .memory-layout,
+      .section-grid,
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        gap: 14px;
+      }
+
+      .avatar {
+        width: 88px;
+        height: 88px;
+        font-size: 32px;
+      }
+
+      .display-name {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app">
+    <div class="loading-state" data-testid="identity-loading-state">Loading identity...</div>
+  </div>
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Identity", version: "2.0.0" });
+    const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
+
+    function getOpenAiBridge() {
+      return typeof window !== "undefined" ? window.openai : undefined;
+    }
+
+    function normalizeToolResult(result) {
+      if (result && typeof result === "object" && ("structured_content" in result) && !("structuredContent" in result)) {
+        return { ...result, structuredContent: result.structured_content };
+      }
+      if (result && typeof result === "object" && ("structuredContent" in result || "content" in result)) {
+        return result;
+      }
+      return { structuredContent: result };
+    }
+
+    function notifyHostHeight() {
+      const openaiBridge = getOpenAiBridge();
+      if (openaiBridge && typeof openaiBridge.notifyIntrinsicHeight === "function") {
+        requestAnimationFrame(() => {
+          try {
+            const appRoot = document.getElementById("app");
+            const bodyStyles = window.getComputedStyle(document.body);
+            const paddingTop = parseFloat(bodyStyles.paddingTop || "0") || 0;
+            const paddingBottom = parseFloat(bodyStyles.paddingBottom || "0") || 0;
+            const contentHeight = appRoot
+              ? Math.ceil(appRoot.getBoundingClientRect().height + paddingTop + paddingBottom)
+              : Math.ceil(document.body.getBoundingClientRect().height);
+            openaiBridge.notifyIntrinsicHeight(Math.max(120, contentHeight));
+          } catch {}
+        });
+      }
+    }
+
+    const host = {
+      toolResultHandler: null,
+      globalsListener: null,
+      messageListener: null,
+      setToolResultHandler(handler) {
+        this.toolResultHandler = handler;
+        app.ontoolresult = handler;
+
+        if (!this.messageListener) {
+          this.messageListener = (event) => {
+            let payload = event.data;
+            if (!payload) return;
+            if (typeof payload === "string") {
+              try { payload = JSON.parse(payload); } catch { return; }
+            }
+            if (typeof payload !== "object") return;
+            if (payload.method === "ui/notifications/tool-result" && payload.params) {
+              handler(normalizeToolResult(payload.params));
+              return;
+            }
+            if (payload.type === "tool_result" && (payload.initial_data || payload.structuredContent || payload.content)) {
+              handler(normalizeToolResult(payload.initial_data || payload));
+              return;
+            }
+            if (payload.structuredContent || payload.kind) {
+              handler(normalizeToolResult(payload));
+            }
+          };
+          window.addEventListener("message", this.messageListener);
+        }
+      },
+      deliverToolOutput(globals) {
+        const openaiBridge = getOpenAiBridge();
+        const output = globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")
+          ? globals.toolOutput
+          : openaiBridge?.toolOutput;
+        if (this.toolResultHandler && output !== undefined) {
+          this.toolResultHandler(normalizeToolResult(output));
+          return true;
+        }
+        return false;
+      },
+      async connect() {
+        if (!this.globalsListener) {
+          this.globalsListener = (event) => {
+            const globals = event?.detail?.globals;
+            if (globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")) {
+              this.deliverToolOutput(globals);
+            }
+            notifyHostHeight();
+          };
+          window.addEventListener(OPENAI_SET_GLOBALS_EVENT, this.globalsListener, { passive: true });
+        }
+
+        const deliveredBeforeConnect = this.deliverToolOutput();
+        await app.connect();
+        const deliveredAfterConnect = this.deliverToolOutput();
+        notifyHostHeight();
+        return deliveredBeforeConnect || deliveredAfterConnect;
+      },
+      async callServerTool(name, args) {
+        const openaiBridge = getOpenAiBridge();
+        if (openaiBridge && typeof openaiBridge.callTool === "function") {
+          return normalizeToolResult(await openaiBridge.callTool(name, args));
+        }
+        return app.callServerTool({ name, arguments: args });
+      },
+    };
+
+    const state = {
+      hydrated: false,
+      bootstrapping: false,
+      bootstrapError: null,
+      payload: null,
+      permissions: null,
+      spaceContext: null,
+      tab: "profile",
+      editMode: false,
+      selectedMemoryKey: null,
+      notice: null,
+    };
+
+    function el(tag, attrs, text) {
+      const node = document.createElement(tag);
+      if (attrs) {
+        for (const [key, value] of Object.entries(attrs)) {
+          if (key === "className") node.className = value;
+          else if (key === "dataset" && value && typeof value === "object") {
+            for (const [dataKey, dataValue] of Object.entries(value)) {
+              if (dataValue != null) node.dataset[dataKey] = String(dataValue);
+            }
+          } else if (key === "style") node.style.cssText = value;
+          else if (value !== undefined && value !== null) node.setAttribute(key, value);
+        }
+      }
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function extractData(result) {
+      if (result && result.structuredContent) return result.structuredContent;
+      if (result && result.structured_content) return result.structured_content;
+      const text = Array.isArray(result?.content)
+        ? result.content.find((item) => item.type === "text")
+        : null;
+      if (!text || typeof text.text !== "string") return null;
+      try {
+        const parsed = JSON.parse(text.text);
+        return parsed.structuredContent || parsed;
+      } catch {
+        return null;
+      }
+    }
+
+    function extractErrorMessage(result) {
+      if (!result || typeof result !== "object") return null;
+      const text = result.content?.find((item) => item.type === "text" && typeof item.text === "string");
+      if (result.isError && text?.text) return text.text;
+      return null;
+    }
+
+    function errorMessageFromUnknown(error, fallback = "Request failed.") {
+      if (error && typeof error === "object" && typeof error.message === "string" && error.message.trim()) {
+        return error.message.trim();
+      }
+      if (typeof error === "string" && error.trim()) return error.trim();
+      return fallback;
+    }
+
+    function initials(value) {
+      if (!value) return "?";
+      const pieces = String(value).split(/[\s_-]+/).filter(Boolean);
+      if (!pieces.length) return "?";
+      return pieces.map((piece) => piece[0]).join("").slice(0, 2).toUpperCase();
+    }
+
+    function identity() {
+      return state.payload?.identity || {};
+    }
+
+    function contextInfo() {
+      return state.payload?.context || {};
+    }
+
+    function capabilityItems() {
+      return Array.isArray(state.payload?.capabilities) ? state.payload.capabilities : [];
+    }
+
+    function memorySummary() {
+      return state.payload?.memory || {};
+    }
+
+    function permissionState() {
+      return state.permissions || {};
+    }
+
+    function isReadOnlyMode() {
+      return Boolean(permissionState().read_only);
+    }
+
+    function canUpdateIdentity() {
+      return Boolean(permissionState().can_update);
+    }
+
+    function canWriteMemory() {
+      return Boolean(permissionState().can_write_memory);
+    }
+
+    function readOnlyMessage() {
+      return permissionState().blocked_reason || "Profile edits require a user-initiated quick action.";
+    }
+
+    function memoryItems() {
+      return Array.isArray(memorySummary().items) ? memorySummary().items : [];
+    }
+
+    function selectedMemory() {
+      const key = state.selectedMemoryKey;
+      if (!key) return null;
+      return memoryItems().find((item) => item && typeof item === "object" && item.key === key) || null;
+    }
+
+    function relDate(value) {
+      if (!value) return "";
+      const timestamp = new Date(value).getTime();
+      if (Number.isNaN(timestamp)) return String(value);
+      const diff = Date.now() - timestamp;
+      if (diff < 60 * 1000) return "just now";
+      if (diff < 60 * 60 * 1000) return Math.floor(diff / (60 * 1000)) + "m ago";
+      if (diff < 24 * 60 * 60 * 1000) return Math.floor(diff / (60 * 60 * 1000)) + "h ago";
+      return Math.floor(diff / (24 * 60 * 60 * 1000)) + "d ago";
+    }
+
+    function previewValue(value, limit = 120) {
+      const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      const compact = String(text || "").replace(/\s+/g, " ").trim();
+      if (!compact) return "";
+      return compact.length > limit ? compact.slice(0, limit - 1) + "..." : compact;
+    }
+
+    function showIdentityError(message, opts = {}) {
+      if (opts.bootstrap && state.hydrated) {
+        console.debug("[agent-identity] Suppressed bootstrap error (widget already hydrated):", message);
+        state.bootstrapping = false;
+        state.bootstrapError = null;
+        paint();
+        return;
+      }
+      state.notice = { severity: "error", message };
+      if (opts.bootstrap || !state.hydrated) {
+        state.bootstrapError = message;
+        state.bootstrapping = false;
+      }
+      paint();
+    }
+
+    function applyResultData(data, opts = {}) {
+      const errorNotice = Array.isArray(data.errors) && data.errors.length > 0 ? data.errors[0] : null;
+      if (data.error || errorNotice || data.state === "error") {
+        const message = data.error || errorNotice?.message || "Identity request failed.";
+        if (opts.bootstrap && state.hydrated) {
+          console.debug("[agent-identity] Suppressed bootstrap result error (widget already hydrated):", message);
+          state.bootstrapping = false;
+          state.bootstrapError = null;
+          return true;
+        }
+        state.notice = { severity: "error", message };
+        if (!state.hydrated) {
+          state.bootstrapError = message;
+          state.bootstrapping = false;
+        }
+        return false;
+      }
+
+      state.notice = data.notice || null;
+      state.hydrated = true;
+      state.bootstrapping = false;
+      state.bootstrapError = null;
+
+      if (data.kind === "whoami_profile") {
+        state.payload = data.data || {};
+        state.spaceContext = state.payload.space_context || data.space_context || state.spaceContext;
+        state.permissions = state.payload.permissions || data.permissions || state.permissions;
+        state.tab = data.active_tab || state.tab || "profile";
+        if (data.highlighted_key) {
+          state.selectedMemoryKey = data.highlighted_key;
+          state.tab = "memories";
+        } else if (state.selectedMemoryKey && !selectedMemory()) {
+          state.selectedMemoryKey = null;
+        }
+      } else {
+        state.payload = data;
+        state.spaceContext = data.space_context || state.spaceContext;
+        state.permissions = data.permissions || state.permissions;
+      }
+
+      return true;
+    }
+
+    function handleResult(result, opts = {}) {
+      const data = extractData(result);
+      if (!data) {
+        const message = extractErrorMessage(result) || "Identity request failed.";
+        showIdentityError(message, { bootstrap: !!opts.bootstrap || !state.hydrated });
+        return false;
+      }
+      const ok = applyResultData(data, opts);
+      paint();
+      return ok;
+    }
+
+    function renderBootstrapState(root) {
+      if (state.bootstrapError) {
+        const failure = el("div", { className: "error-state", "data-testid": "identity-load-error" });
+        failure.appendChild(el("div", { className: "error-title" }, "This widget could not load your profile."));
+        failure.appendChild(el("div", { className: "body-copy" }, state.bootstrapError));
+        const actions = el("div", { className: "button-row", style: "justify-content:center;margin-top:14px;" });
+        const retry = el("button", { className: "btn-primary", type: "button", "data-testid": "identity-load-retry" }, "Retry");
+        retry.addEventListener("click", () => {
+          void bootstrapIdentity();
+        });
+        actions.appendChild(retry);
+        failure.appendChild(actions);
+        root.appendChild(failure);
+        return;
+      }
+
+      root.appendChild(el("div", { className: "loading-state", "data-testid": "identity-loading-state" }, "Loading identity..."));
+    }
+
+    function appendField(parent, label, value, opts = {}) {
+      const card = el("div", { className: "field" });
+      card.appendChild(el("div", { className: "field-label" }, label));
+      const valueClass = opts.mono ? "field-value mono" : "field-value";
+      card.appendChild(el("div", { className: valueClass }, value || opts.fallback || "Not set"));
+      parent.appendChild(card);
+    }
+
+    function renderProfileTab(content) {
+      const info = identity();
+      const context = contextInfo();
+      const caps = capabilityItems();
+
+      const grid = el("div", { className: "section-grid", "data-testid": "identity-profile-view" });
+
+      const account = el("div", { className: "card" });
+      account.appendChild(el("div", { className: "section-label" }, "Account"));
+      const fieldGrid = el("div", { className: "field-grid" });
+      appendField(fieldGrid, "Display name", info.display_name || "User");
+      appendField(fieldGrid, "Handle", info.handle ? "@" + info.handle : "", { mono: true, fallback: "Not set" });
+      appendField(fieldGrid, "Email", info.email || "", { fallback: "Not available" });
+      appendField(fieldGrid, "Role", info.role_label || "User");
+      if (context.workspace_name || context.workspace_id) {
+        appendField(fieldGrid, context.binding_label || "Current space", context.workspace_name || context.workspace_id || "", {
+          mono: !context.workspace_name,
+          fallback: "Not set",
+        });
+      }
+      if (context.bound_agent?.handle) {
+        appendField(fieldGrid, "Bound agent", "@" + context.bound_agent.handle, { mono: true });
+      }
+      account.appendChild(fieldGrid);
+      grid.appendChild(account);
+
+      const bioCard = el("div", { className: "card" });
+      bioCard.appendChild(el("div", { className: "section-label" }, "Bio"));
+      bioCard.appendChild(
+        el(
+          "div",
+          { className: info.bio ? "body-copy" : "empty-copy", "data-testid": "identity-bio" },
+          info.bio || "Add a bio so agents and collaborators can understand who you are and how to work with you.",
+        ),
+      );
+      grid.appendChild(bioCard);
+
+      const preferencesCard = el("div", { className: "card" });
+      preferencesCard.appendChild(el("div", { className: "section-label" }, "Preferences"));
+      preferencesCard.appendChild(
+        el(
+          "div",
+          { className: info.preferences ? "body-copy" : "empty-copy", "data-testid": "identity-preferences" },
+          info.preferences || "Capture working preferences, collaboration style, and recurring constraints here.",
+        ),
+      );
+      grid.appendChild(preferencesCard);
+
+      const projectsCard = el("div", { className: "card" });
+      projectsCard.appendChild(el("div", { className: "section-label" }, "Projects"));
+      projectsCard.appendChild(
+        el(
+          "div",
+          { className: info.projects ? "body-copy" : "empty-copy", "data-testid": "identity-projects" },
+          info.projects || "List the projects, workstreams, or priorities that agents should keep in mind.",
+        ),
+      );
+      grid.appendChild(projectsCard);
+
+      const focusCard = el("div", { className: "card" });
+      focusCard.appendChild(el("div", { className: "section-label" }, "Focus"));
+      focusCard.appendChild(
+        el(
+          "div",
+          { className: info.specialization ? "body-copy" : "empty-copy", "data-testid": "identity-specialization" },
+          info.specialization || "Use this for a short specialization or current focus area.",
+        ),
+      );
+      grid.appendChild(focusCard);
+
+      const capsCard = el("div", { className: "card full" });
+      capsCard.appendChild(el("div", { className: "section-label" }, "Capabilities"));
+      if (caps.length) {
+        const chips = el("div", { className: "cap-list", "data-testid": "identity-capabilities" });
+        for (const capability of caps) {
+          chips.appendChild(el("span", { className: "cap-chip" }, capability.label || capability.key || String(capability)));
+        }
+        capsCard.appendChild(chips);
+      } else {
+        capsCard.appendChild(el("div", { className: "empty-copy", "data-testid": "identity-capabilities" }, "No capability tags yet."));
+      }
+      grid.appendChild(capsCard);
+
+      content.appendChild(grid);
+    }
+
+    function renderMemoriesTab(content) {
+      const items = memoryItems();
+      const selected = selectedMemory();
+
+      const layout = el("div", { className: "memory-layout", "data-testid": "identity-memory-view" });
+      const listColumn = el("div", { className: "card" });
+      listColumn.appendChild(el("div", { className: "section-label" }, "Memories"));
+
+      if (!items.length) {
+        listColumn.appendChild(el("div", { className: "memory-empty", "data-testid": "identity-memory-empty" }, "No memories saved yet. Add the first one from the panel on the right."));
+      } else {
+        const list = el("div", { className: "memory-list", "data-testid": "identity-memory-list" });
+        for (const item of items) {
+          const button = el("button", {
+            className: "memory-item" + (selected && selected.key === item.key ? " active" : ""),
+            type: "button",
+          });
+          button.appendChild(el("div", { className: "memory-key" }, item.key || "memory"));
+          button.appendChild(el("div", { className: "memory-preview" }, previewValue(item.value) || "No preview available."));
+          const updated = item.updated_at || item.created_at;
+          if (updated) {
+            button.appendChild(el("div", { className: "memory-meta" }, "Updated " + relDate(updated)));
+          }
+          button.addEventListener("click", async () => {
+            state.selectedMemoryKey = item.key || null;
+            if (item.value === undefined && item.key) {
+              try {
+                const response = await host.callServerTool("whoami", { action: "recall", key: item.key });
+                handleResult(response);
+              } catch (error) {
+                showIdentityError(errorMessageFromUnknown(error));
+                return;
+              }
+            } else {
+              paint();
+            }
+          });
+          list.appendChild(button);
+        }
+        listColumn.appendChild(list);
+      }
+      layout.appendChild(listColumn);
+
+      const detailColumn = el("div", { className: "card" });
+      detailColumn.appendChild(el("div", { className: "section-label" }, "Save memory"));
+
+      if (!canWriteMemory()) {
+        detailColumn.appendChild(el("div", { className: "notice info", "data-testid": "identity-memory-read-only" }, readOnlyMessage()));
+      }
+
+      const composer = el("div", { className: "form-grid" });
+      const keyField = el("div", { className: "form-field" });
+      keyField.appendChild(el("label", null, "Key"));
+      const keyInput = el("input", {
+        placeholder: "favorite_workflow",
+        "data-testid": "identity-memory-key",
+      });
+      keyInput.disabled = !canWriteMemory();
+      keyField.appendChild(keyInput);
+      composer.appendChild(keyField);
+
+      const valueField = el("div", { className: "form-field" });
+      valueField.appendChild(el("label", null, "Value"));
+      const valueInput = document.createElement("textarea");
+      valueInput.placeholder = "Capture a preference, project detail, or working note that should stay available to agents.";
+      valueInput.setAttribute("data-testid", "identity-memory-value");
+      valueInput.disabled = !canWriteMemory();
+      valueField.appendChild(valueInput);
+      composer.appendChild(valueField);
+
+      const saveBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "identity-memory-save" }, "Save memory");
+      saveBtn.disabled = !canWriteMemory();
+      saveBtn.addEventListener("click", async () => {
+        if (!canWriteMemory()) {
+          showIdentityError(readOnlyMessage());
+          return;
+        }
+        const key = keyInput.value.trim();
+        const value = valueInput.value.trim();
+        if (!key || !value) {
+          showIdentityError("Both key and value are required to save a memory.");
+          return;
+        }
+        try {
+          const response = await host.callServerTool("whoami", {
+            action: "remember",
+            key,
+            value,
+          });
+          if (handleResult(response)) {
+            state.tab = "memories";
+            keyInput.value = "";
+            valueInput.value = "";
+          }
+        } catch (error) {
+          showIdentityError(errorMessageFromUnknown(error));
+        }
+      });
+      composer.appendChild(saveBtn);
+      composer.appendChild(el("div", { className: "field-help" }, "Memories stay attached to your current space profile so agents can use them as durable context."));
+      detailColumn.appendChild(composer);
+
+      detailColumn.appendChild(el("div", { className: "section-label", style: "margin-top:18px;" }, "Selected memory"));
+      if (selected) {
+        detailColumn.appendChild(el("div", { className: "memory-key", "data-testid": "identity-memory-detail-key" }, selected.key || "memory"));
+        detailColumn.appendChild(el("div", { className: "memory-detail-value", "data-testid": "identity-memory-detail-value" }, typeof selected.value === "string" ? selected.value : JSON.stringify(selected.value, null, 2)));
+        const metaParts = [];
+        if (selected.created_at) metaParts.push("Created " + relDate(selected.created_at));
+        if (selected.updated_at) metaParts.push("Updated " + relDate(selected.updated_at));
+        if (metaParts.length) {
+          detailColumn.appendChild(el("div", { className: "memory-meta" }, metaParts.join(" · ")));
+        }
+      } else {
+        detailColumn.appendChild(el("div", { className: "empty-copy" }, "Select a memory on the left to review it here."));
+      }
+
+      layout.appendChild(detailColumn);
+      content.appendChild(layout);
+    }
+
+    function renderEditView(content) {
+      if (!canUpdateIdentity()) {
+        const blocked = el("div", { className: "card full", "data-testid": "identity-edit-read-only" });
+        blocked.appendChild(el("div", { className: "section-label" }, "Profile editing"));
+        blocked.appendChild(el("div", { className: "notice info" }, readOnlyMessage()));
+        content.appendChild(blocked);
+        return;
+      }
+
+      const info = identity();
+      const caps = capabilityItems();
+      const form = el("div", { className: "card full", "data-testid": "identity-edit-view" });
+      form.appendChild(el("div", { className: "section-label" }, "Edit profile"));
+      form.appendChild(el("div", { className: "field-help" }, "This profile is visible to agents and collaborators in the space, so use it for durable context instead of one-off notes."));
+
+      const fields = el("div", { className: "form-grid", style: "margin-top:14px;" });
+
+      const locked = el("div", { className: "field-grid" });
+      appendField(locked, "Display name", info.display_name || "User");
+      appendField(locked, "Handle", info.handle ? "@" + info.handle : "", { mono: true, fallback: "Not set" });
+      fields.appendChild(locked);
+
+      const bioField = el("div", { className: "form-field" });
+      bioField.appendChild(el("label", null, "Bio"));
+      const bioInput = document.createElement("textarea");
+      bioInput.value = info.bio || "";
+      bioInput.setAttribute("data-testid", "identity-edit-bio");
+      bioField.appendChild(bioInput);
+      fields.appendChild(bioField);
+
+      const specializationField = el("div", { className: "form-field" });
+      specializationField.appendChild(el("label", null, "Focus"));
+      const specializationInput = el("input", {
+        value: info.specialization || "",
+        placeholder: "Platform engineering, product direction, delivery",
+        "data-testid": "identity-edit-specialization",
+      });
+      specializationField.appendChild(specializationInput);
+      fields.appendChild(specializationField);
+
+      const preferencesField = el("div", { className: "form-field" });
+      preferencesField.appendChild(el("label", null, "Preferences"));
+      const preferencesInput = document.createElement("textarea");
+      preferencesInput.value = info.preferences || "";
+      preferencesInput.setAttribute("data-testid", "identity-edit-preferences");
+      preferencesField.appendChild(preferencesInput);
+      fields.appendChild(preferencesField);
+
+      const projectsField = el("div", { className: "form-field" });
+      projectsField.appendChild(el("label", null, "Projects"));
+      const projectsInput = document.createElement("textarea");
+      projectsInput.value = info.projects || "";
+      projectsInput.setAttribute("data-testid", "identity-edit-projects");
+      projectsField.appendChild(projectsInput);
+      fields.appendChild(projectsField);
+
+      const capabilityField = el("div", { className: "form-field" });
+      capabilityField.appendChild(el("label", null, "Capabilities"));
+      const capabilityInput = el("input", {
+        value: caps.map((item) => item.key || item.label || String(item)).join(", "),
+        placeholder: "strategy, product, coordination",
+        "data-testid": "identity-edit-capabilities",
+      });
+      capabilityField.appendChild(capabilityInput);
+      capabilityField.appendChild(el("div", { className: "field-help" }, "Use comma-separated tags for the traits or areas agents should associate with you."));
+      fields.appendChild(capabilityField);
+
+      const actions = el("div", { className: "button-row" });
+      const saveBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "identity-profile-save" }, "Save profile");
+      saveBtn.addEventListener("click", async () => {
+        try {
+          const response = await host.callServerTool("whoami", {
+            action: "update",
+            bio: bioInput.value,
+            specialization: specializationInput.value,
+            preferences: preferencesInput.value,
+            projects: projectsInput.value,
+            capabilities: capabilityInput.value
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+          });
+          if (handleResult(response)) {
+            state.editMode = false;
+            state.tab = "profile";
+            paint();
+          }
+        } catch (error) {
+          showIdentityError(errorMessageFromUnknown(error));
+        }
+      });
+      const cancelBtn = el("button", { className: "btn-secondary", type: "button", "data-testid": "identity-edit-cancel" }, "Cancel");
+      cancelBtn.addEventListener("click", () => {
+        state.editMode = false;
+        paint();
+      });
+      actions.appendChild(saveBtn);
+      actions.appendChild(cancelBtn);
+      fields.appendChild(actions);
+
+      form.appendChild(fields);
+      content.appendChild(form);
+    }
+
+    function renderWidget(root) {
+      const info = identity();
+      const context = contextInfo();
+      const memory = memorySummary();
+      const subtitle = info.handle
+        ? "Signed in as @" + info.handle
+        : info.display_name
+          ? "Signed in as " + info.display_name
+          : "Signed in profile";
+      const statusClass = info.status === "offline" ? "status-pill offline" : "status-pill";
+
+      const panel = el("section", { className: "panel" });
+      const header = el("div", { className: "panel-header", "data-testid": "identity-widget-header" });
+      const title = el("div", { className: "panel-title" });
+      title.appendChild(el("span", { className: "panel-icon" }));
+      const titleBlock = el("div");
+      titleBlock.appendChild(el("div", { className: "panel-heading" }, "Identity"));
+      titleBlock.appendChild(el("div", { className: "panel-subtitle" }, subtitle));
+      title.appendChild(titleBlock);
+      header.appendChild(title);
+
+      const actions = el("div", { className: "panel-actions" });
+      if (canUpdateIdentity()) {
+        const editBtn = el("button", {
+          className: state.editMode ? "btn-secondary" : "btn-primary",
+          type: "button",
+          "data-testid": "identity-edit-button",
+        }, state.editMode ? "Editing profile" : "Edit profile");
+        editBtn.addEventListener("click", () => {
+          if (!canUpdateIdentity()) {
+            showIdentityError(readOnlyMessage());
+            return;
+          }
+          state.editMode = true;
+          state.tab = "profile";
+          paint();
+        });
+        actions.appendChild(editBtn);
+      }
+      header.appendChild(actions);
+      panel.appendChild(header);
+
+      const body = el("div", { className: "panel-body" });
+
+      const hero = el("div", { className: "hero" });
+      hero.appendChild(el("div", { className: "avatar" }, initials(info.display_name || info.handle || "U")));
+      const heroMain = el("div", { className: "identity-main" });
+      heroMain.appendChild(el("div", { className: "display-name", "data-testid": "identity-display-name" }, info.display_name || "User"));
+      const handleRow = el("div", { className: "handle-row" });
+      handleRow.appendChild(el("span", { className: "handle", "data-testid": "identity-handle" }, info.handle ? "@" + info.handle : "@unknown"));
+      handleRow.appendChild(el("span", { className: statusClass }, info.status || "active"));
+      handleRow.appendChild(el("span", { className: "role-pill" }, info.role_label || "User"));
+      heroMain.appendChild(handleRow);
+      const heroSummaryParts = [];
+      if (context.workspace_name) heroSummaryParts.push("Current space: " + context.workspace_name);
+      else if (context.workspace_id) heroSummaryParts.push("Current space: " + context.workspace_id);
+      if (memory.summary) heroSummaryParts.push(memory.summary);
+      if (heroSummaryParts.length) {
+        heroMain.appendChild(el("div", { className: "hero-note" }, heroSummaryParts.join(" | ")));
+      } else {
+        heroMain.appendChild(el("div", { className: "hero-note" }, "Use this widget to keep your profile, priorities, and durable memories current for agents and collaborators."));
+      }
+      hero.appendChild(heroMain);
+      body.appendChild(hero);
+
+      if (isReadOnlyMode()) {
+        body.appendChild(el("div", { className: "notice info", "data-testid": "identity-read-only-notice" }, readOnlyMessage()));
+      }
+
+      const tabs = el("div", { className: "tab-row" });
+      const profileTab = el(
+        "button",
+        {
+          className: "tab" + (state.tab === "profile" ? " active" : ""),
+          type: "button",
+          "data-testid": "identity-tab-profile",
+        },
+        "Profile",
+      );
+      profileTab.addEventListener("click", () => {
+        state.tab = "profile";
+        state.editMode = false;
+        paint();
+      });
+      tabs.appendChild(profileTab);
+
+      const memoriesTab = el(
+        "button",
+        {
+          className: "tab" + (state.tab === "memories" ? " active" : ""),
+          type: "button",
+          "data-testid": "identity-tab-memories",
+        },
+        "Memories (" + memoryItems().length + ")",
+      );
+      memoriesTab.addEventListener("click", async () => {
+        state.tab = "memories";
+        state.editMode = false;
+        if (!memoryItems().length) {
+          try {
+            const response = await host.callServerTool("whoami", { action: "list" });
+            handleResult(response);
+          } catch (error) {
+            showIdentityError(errorMessageFromUnknown(error));
+            return;
+          }
+        } else {
+          paint();
+        }
+      });
+      tabs.appendChild(memoriesTab);
+      body.appendChild(tabs);
+
+      if (state.editMode && canUpdateIdentity()) {
+        renderEditView(body);
+      } else if (state.tab === "memories") {
+        renderMemoriesTab(body);
+      } else {
+        renderProfileTab(body);
+      }
+
+      panel.appendChild(body);
+      root.appendChild(panel);
+    }
+
+    function render() {
+      const root = document.getElementById("app");
+      root.textContent = "";
+      if (state.notice && state.notice.message) {
+        root.appendChild(el("div", {
+          className: "notice " + (state.notice.severity === "error" ? "error" : "info"),
+        }, state.notice.message));
+      }
+      if (!state.hydrated) {
+        renderBootstrapState(root);
+        return;
+      }
+      renderWidget(root);
+    }
+
+    function paint() {
+      render();
+      notifyHostHeight();
+    }
+
+    async function bootstrapIdentity() {
+      if (state.bootstrapping) return;
+      state.bootstrapping = true;
+      state.bootstrapError = null;
+      paint();
+      try {
+        const result = await host.callServerTool("whoami", { action: "get" });
+        const ok = handleResult(result, { bootstrap: true });
+        if (!ok) {
+          state.bootstrapping = false;
+        }
+      } catch (error) {
+        showIdentityError(errorMessageFromUnknown(error, "Could not load identity."), { bootstrap: true });
+      }
+    }
+
+    host.setToolResultHandler((result) => {
+      handleResult(result);
+    });
+
+    const deliveredCachedResult = await host.connect();
+    if (!state.hydrated && !deliveredCachedResult) {
+      await bootstrapIdentity();
+    } else {
+      notifyHostHeight();
+    }
+  </script>
+</body>
+</html>

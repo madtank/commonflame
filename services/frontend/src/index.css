@@ -1,0 +1,393 @@
+/* Import mobile-specific styles first */
+@import "./styles/mobile-layout.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    @apply bg-background text-foreground;
+    height: 100%;
+    overflow: auto; /* Allow page scrolling by default; app can opt-in to lock */
+    /* Ensure proper responsive scaling and minimum width */
+    min-width: 320px;
+    /* Prevent pull-to-refresh and overscroll on mobile */
+    overscroll-behavior: none;
+    /* Prevent iOS bounce scrolling */
+    position: static;
+    width: 100%;
+  }
+
+  /* Hide scrollbars but keep functionality - SIMPLE approach */
+  * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  *::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
+  /* Ensure root div takes full height */
+  #root {
+    min-height: 100vh;
+    overflow: visible; /* Standalone pages (help/docs) can scroll normally */
+  }
+
+  /* Reduce layout thrashing for message rows — paint only when near viewport */
+  .messages-scroll [data-post-id] {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 80px;
+  }
+
+  /* Custom utility class for components that need scrolling but hidden scrollbars */
+  .scroll-invisible {
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scroll-invisible::-webkit-scrollbar {
+    display: none;
+    width: 0px;
+    height: 0px;
+  }
+
+  /* Horizontal scrollbar hiding utility */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Disable annoying bounce animations */
+  .no-bounce {
+    animation: none !important;
+  }
+
+  /* Responsive layout utilities */
+  .responsive-container {
+    width: 100%;
+    max-width: 1920px; /* Support very wide screens */
+    margin: 0 auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .responsive-container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .responsive-container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  /* Improved grid layouts for different screen sizes */
+  .responsive-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .responsive-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .responsive-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .responsive-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .responsive-grid {
+      grid-template-columns: repeat(5, 1fr);
+    }
+  }
+}
+
+/* Mobile Messaging Optimizations */
+@media (max-width: 768px) {
+  /* Prevent zoom on input focus */
+  input,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Ensure fixed input stays above content */
+  .fixed-chat-input {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+  }
+
+  /* Ensure messages scroll properly above fixed input */
+  .messages-container {
+    padding-bottom: 100px;
+  }
+
+  /* Improve touch targets */
+  button {
+    min-height: 44px;
+  }
+}
+
+/* Safe area support for iOS */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Word wrap utilities for messages */
+.break-words {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.agent-pause-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f3f4f6;
+  border-left: 4px solid #9ca3af;
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  opacity: 0.95;
+}
+
+.dark .agent-pause-message {
+  background: rgba(55, 65, 81, 0.7);
+  border-color: #e5e7eb33;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  color: #f9fafb;
+}
+
+.agent-pause-body {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.agent-pause-emoji {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.agent-pause-text {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.dark .agent-pause-text {
+  color: #f9fafb;
+}
+
+.agent-pause-countdown {
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-weight: 600;
+  color: #4b5563;
+  text-align: right;
+  min-width: 3.5rem;
+}
+
+.dark .agent-pause-countdown {
+  color: #e5e7eb;
+}
+
+.agent-pause-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.agent-pause-resume {
+  border: none;
+  border-radius: 9999px;
+  padding: 0.25rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.agent-pause-resume:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.agent-pause-resume:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45);
+}
+
+.agent-pause-resume:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.dark .agent-pause-resume {
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+}
+
+.agent-pause-resume-spinner {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  border-top-color: rgba(255, 255, 255, 1);
+  animation: agent-pause-spin 0.8s linear infinite;
+}
+
+@keyframes agent-pause-spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.agent-pause-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #059669;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dark .agent-pause-status {
+  background: rgba(34, 197, 94, 0.25);
+  color: #86efac;
+}
+
+.agent-pause-status[data-variant="manual"] {
+  background: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+}
+
+.dark .agent-pause-status[data-variant="manual"] {
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+@keyframes agent-pause-flash {
+  0% {
+    box-shadow: 0 0 0 rgba(79, 70, 229, 0);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(79, 70, 229, 0.35);
+    transform: translateY(-1px);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(79, 70, 229, 0);
+    transform: translateY(0);
+  }
+}
+
+.agent-pause-message.flash-effect {
+  animation: agent-pause-flash 0.55s ease-in-out 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-pause-message.flash-effect {
+    animation: none;
+  }
+}

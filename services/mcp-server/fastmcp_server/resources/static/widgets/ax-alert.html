@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waystation Alert</title>
+  <style>
+    :root {
+      --bg: var(--color-background-primary, #08111f);
+      --surface: var(--color-background-secondary, rgba(15, 23, 42, 0.94));
+      --surface-strong: var(--color-background-tertiary, rgba(30, 41, 59, 0.96));
+      --border: var(--color-border-default, rgba(148, 163, 184, 0.18));
+      --text: var(--color-foreground-primary, #e5eefb);
+      --text-dim: var(--color-foreground-secondary, #94a3b8);
+      --accent: var(--color-accent-primary, #22d3ee);
+      --accent-soft: rgba(34, 211, 238, 0.14);
+      --warning: #fbbf24;
+      --warning-soft: rgba(251, 191, 36, 0.12);
+      --danger: #fb7185;
+      --danger-soft: rgba(251, 113, 133, 0.12);
+      --success: #34d399;
+      --success-soft: rgba(52, 211, 153, 0.12);
+      --info: #60a5fa;
+      --info-soft: rgba(96, 165, 250, 0.12);
+      --shadow: 0 8px 24px rgba(0,0,0,0.24);
+      --radius: 16px;
+      --font: var(--font-family-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100%;
+      background: transparent;
+      color: var(--text);
+      font-family: var(--font);
+    }
+    body { padding: 8px; }
+
+    .alert-card {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.97), rgba(8, 17, 31, 0.96));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      position: relative;
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.04);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .alert-card.dismissed {
+      opacity: 0;
+      transform: translateX(20px);
+      pointer-events: none;
+    }
+    .alert-card.level-info { border-left: 3px solid var(--info); }
+    .alert-card.level-warning, .alert-card.level-warn { border-left: 3px solid var(--warning); }
+    .alert-card.level-error { border-left: 3px solid var(--danger); }
+    .alert-card.level-success { border-left: 3px solid var(--success); }
+
+    .alert-icon {
+      width: 36px; height: 36px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 17px;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    .level-info .alert-icon { background: rgba(96, 165, 250, 0.12); color: var(--info); }
+    .level-warning .alert-icon, .level-warn .alert-icon {
+      background: radial-gradient(circle at 50% 20%, rgba(251, 191, 36, 0.22), rgba(120, 53, 15, 0.22));
+      color: #fcd34d;
+      border-color: rgba(251, 191, 36, 0.28);
+      text-shadow: 0 0 14px rgba(251, 191, 36, 0.28);
+    }
+    .level-error .alert-icon { background: var(--danger-soft); color: var(--danger); }
+    .level-success .alert-icon { background: var(--success-soft); color: var(--success); }
+
+    .alert-body { flex: 1; min-width: 0; }
+    .alert-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .alert-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 20px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.72);
+      color: #cbd5e1;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0.075em;
+      text-transform: uppercase;
+    }
+    .alert-pill.kind-alert {
+      background: rgba(15, 23, 42, 0.82);
+      color: #e2e8f0;
+      border-color: rgba(226, 232, 240, 0.16);
+    }
+    .alert-pill.severity-warning, .alert-pill.severity-warn {
+      background: rgba(251, 191, 36, 0.14);
+      color: #fcd34d;
+      border-color: rgba(251, 191, 36, 0.34);
+      box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.04) inset;
+    }
+    .alert-pill.severity-error { background: rgba(251, 113, 133, 0.14); color: #fda4af; border-color: rgba(251, 113, 133, 0.32); }
+    .alert-pill.severity-info { background: rgba(96, 165, 250, 0.12); color: #bfdbfe; border-color: rgba(96, 165, 250, 0.28); }
+    .alert-pill.severity-success { background: rgba(52, 211, 153, 0.12); color: #86efac; border-color: rgba(52, 211, 153, 0.28); }
+    .alert-title {
+      font-size: 14px; font-weight: 600;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .alert-message {
+      font-size: 13px; color: var(--text-dim);
+      line-height: 1.5;
+    }
+    .alert-source {
+      font-size: 11px; color: var(--text-dim);
+      margin-top: 8px;
+      opacity: 0.7;
+    }
+
+    .alert-actions {
+      display: flex; gap: 8px;
+      margin-top: 12px;
+    }
+    .alert-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      color: var(--text);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .alert-btn:hover { background: rgba(148, 163, 184, 0.12); }
+    .alert-btn.primary {
+      background: var(--accent-soft);
+      border-color: rgba(34, 211, 238, 0.3);
+      color: var(--accent);
+    }
+    .alert-btn.primary:hover { background: rgba(34, 211, 238, 0.22); }
+
+    .dismiss-btn {
+      position: absolute;
+      top: 12px; right: 12px;
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .dismiss-btn:hover { background: rgba(148, 163, 184, 0.12); }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .alert-stack { display: flex; flex-direction: column; gap: 10px; }
+  </style>
+</head>
+<body>
+  <div class="alert-stack" id="alerts"></div>
+  <div class="empty-state" id="empty" style="display:none">No notifications</div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const PREVIEW_MODE = params.get("preview") === "1" || window.self === window.top;
+
+    const ICONS = {
+      info: "\u2139\uFE0F",
+      warning: "\u26A0\uFE0F",
+      error: "\u274C",
+      success: "\u2705",
+      routing: "\u27A1\uFE0F",
+      agent: "\uD83E\uDD16",
+      gateway: "\uD83D\uDD14",
+      alert: "\uD83D\uDD14",
+    };
+
+    function el(tag, attrs, text) {
+      const node = document.createElement(tag);
+      if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === "className") node.className = v;
+        else node.setAttribute(k, v);
+      });
+      if (text) node.textContent = text;
+      return node;
+    }
+
+    function getAllowedOrigin() {
+      if (!document.referrer) return null;
+      try {
+        return new URL(document.referrer).origin;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    const ALLOWED_ORIGIN = getAllowedOrigin();
+
+    function normalizeLevel(level) {
+      const value = String(level || "info").toLowerCase();
+      return value === "warn" ? "warning" : value;
+    }
+
+    function prettyLevel(level) {
+      const value = normalizeLevel(level);
+      if (value === "warning") return "Warn";
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
+
+    function getIcon(level, type) {
+      if (type && ICONS[type]) return ICONS[type];
+      return ICONS[normalizeLevel(level)] || ICONS.info;
+    }
+
+    // Spec 11.7.4 / 11.7.5: when an activity-stream card has a known
+    // resource_id, the whole card is the primary open action. We emit on
+    // two channels \u2014 a DOM CustomEvent ("ax-alert-action") that hosts and
+    // tests can subscribe to in-window, and a postMessage to parent for
+    // production iframe hosts. Clicks inside buttons or the dismiss
+    // affordance must NOT trigger activation.
+    function emitCardActivation(alert) {
+      const detail = {
+        type: "ax-alert-action",
+        alert_id: alert.id || null,
+        action: "activate_card",
+        resource_id: alert.resource_id || null,
+        object_type: alert.object_type || null,
+      };
+      document.dispatchEvent(new CustomEvent("ax-alert-action", {
+        detail,
+        bubbles: true,
+        composed: true,
+      }));
+      if (window.parent && window.parent !== window && ALLOWED_ORIGIN) {
+        window.parent.postMessage(detail, ALLOWED_ORIGIN);
+      }
+    }
+
+    function renderAlert(alert) {
+      const level = normalizeLevel(alert.level || alert.severity || "info");
+      const kind = alert.kind || alert.category || "Alert";
+      const card = el("div", { className: "alert-card level-" + level });
+      card.dataset.alertId = alert.id || "";
+
+      card.appendChild(el("div", { className: "alert-icon" }, getIcon(level, alert.type)));
+
+      const body = el("div", { className: "alert-body" });
+      const meta = el("div", { className: "alert-meta" });
+      meta.appendChild(el("span", { className: "alert-pill kind-alert" }, String(kind)));
+      meta.appendChild(el("span", { className: "alert-pill severity-" + level }, prettyLevel(level)));
+      body.appendChild(meta);
+      if (alert.title) body.appendChild(el("div", { className: "alert-title" }, alert.title));
+      if (alert.message) body.appendChild(el("div", { className: "alert-message" }, alert.message));
+      if (alert.source) body.appendChild(el("div", { className: "alert-source" }, alert.source));
+
+      if (alert.actions && alert.actions.length > 0) {
+        const actions = el("div", { className: "alert-actions" });
+        for (const action of alert.actions) {
+          const btn = el("button", {
+            className: "alert-btn" + (action.primary ? " primary" : ""),
+          }, action.label);
+          btn.onclick = function() { handleAction(alert, action); };
+          actions.appendChild(btn);
+        }
+        body.appendChild(actions);
+      }
+
+      card.appendChild(body);
+
+      if (alert.dismissable !== false) {
+        const dismiss = el("button", { className: "dismiss-btn", title: "Dismiss" });
+        dismiss.textContent = "\u00D7";
+        dismiss.onclick = function() { dismissAlert(card); };
+        card.appendChild(dismiss);
+      }
+
+      // Whole-card activation: only when there's a resource to open.
+      if (alert.resource_id) {
+        card.style.cursor = "pointer";
+        card.addEventListener("click", function(event) {
+          // Don't fire when the user clicked an action button or the
+          // dismiss x \u2014 those have their own handlers.
+          if (event.target && event.target.closest("button")) return;
+          emitCardActivation(alert);
+        });
+      }
+
+      return card;
+    }
+
+    function dismissAlert(card) {
+      card.classList.add("dismissed");
+      setTimeout(function() {
+        card.remove();
+        checkEmpty();
+      }, 300);
+    }
+
+    function checkEmpty() {
+      const container = document.getElementById("alerts");
+      const empty = document.getElementById("empty");
+      if (container.children.length === 0) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+    }
+
+    function findAlertCard(alertId) {
+      if (!alertId) return null;
+      const container = document.getElementById("alerts");
+      return Array.from(container.children).find((child) => child.dataset.alertId === String(alertId)) || null;
+    }
+
+    function isAlertMessage(data) {
+      return Boolean(data && (data.type === "tool-result" || data.type === "ax-alerts"));
+    }
+
+    function resolveAlertPayload(data) {
+      if (!data) return null;
+      if (data.type === "tool-result") return data.data || null;
+      return data.data || data;
+    }
+
+    function handleAction(alert, action) {
+      if (action.tool_call && window.parent && window.parent !== window && ALLOWED_ORIGIN) {
+        window.parent.postMessage({
+          type: "ax-alert-action",
+          alert_id: alert.id,
+          action: action.action,
+          tool_call: action.tool_call,
+        }, ALLOWED_ORIGIN);
+      }
+      if (action.dismiss_on_click !== false) {
+        const card = findAlertCard(alert.id);
+        if (card) dismissAlert(card);
+      }
+    }
+
+    function loadAlerts(data) {
+      const container = document.getElementById("alerts");
+      const empty = document.getElementById("empty");
+      container.textContent = "";
+
+      const alerts = (data && data.alerts) || (data && data.items) || [];
+      if (!alerts.length) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+
+      for (const alert of alerts) {
+        container.appendChild(renderAlert(alert));
+      }
+    }
+
+    window.addEventListener("message", function(event) {
+      if (window.parent !== window && ALLOWED_ORIGIN && event.origin !== ALLOWED_ORIGIN) {
+        return;
+      }
+      if (isAlertMessage(event.data)) {
+        loadAlerts(resolveAlertPayload(event.data));
+      }
+    });
+
+    // Sample data for explicit standalone preview only.
+    const SAMPLE = {
+      alerts: [
+        {
+          id: "1",
+          level: "info",
+          type: "routing",
+          title: "Message routed to @backend_sentinel",
+          message: "Your request about the API fix has been forwarded. Expected response within a few minutes.",
+          source: "Waystation routing",
+          dismissable: true,
+          actions: [
+            { label: "View thread", action: "view_thread", primary: true },
+          ],
+        },
+        {
+          id: "2",
+          level: "warning",
+          type: "gateway",
+          kind: "Alert",
+          title: "@mac_frontend looks stale",
+          message: "Gateway evidence: activation=attach_only, queue_depth=2, drain_visible=false, processed_count=0, last_work_completed_at=null.",
+          source: "Gateway pulse local",
+          dismissable: true,
+          actions: [
+            { label: "Reroute", action: "reroute", primary: true },
+            { label: "Wait", action: "wait" },
+          ],
+        },
+        {
+          id: "3",
+          level: "success",
+          type: "agent",
+          title: "Agent 'my_helper' created",
+          message: "Your agent is ready. Token has been saved to your profile.",
+          source: "Waystation agent setup",
+          dismissable: true,
+          actions: [
+            { label: "View agent", action: "view_agent", primary: true },
+            { label: "Copy token", action: "copy_token" },
+          ],
+        },
+      ],
+    };
+
+    if (PREVIEW_MODE) {
+      loadAlerts(SAMPLE);
+    } else {
+      checkEmpty();
+    }
+  </script>
+</body>
+</html>

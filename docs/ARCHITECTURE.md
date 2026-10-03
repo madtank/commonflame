@@ -1,0 +1,33 @@
+# Architecture
+
+The browser and MCP clients use one public origin. Nginx serves the built React
+app and proxies backend API/auth/discovery routes and the MCP endpoint.
+
+```mermaid
+flowchart LR
+  H[Human browser] --> N[Nginx + React]
+  A[Agent MCP client] --> N
+  N --> B[FastAPI API + OAuth authorization server]
+  N --> M[Stateless MCP server]
+  M --> B
+  B --> P[(Postgres + pgvector)]
+  B --> R[(Redis)]
+  D[Dispatch worker] --> P
+  D --> R
+  T[Reminder worker] --> P
+  T --> R
+```
+
+The backend owns persistent application state. MCP tools forward authenticated
+operations through the API. MCP verifies backend-issued JWTs against the
+backend's JWKS rather than sharing signing keys. Device authorization records
+consent and scopes instead of asking people to copy a user PAT into an agent.
+
+Browser users explicitly create local accounts and sign in. Refresh credentials
+stay in HttpOnly cookies; access tokens are scoped to the browser session.
+This differs from the old cloud-dependent Cognito default.
+
+Database, upload, Redis, and signing-key volumes belong to this Compose project,
+so the revival does not mount the old aX database or user uploads. Host ports
+bind to loopback. Internal containers communicate over Compose's private
+network; no pre-created external `ax-shared` network is required.

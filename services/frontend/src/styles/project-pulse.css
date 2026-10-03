@@ -1,0 +1,424 @@
+/* ============================================
+   Project Pulse - Futuristic Intelligence Dashboard
+   ============================================ */
+
+/* Glassmorphism base */
+.pulse-glass {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.pulse-glass-light {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+/* Living Summary Card */
+.living-summary-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.living-summary-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(139, 92, 246, 0.05) 50%,
+    rgba(59, 130, 246, 0.1) 100%
+  );
+  pointer-events: none;
+}
+
+/* Pulse Animation for new message integration */
+.pulse-update {
+  animation: pulseUpdate 1.5s ease-out;
+}
+
+@keyframes pulseUpdate {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* Shimmer effect for loading/updating */
+.pulse-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.pulse-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.2),
+    transparent
+  );
+  animation: shimmerSlide 2s infinite;
+}
+
+@keyframes shimmerSlide {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Delta indicator - shows what changed */
+.delta-indicator {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.delta-indicator::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+  border-radius: 2px;
+}
+
+/* Validator Callout Badges */
+.callout-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.callout-outlier {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.callout-outlier:hover {
+  background: rgba(239, 68, 68, 0.25);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.callout-trend {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.callout-trend:hover {
+  background: rgba(34, 197, 94, 0.25);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
+}
+
+.callout-highlight {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.callout-highlight:hover {
+  background: rgba(234, 179, 8, 0.25);
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.3);
+}
+
+/* Knowledge Vault Cards - Glow Border */
+.vault-card {
+  position: relative;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.vault-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6, #3b82f6);
+  background-size: 200% 200%;
+  animation: vaultGlow 4s ease-in-out infinite;
+  z-index: -1;
+  opacity: 0.6;
+}
+
+.vault-card:hover::before {
+  opacity: 1;
+  animation-duration: 2s;
+}
+
+@keyframes vaultGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Promoted vault card - extra glow */
+.vault-card-promoted::before {
+  background: linear-gradient(135deg, #f59e0b, #fcd34d, #f59e0b);
+  filter: blur(4px);
+}
+
+/* Token Odometer / Gauge */
+.token-gauge {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.token-gauge-ring {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.token-gauge-bg {
+  stroke: rgba(55, 65, 81, 0.5);
+}
+
+.token-gauge-fill {
+  stroke: url(#gaugeGradient);
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.token-gauge-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Alert Banner */
+.pulse-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  animation: alertPulse 2s infinite;
+}
+
+.pulse-alert-warning {
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fbbf24;
+}
+
+.pulse-alert-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+@keyframes alertPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Navigation Toggle */
+.pulse-nav-toggle {
+  display: inline-flex;
+  background: rgba(55, 65, 81, 0.5);
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  gap: 0.25rem;
+}
+
+.pulse-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(156, 163, 175, 1);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+.pulse-nav-item:hover {
+  color: rgba(229, 231, 235, 1);
+  background: rgba(55, 65, 81, 0.5);
+}
+
+.pulse-nav-item.active {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.3),
+    rgba(139, 92, 246, 0.3)
+  );
+  color: white;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* Message counter badge */
+.message-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.375rem;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+}
+
+/* Trend line indicator */
+.trend-line {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #4ade80, transparent);
+  animation: trendFlow 3s infinite;
+}
+
+@keyframes trendFlow {
+  0% {
+    opacity: 0.3;
+    transform: scaleX(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scaleX(0.5);
+  }
+}
+
+/* Expandable drill-down */
+.drill-down-container {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.drill-down-container.expanded {
+  max-height: 500px;
+}
+
+/* Status dot with glow */
+.status-glow {
+  position: relative;
+}
+
+.status-glow::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: inherit;
+  filter: blur(6px);
+  opacity: 0.5;
+  z-index: -1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pulse-nav-toggle {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pulse-nav-item {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .token-gauge {
+    width: 100px;
+    height: 100px;
+  }
+
+  .vault-card::before {
+    animation: none;
+    opacity: 0.4;
+  }
+}
+
+/* Light mode adjustments */
+:root:not(.dark) .pulse-glass {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+:root:not(.dark) .callout-outlier {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+:root:not(.dark) .callout-trend {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+:root:not(.dark) .callout-highlight {
+  background: rgba(234, 179, 8, 0.1);
+  color: #ca8a04;
+}
+
+:root:not(.dark) .pulse-nav-item {
+  color: rgba(75, 85, 99, 1);
+}
+
+:root:not(.dark) .pulse-nav-item:hover {
+  color: rgba(31, 41, 55, 1);
+}
+
+:root:not(.dark) .pulse-nav-item.active {
+  color: #1f2937;
+}

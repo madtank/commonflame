@@ -1,0 +1,2794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spaces - Waystation</title>
+  <style>
+    :root {
+      --ax-bg: var(--color-background-primary, #0b0d10);
+      --ax-panel: var(--color-background-secondary, #12151a);
+      --ax-panel-2: var(--color-background-tertiary, #171b21);
+      --ax-border: var(--color-border-default, #242a33);
+      --ax-border-strong: var(--color-border-default, #2f3640);
+      --ax-text: var(--color-foreground-primary, #e6e9ee);
+      --ax-text-muted: var(--color-foreground-secondary, #8a93a0);
+      --ax-text-dim: var(--color-foreground-secondary, #5f6773);
+      --ax-gold: #d6b26b;
+      --ax-gold-strong: #e7c680;
+      --ax-accent: var(--color-accent-primary, #6aa9ff);
+      --ax-green: #4fc08d;
+      --ax-amber: #e0a458;
+      --ax-red: #e5686b;
+      --ax-chip: var(--color-background-secondary, #1c2129);
+      --ax-chip-active: var(--color-background-tertiary, #2b3342);
+      --ax-hover: var(--color-background-tertiary, #1a1f27);
+      --ax-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --ax-radius: 16px;
+      --ax-font: var(--font-family-body, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif);
+      --ax-mono: var(--font-family-mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    html, body {
+      min-height: 100%;
+      background: var(--ax-bg);
+      color: var(--ax-text);
+      font-family: var(--ax-font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body { padding: 16px; }
+
+    .shell {
+      width: 100%;
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      border: 1px solid var(--ax-border);
+      border-radius: var(--ax-radius);
+      background: var(--ax-panel);
+      overflow: hidden;
+      box-shadow: var(--ax-shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--ax-border);
+      background: linear-gradient(180deg, var(--ax-panel-2) 0%, var(--ax-panel) 100%);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .panel-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, var(--ax-gold), #a87e2e);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .heading {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .count-row {
+      margin-top: 4px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--ax-text-muted);
+    }
+
+    .count-row strong {
+      color: var(--ax-text);
+      font-weight: 700;
+    }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .panel-body {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .filters {
+      display: grid;
+      gap: 10px;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-row-label {
+      min-width: 76px;
+      font-size: 11px;
+      color: var(--ax-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--ax-border);
+      background: var(--ax-chip);
+      color: var(--ax-text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip:hover {
+      background: var(--ax-hover);
+      color: var(--ax-text);
+      border-color: rgba(214, 178, 107, 0.3);
+    }
+
+    .chip.active {
+      background: var(--ax-chip-active);
+      color: var(--ax-text);
+      border-color: var(--ax-border-strong);
+      box-shadow: inset 0 0 0 1px rgba(214, 178, 107, 0.08);
+    }
+
+    .chip-count {
+      font-size: 11px;
+      color: var(--ax-text-dim);
+    }
+
+    .chip.active .chip-count {
+      color: rgba(230, 233, 238, 0.8);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-note {
+      font-size: 12px;
+      color: var(--ax-text-muted);
+      line-height: 1.5;
+      max-width: 72ch;
+    }
+
+    .sort-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--ax-border);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .sort-wrap label {
+      font-size: 11px;
+      color: var(--ax-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .sort-select,
+    .form-field input,
+    .form-field textarea,
+    .form-field select {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--ax-border);
+      background: rgba(10, 13, 16, 0.3);
+      color: var(--ax-text);
+      font: inherit;
+      outline: none;
+    }
+
+    .sort-select {
+      width: auto;
+      min-width: 170px;
+      padding: 8px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .sort-select:focus,
+    .form-field input:focus,
+    .form-field textarea:focus,
+    .form-field select:focus {
+      border-color: rgba(214, 178, 107, 0.5);
+      box-shadow: 0 0 0 3px rgba(214, 178, 107, 0.12);
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      border: none;
+      background: linear-gradient(180deg, var(--ax-gold-strong), var(--ax-gold));
+      color: #1a1408;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 16px rgba(214, 178, 107, 0.18);
+    }
+
+    .btn-primary:hover { filter: brightness(1.04); }
+
+    .btn-secondary,
+    .back-btn {
+      border: 1px solid var(--ax-border-strong);
+      background: transparent;
+      color: var(--ax-text-muted);
+    }
+
+    .btn-secondary:hover,
+    .back-btn:hover {
+      color: var(--ax-text);
+      background: var(--ax-hover);
+    }
+
+    .notice {
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .notice.info {
+      background: rgba(106, 169, 255, 0.12);
+      border-color: rgba(106, 169, 255, 0.25);
+      color: #a8c8ff;
+    }
+
+    .notice.error {
+      background: rgba(229, 104, 107, 0.12);
+      border-color: rgba(229, 104, 107, 0.25);
+      color: var(--ax-red);
+    }
+
+    .invite-code-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      border: 1px solid rgba(106, 169, 255, 0.22);
+      border-radius: 12px;
+      background: rgba(106, 169, 255, 0.08);
+    }
+
+    .invite-code-value {
+      font-family: var(--ax-mono);
+      font-size: 13px;
+      color: var(--ax-text);
+      letter-spacing: 0.04em;
+      word-break: break-all;
+    }
+
+    .list-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--ax-border);
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .space-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1.45fr) minmax(0, 1fr) auto auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      background: var(--ax-panel-2);
+      border: none;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .space-row:hover { background: var(--ax-hover); }
+
+    .space-row:focus-visible {
+      outline: 2px solid rgba(214, 178, 107, 0.45);
+      outline-offset: -2px;
+    }
+
+    .space-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #2b3342, #3a4556);
+      color: var(--ax-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .space-main,
+    .space-summary {
+      min-width: 0;
+    }
+
+    .space-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .space-subline,
+    .space-summary {
+      margin-top: 4px;
+      font-size: 12.5px;
+      color: var(--ax-text-muted);
+      line-height: 1.45;
+    }
+
+    .space-summary {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .space-meta,
+    .space-freshness {
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 11.5px;
+      color: rgba(148, 163, 184, 0.82);
+    }
+
+    .discover-action {
+      display: flex;
+      justify-content: flex-end;
+      min-width: 78px;
+    }
+
+    .discover-action .btn-secondary {
+      padding: 6px 10px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .space-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .pill-active,
+    .pill-hot,
+    .pill-warming,
+    .pill-night {
+      background: rgba(79, 192, 141, 0.12);
+      color: #8fe0b5;
+      border-color: rgba(79, 192, 141, 0.24);
+    }
+
+    .pill-busy {
+      background: rgba(224, 164, 88, 0.12);
+      color: #f0c083;
+      border-color: rgba(224, 164, 88, 0.24);
+    }
+
+    .pill-fresh,
+    .pill-ice {
+      background: rgba(148, 163, 184, 0.12);
+      color: rgba(226, 232, 240, 0.8);
+      border-color: rgba(148, 163, 184, 0.18);
+    }
+
+    .detail-shell,
+    .create-shell,
+    .loading-state,
+    .error-state,
+    .empty-state {
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      background: var(--ax-panel-2);
+    }
+
+    .detail-shell,
+    .create-shell {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .detail-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .detail-title {
+      font-size: 24px;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .detail-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .detail-copy {
+      font-size: 14px;
+      color: var(--ax-text-muted);
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .tab-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--ax-border);
+      background: var(--ax-chip);
+      color: var(--ax-text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab.discover-tab {
+      border-color: rgba(214, 178, 107, 0.28);
+      background: linear-gradient(180deg, rgba(214, 178, 107, 0.14), rgba(214, 178, 107, 0.05));
+      color: var(--ax-text);
+      box-shadow: inset 0 0 0 1px rgba(214, 178, 107, 0.04);
+    }
+
+    .tab-icon {
+      position: relative;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(214, 178, 107, 0.72);
+      flex-shrink: 0;
+    }
+
+    .tab-icon::after {
+      content: "";
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      right: 2px;
+      top: 2px;
+      border-radius: 999px;
+      background: var(--ax-gold);
+      box-shadow: 0 0 10px rgba(214, 178, 107, 0.42);
+    }
+
+    .tab:hover {
+      background: var(--ax-hover);
+      color: var(--ax-text);
+    }
+
+    .tab.active {
+      background: var(--ax-chip-active);
+      border-color: var(--ax-border-strong);
+      color: var(--ax-text);
+    }
+
+    .tab.discover-tab.active {
+      background: linear-gradient(180deg, rgba(214, 178, 107, 0.25), rgba(214, 178, 107, 0.1));
+      border-color: rgba(214, 178, 107, 0.5);
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      background: rgba(10, 13, 16, 0.18);
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .card.full {
+      grid-column: 1 / -1;
+    }
+
+    .terminal-card {
+      display: grid;
+      gap: 14px;
+      padding: 22px;
+      border-color: rgba(214, 178, 107, 0.28);
+      background:
+        radial-gradient(circle at 20% 0%, rgba(214, 178, 107, 0.14), transparent 34%),
+        rgba(10, 13, 16, 0.22);
+    }
+
+    .terminal-title {
+      font-size: 18px;
+      font-weight: 750;
+      letter-spacing: -0.01em;
+    }
+
+    .terminal-detail {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--ax-text-muted);
+      font-size: 12.5px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ax-text-dim);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      border: 1px solid var(--ax-border);
+      border-radius: 12px;
+      background: rgba(10, 13, 16, 0.22);
+      padding: 12px 13px;
+      min-width: 0;
+    }
+
+    .field-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ax-text-dim);
+    }
+
+    .field-value {
+      margin-top: 4px;
+      font-size: 14px;
+      color: var(--ax-text);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .field-value.mono {
+      font-family: var(--ax-mono);
+      font-size: 13px;
+    }
+
+    .member-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .member-card {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 13px;
+      border: 1px solid var(--ax-border);
+      border-radius: 12px;
+      background: rgba(10, 13, 16, 0.2);
+    }
+
+    .member-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2b3342, #3a4556);
+      color: var(--ax-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .member-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .member-meta {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--ax-text-muted);
+      line-height: 1.45;
+    }
+
+    .member-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .member-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(106, 169, 255, 0.12);
+      color: #a8c8ff;
+      border: 1px solid rgba(106, 169, 255, 0.25);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .form-field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .form-field label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ax-text-dim);
+      font-weight: 700;
+    }
+
+    .form-field textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .field-help {
+      font-size: 12px;
+      color: var(--ax-text-dim);
+      line-height: 1.5;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .empty-state,
+    .loading-state,
+    .error-state {
+      padding: 28px 24px;
+      text-align: center;
+      color: var(--ax-text-muted);
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+    }
+
+    .state-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ax-text);
+    }
+
+    .state-copy {
+      max-width: 60ch;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 820px) {
+      body { padding: 12px; }
+
+      .space-row {
+        grid-template-columns: 34px minmax(0, 1fr);
+        align-items: flex-start;
+        row-gap: 6px;
+      }
+
+      .space-row > .space-main,
+      .space-row > .space-summary,
+      .space-row > .space-pill,
+      .space-row > .space-meta,
+      .space-row > .space-freshness {
+        grid-column: 2;
+      }
+
+      .space-pill,
+      .space-meta,
+      .space-freshness {
+        white-space: normal;
+      }
+
+      .section-grid,
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .member-card {
+        grid-template-columns: 38px minmax(0, 1fr);
+      }
+
+      .member-badges {
+        grid-column: 2;
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app">
+    <div class="loading-state" data-testid="spaces-loading-state">Loading spaces...</div>
+  </div>
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Spaces", version: "2.0.0" });
+    const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
+
+    function getOpenAiBridge() {
+      return typeof window !== "undefined" ? window.openai : undefined;
+    }
+
+    function normalizeToolResult(result) {
+      if (result && typeof result === "object" && ("structuredContent" in result || "content" in result)) {
+        return result;
+      }
+      return { structuredContent: result };
+    }
+
+    function notifyHostHeight() {
+      const openaiBridge = getOpenAiBridge();
+      if (openaiBridge && typeof openaiBridge.notifyIntrinsicHeight === "function") {
+        requestAnimationFrame(() => {
+          try {
+            const appRoot = document.getElementById("app");
+            const bodyStyles = window.getComputedStyle(document.body);
+            const paddingTop = parseFloat(bodyStyles.paddingTop || "0") || 0;
+            const paddingBottom = parseFloat(bodyStyles.paddingBottom || "0") || 0;
+            const contentHeight = appRoot
+              ? Math.ceil(appRoot.getBoundingClientRect().height + paddingTop + paddingBottom)
+              : Math.ceil(document.body.getBoundingClientRect().height);
+            openaiBridge.notifyIntrinsicHeight(Math.max(120, contentHeight));
+          } catch {}
+        });
+      }
+    }
+
+    const host = {
+      toolResultHandler: null,
+      globalsListener: null,
+      messageListener: null,
+      setToolResultHandler(handler) {
+        this.toolResultHandler = handler;
+        app.ontoolresult = handler;
+
+        if (!this.messageListener) {
+          this.messageListener = (event) => {
+            let payload = event.data;
+            if (!payload) return;
+            if (typeof payload === "string") {
+              try { payload = JSON.parse(payload); } catch { return; }
+            }
+            if (typeof payload !== "object") return;
+            if (payload.method === "ui/notifications/tool-result" && payload.params) {
+              handler(normalizeToolResult(payload.params));
+              return;
+            }
+            if (payload.type === "tool_result" && (payload.initial_data || payload.structuredContent || payload.content)) {
+              handler(normalizeToolResult(payload.initial_data || payload));
+              return;
+            }
+            if (payload.structuredContent || payload.kind) {
+              handler(normalizeToolResult(payload));
+            }
+          };
+          window.addEventListener("message", this.messageListener);
+        }
+      },
+      deliverToolOutput(globals) {
+        const openaiBridge = getOpenAiBridge();
+        const output = globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")
+          ? globals.toolOutput
+          : openaiBridge?.toolOutput;
+        if (this.toolResultHandler && output !== undefined) {
+          this.toolResultHandler(normalizeToolResult(output));
+        }
+      },
+      async connect() {
+        if (!this.globalsListener) {
+          this.globalsListener = (event) => {
+            const globals = event?.detail?.globals;
+            if (globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")) {
+              this.deliverToolOutput(globals);
+            }
+            notifyHostHeight();
+          };
+          window.addEventListener(OPENAI_SET_GLOBALS_EVENT, this.globalsListener, { passive: true });
+        }
+
+        await app.connect();
+        this.deliverToolOutput();
+        notifyHostHeight();
+      },
+      async callServerTool(name, args) {
+        const openaiBridge = getOpenAiBridge();
+        if (openaiBridge && typeof openaiBridge.callTool === "function") {
+          return normalizeToolResult(await openaiBridge.callTool(name, args));
+        }
+        return app.callServerTool({ name, arguments: args });
+      },
+    };
+
+    const state = {
+      hydrated: false,
+      bootstrapping: false,
+      bootstrapError: null,
+      spaces: [],
+      total: 0,
+      view: "list",
+      selected: null,
+      members: [],
+      membersLoadedFor: null,
+      loadingMembers: false,
+      detailTab: "overview",
+      editMode: false,
+      notice: null,
+      activeScope: "my",
+      activeVisibility: "all",
+      activeTab: "my",
+      sortMode: "activity",
+      discoverSpaces: [],
+      discoverTotal: 0,
+      discoverLoaded: false,
+      discoverLoading: false,
+      joinedPublicSpaceIds: [],
+      joinInviteCode: "",
+      joinBusy: false,
+      joinPublicBusyFor: null,
+      inviteCreating: false,
+      inviteCopiedFor: null,
+      createdInvite: null,
+      createDraft: {
+        name: "",
+        description: "",
+        visibility: "private",
+      },
+      draft: null,
+      draftFields: {},
+      draftRequiredFields: ["name"],
+      draftSending: false,
+      draftRefreshInFlight: false,
+      draftRefreshedFor: "",
+      terminalDraft: null,
+      createSubmitting: false,
+      formError: null,
+      archiveBusy: false,
+      permissions: null,
+      spaceContext: null,
+    };
+
+    function el(tag, attrs, text) {
+      const node = document.createElement(tag);
+      if (attrs) {
+        for (const [key, value] of Object.entries(attrs)) {
+          if (key === "className") node.className = value;
+          else if (key === "dataset" && value && typeof value === "object") {
+            for (const [dataKey, dataValue] of Object.entries(value)) {
+              if (dataValue != null) node.dataset[dataKey] = String(dataValue);
+            }
+          } else if (value !== undefined && value !== null) {
+            node.setAttribute(key, value);
+          }
+        }
+      }
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function extractData(result) {
+      if (result && result.structuredContent) return result.structuredContent;
+      const text = result?.content?.find((item) => item.type === "text");
+      if (!text || typeof text.text !== "string") return null;
+      try {
+        const parsed = JSON.parse(text.text);
+        return parsed.structuredContent || parsed;
+      } catch {
+        return null;
+      }
+    }
+
+    function permissionState() {
+      return state.permissions || {};
+    }
+
+    function isReadOnlyMode() {
+      return Boolean(permissionState().read_only);
+    }
+
+    function canCreateSpaces() {
+      return Boolean(permissionState().can_create);
+    }
+
+    function canUpdateSpaces() {
+      return Boolean(permissionState().can_update);
+    }
+
+    function canArchiveSpaces() {
+      return Boolean(permissionState().can_archive || permissionState().can_update);
+    }
+
+    function readOnlyMessage() {
+      return permissionState().blocked_reason || "Space changes require a user-initiated quick action or approval flow.";
+    }
+
+    function renderPermissionNotice(parent) {
+      if (!isReadOnlyMode()) return;
+      parent.appendChild(el("div", { className: "notice info" }, readOnlyMessage()));
+    }
+
+    function extractErrorMessage(result) {
+      if (!result || typeof result !== "object") return null;
+      const text = result.content?.find((item) => item.type === "text" && typeof item.text === "string");
+      if (result.isError && text?.text) return text.text;
+      return null;
+    }
+
+    function unwrapEnvelope(data) {
+      if (data && data.version && data.data && typeof data.data === "object") return data.data;
+      return data;
+    }
+
+    function extractPayload(result) {
+      return unwrapEnvelope(extractData(result));
+    }
+
+    function errorMessageFromUnknown(error, fallback = "Space request failed.") {
+      if (error && typeof error === "object" && typeof error.message === "string" && error.message.trim()) {
+        return error.message.trim();
+      }
+      if (typeof error === "string" && error.trim()) return error.trim();
+      return fallback;
+    }
+
+    function showSpacesError(message, opts = {}) {
+      state.notice = { severity: "error", message };
+      state.formError = opts.form ? message : null;
+      if (opts.bootstrap || !state.hydrated) {
+        state.bootstrapError = message;
+        state.bootstrapping = false;
+      }
+      paint();
+    }
+
+    function clearTransientErrors() {
+      state.formError = null;
+      if (state.notice && state.notice.severity === "error") {
+        state.notice = null;
+      }
+    }
+
+    function initials(value) {
+      if (!value) return "?";
+      const parts = String(value).split(/[\s_-]+/).filter(Boolean);
+      if (!parts.length) return "?";
+      return parts.map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+    }
+
+    function relDate(value) {
+      if (!value) return "";
+      const timestamp = new Date(value).getTime();
+      if (Number.isNaN(timestamp)) return String(value);
+      const diff = Date.now() - timestamp;
+      if (diff < 60 * 1000) return "just now";
+      if (diff < 60 * 60 * 1000) return Math.floor(diff / (60 * 1000)) + "m ago";
+      if (diff < 24 * 60 * 60 * 1000) return Math.floor(diff / (60 * 60 * 1000)) + "h ago";
+      return Math.floor(diff / (24 * 60 * 60 * 1000)) + "d ago";
+    }
+
+    function spaceIdOf(space) {
+      return String(space?.id || space?.space_id || "");
+    }
+
+    function titleCase(value) {
+      return String(value || "")
+        .replace(/[_-]+/g, " ")
+        .trim()
+        .toLowerCase()
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    function visibilityLabel(space) {
+      const raw = String(space?.visibility || "").toLowerCase();
+      if (raw === "invite_only") return "Invite Only";
+      if (raw === "public") return "Public";
+      return "Private";
+    }
+
+    function activityState(space) {
+      const raw = String(space?.activity?.state || "").toLowerCase();
+      if (raw) return raw;
+      if (space?.is_current) return "active";
+      return "fresh";
+    }
+
+    function activityLabel(space) {
+      return titleCase(activityState(space) || "fresh");
+    }
+
+    function lastActivityAt(space) {
+      return space?.activity?.last_activity_at || space?.created_at || null;
+    }
+
+    function isActiveSpace(space) {
+      const stateValue = activityState(space);
+      return ["busy", "hot", "active", "warming", "night"].includes(stateValue);
+    }
+
+    function summaryText(space) {
+      const description = String(space?.description || "").trim();
+      if (description) return description;
+      const pieces = [];
+      pieces.push(visibilityLabel(space));
+      if (Number.isFinite(space?.member_count)) pieces.push(String(space.member_count) + " members");
+      if (space?.viewer_role) pieces.push(titleCase(space.viewer_role));
+      return pieces.join(" · ") || "Shared workspace";
+    }
+
+    function countByScope(scope) {
+      if (scope === "archived") return state.spaces.filter((space) => !!space?.is_archived).length;
+      if (scope === "all") return state.spaces.length;
+      return state.spaces.filter((space) => !space?.is_archived).length;
+    }
+
+    function visibleSpaces() {
+      let items = [...state.spaces];
+
+      if (state.activeScope === "my") {
+        items = items.filter((space) => !space?.is_archived);
+      } else if (state.activeScope === "archived") {
+        items = items.filter((space) => !!space?.is_archived);
+      }
+
+      if (state.activeVisibility !== "all") {
+        items = items.filter((space) => String(space?.visibility || "private").toLowerCase() === state.activeVisibility);
+      }
+
+      items.sort((a, b) => {
+        if (state.sortMode === "name") {
+          return String(a?.name || "").localeCompare(String(b?.name || ""));
+        }
+        if (state.sortMode === "members") {
+          const memberDelta = (Number(b?.member_count || 0) - Number(a?.member_count || 0));
+          if (memberDelta !== 0) return memberDelta;
+        }
+        const activityDelta = new Date(lastActivityAt(b) || 0).getTime() - new Date(lastActivityAt(a) || 0).getTime();
+        if (activityDelta !== 0) return activityDelta;
+        return String(a?.name || "").localeCompare(String(b?.name || ""));
+      });
+
+      return items;
+    }
+
+    function selectedSpace() {
+      return state.selected;
+    }
+
+    function discoverSpaceJoined(space) {
+      const spaceId = spaceIdOf(space);
+      return !!space?.is_member || (!!spaceId && state.joinedPublicSpaceIds.includes(spaceId));
+    }
+
+    function markDiscoverSpaceJoined(spaceOrId, patch = {}) {
+      const spaceId = typeof spaceOrId === "string" ? spaceOrId : spaceIdOf(spaceOrId);
+      if (!spaceId) return;
+      if (!state.joinedPublicSpaceIds.includes(spaceId)) {
+        state.joinedPublicSpaceIds = [...state.joinedPublicSpaceIds, spaceId];
+      }
+      state.discoverSpaces = state.discoverSpaces.map((space) => {
+        if (spaceIdOf(space) !== spaceId) return space;
+        return { ...space, ...patch, is_member: true };
+      });
+    }
+
+    function memberEntries() {
+      return Array.isArray(state.members) ? state.members : [];
+    }
+
+    function firstText(...values) {
+      for (const value of values) {
+        if (value === undefined || value === null) continue;
+        const text = String(value).trim();
+        if (text) return text;
+      }
+      return "";
+    }
+
+    function memberDisplayName(member) {
+      return firstText(
+        member?.full_name,
+        member?.display_name,
+        member?.name,
+        member?.username,
+        member?.email,
+        member?.id,
+      ) || "Unknown member";
+    }
+
+    function spaceDraftValues(draft) {
+      return {
+        draft_id: draft?.draft_id || "",
+        version: draft?.version,
+        status: draft?.status || "",
+        kind: draft?.kind || "",
+        space_mode: draft?.space_mode || "personal",
+        name: draft?.name || draft?.space?.name || "",
+        description: draft?.description || draft?.space?.description || "",
+        visibility: draft?.visibility || draft?.space?.visibility || "private",
+      };
+    }
+
+    const TERMINAL_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+
+    function terminalDraftKey(draftId) {
+      return "ax:mcp:spaces:terminal-draft:" + String(draftId || "");
+    }
+
+    function readTerminalDraft(draftId) {
+      if (!draftId || typeof window === "undefined" || !window.sessionStorage) return null;
+      try {
+        const raw = window.sessionStorage.getItem(terminalDraftKey(draftId));
+        if (!raw) return null;
+        const value = JSON.parse(raw);
+        if (!value || Date.now() - Number(value.saved_at || 0) > TERMINAL_DRAFT_TTL_MS) {
+          window.sessionStorage.removeItem(terminalDraftKey(draftId));
+          return null;
+        }
+        return value;
+      } catch {
+        return null;
+      }
+    }
+
+    function storeTerminalDraft(draftId, terminal) {
+      if (!draftId || !terminal || typeof window === "undefined" || !window.sessionStorage) return;
+      try {
+        const created = terminal.created || terminal.space || {};
+        // Only persist display fields needed to suppress replay after approval.
+        // Never cache raw tool results here; future payloads may gain auth or
+        // delegation metadata that does not belong in browser storage.
+        window.sessionStorage.setItem(terminalDraftKey(draftId), JSON.stringify({
+          draft_id: draftId,
+          saved_at: Date.now(),
+          status: terminal.status || "",
+          name: terminal.name || created.name || "",
+          created: {
+            id: created.id || created.space_id || "",
+            space_id: created.space_id || created.id || "",
+            name: created.name || "",
+            slug: created.slug || "",
+            visibility: created.visibility || "",
+          },
+        }));
+      } catch {
+        // sessionStorage can be unavailable in restricted browser contexts.
+      }
+    }
+
+    function applySpaceDraftPayload(draft, requiredFields) {
+      const normalized = spaceDraftValues(draft || {});
+      state.draft = { ...(draft || {}), ...normalized };
+      state.draftFields = { ...normalized };
+      state.draftRequiredFields = requiredFields || ["name"];
+      state.draftSending = false;
+      state.view = "create";
+      state.selected = null;
+      state.editMode = false;
+      state.notice = null;
+      state.formError = null;
+    }
+
+    function applyTerminalDraft(terminal) {
+      state.terminalDraft = terminal;
+      state.draft = null;
+      state.draftFields = {};
+      state.draftRequiredFields = ["name"];
+      state.draftSending = false;
+      state.draftRefreshInFlight = false;
+      state.selected = null;
+      state.view = "terminal";
+      state.notice = null;
+      state.formError = null;
+    }
+
+    function spaceDraftVisibilityOptions(mode) {
+      const normalizedMode = mode || "personal";
+      if (normalizedMode === "community") {
+        return [{ value: "public", label: "Public" }];
+      }
+      if (normalizedMode === "team") {
+        return [
+          { value: "invite_only", label: "Invite only" },
+          { value: "private", label: "Private" },
+        ];
+      }
+      return [{ value: "private", label: "Private" }];
+    }
+
+    function spaceDraftModeOptions() {
+      return [
+        { value: "personal", label: "Personal", help: "Private workspace owned by you." },
+        { value: "team", label: "Private team", help: "Shared internal space for selected collaborators." },
+        { value: "community", label: "Public community", help: "Discoverable space that other users can join." },
+      ];
+    }
+
+    function defaultVisibilityForSpaceMode(mode) {
+      if (mode === "community") return "public";
+      if (mode === "team") return "invite_only";
+      return "private";
+    }
+
+    function coerceSpaceVisibilityForMode(mode, visibility) {
+      const allowed = spaceDraftVisibilityOptions(mode).map((option) => option.value);
+      return allowed.includes(visibility) ? visibility : defaultVisibilityForSpaceMode(mode);
+    }
+
+    async function refreshSpaceDraftStatus(draftId) {
+      if (!draftId || state.draftRefreshInFlight || state.draftRefreshedFor === draftId) return;
+      state.draftRefreshInFlight = true;
+      state.draftRefreshedFor = draftId;
+      try {
+        const result = await host.callServerTool("spaces", { action: "get_draft", draft_id: draftId });
+        handleResult(result, "draft-refresh");
+      } catch (error) {
+        state.draftRefreshedFor = "";
+        state.notice = { severity: "error", message: errorMessageFromUnknown(error, "Could not refresh draft status.") };
+        paint();
+      } finally {
+        state.draftRefreshInFlight = false;
+      }
+    }
+
+    function spaceDraftEditableChanges() {
+      const current = state.draft || {};
+      const changes = {};
+      const nextName = String(state.draftFields.name || "").trim();
+      const nextDescription = String(state.draftFields.description || "").trim();
+      const nextMode = String(state.draftFields.space_mode || "personal").trim();
+      const nextVisibility = String(state.draftFields.visibility || "private").trim();
+      if (nextMode && nextMode !== String(current.space_mode || "personal").trim()) changes["space_mode"] = nextMode;
+      if (nextName && nextName !== String(current.name || "").trim()) changes["space.name"] = nextName;
+      if (nextDescription !== String(current.description || "").trim()) changes["space.description"] = nextDescription;
+      if (nextVisibility && nextVisibility !== String(current.visibility || "private").trim()) changes["space.visibility"] = nextVisibility;
+      return changes;
+    }
+
+    function renderBootstrapState(root) {
+      if (state.bootstrapError) {
+        const failure = el("div", { className: "error-state", "data-testid": "spaces-load-error" });
+        failure.appendChild(el("div", { className: "state-title" }, "This widget stopped responding"));
+        failure.appendChild(el("div", { className: "state-copy" }, state.bootstrapError));
+        const retry = el("button", { className: "btn-primary", type: "button", "data-testid": "spaces-load-retry" }, "Retry");
+        retry.addEventListener("click", () => { void bootstrapSpaces(); });
+        failure.appendChild(retry);
+        root.appendChild(failure);
+        notifyHostHeight();
+        return;
+      }
+
+      const loading = el("div", { className: "loading-state", "data-testid": "spaces-loading-state" });
+      loading.appendChild(el("div", { className: "state-title" }, "Loading spaces..."));
+      loading.appendChild(el("div", { className: "state-copy" }, "Pulling your workspace list and current activity."));
+      root.appendChild(loading);
+      notifyHostHeight();
+    }
+
+    function renderNotice(root) {
+      if (!state.notice || !state.notice.message) return;
+      root.appendChild(el("div", { className: "notice " + (state.notice.severity === "error" ? "error" : "info") }, state.notice.message));
+    }
+
+    function renderPanelHeader() {
+      const activeCount = state.spaces.filter(isActiveSpace).length;
+      const header = el("div", { className: "panel-header", "data-testid": "spaces-widget-header" });
+      const titleWrap = el("div", { className: "panel-title" });
+      titleWrap.appendChild(el("div", { className: "panel-icon" }));
+      const textWrap = el("div");
+      textWrap.appendChild(el("div", { className: "heading" }, "Spaces"));
+      const counts = el("div", { className: "count-row" });
+      const total = el("span");
+      total.innerHTML = "<strong>" + String(state.total) + "</strong> total";
+      counts.appendChild(total);
+      const active = el("span");
+      active.innerHTML = "<strong>" + String(activeCount) + "</strong> active";
+      counts.appendChild(active);
+      textWrap.appendChild(counts);
+      titleWrap.appendChild(textWrap);
+      header.appendChild(titleWrap);
+
+      const actions = el("div", { className: "panel-actions" });
+      if (state.view === "list" && state.activeTab === "my" && canCreateSpaces()) {
+        const createBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "spaces-create-button" }, "+ New Space");
+        createBtn.addEventListener("click", () => {
+          state.view = "create";
+          state.editMode = false;
+          state.formError = null;
+          state.notice = null;
+          state.createDraft = { name: "", description: "", visibility: "private" };
+          paint();
+        });
+        actions.appendChild(createBtn);
+      }
+      header.appendChild(actions);
+      return header;
+    }
+
+    function renderSurfaceTabs(parent) {
+      const tabs = el("div", { className: "tab-row", "data-testid": "spaces-surface-tabs" });
+      const myTab = el("button", { className: "tab" + (state.activeTab === "my" ? " active" : ""), type: "button" }, "My spaces (" + String(state.total) + ")");
+      myTab.addEventListener("click", () => {
+        state.activeTab = "my";
+        state.notice = null;
+        paint();
+      });
+      tabs.appendChild(myTab);
+
+      const discoverTab = el("button", { className: "tab discover-tab" + (state.activeTab === "discover" ? " active" : ""), type: "button", "data-testid": "spaces-tab-discover" });
+      discoverTab.appendChild(el("span", { className: "tab-icon", "aria-hidden": "true" }));
+      discoverTab.appendChild(el("span", null, "Discover new spaces (" + String(state.discoverLoaded ? state.discoverTotal || state.discoverSpaces.length : "...") + ")"));
+      discoverTab.addEventListener("click", () => {
+        state.activeTab = "discover";
+        state.notice = null;
+        paint();
+        if (!state.discoverLoaded && !state.discoverLoading) {
+          void loadDiscoverSpaces();
+        }
+      });
+      tabs.appendChild(discoverTab);
+      parent.appendChild(tabs);
+    }
+
+    function renderDiscoverView(wrapper) {
+      const joinCard = el("div", { className: "card full", "data-testid": "spaces-invite-join-card" });
+      joinCard.appendChild(el("div", { className: "section-label" }, "Join with invite code"));
+      joinCard.appendChild(el("div", { className: "detail-copy" }, "Paste a team-space invite code to join a private or invite-only space."));
+      const joinForm = el("div", { className: "form-grid" });
+      const codeField = el("div", { className: "form-field" });
+      codeField.appendChild(el("label", { for: "spaces-invite-code" }, "Invite code"));
+      const codeInput = el("input", {
+        id: "spaces-invite-code",
+        type: "text",
+        placeholder: "ABC123",
+        "data-testid": "spaces-invite-code",
+      });
+      codeInput.value = state.joinInviteCode;
+      if (state.joinBusy || !canCreateSpaces()) codeInput.disabled = true;
+      codeInput.addEventListener("input", (event) => {
+        state.joinInviteCode = event.target.value || "";
+      });
+      codeField.appendChild(codeInput);
+      if (!canCreateSpaces()) {
+        codeField.appendChild(el("div", { className: "field-help" }, readOnlyMessage()));
+      }
+      joinForm.appendChild(codeField);
+      const joinActions = el("div", { className: "button-row" });
+      const joinBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "spaces-join-invite" }, state.joinBusy ? "Joining..." : "Join space");
+      if (state.joinBusy || !canCreateSpaces()) joinBtn.disabled = true;
+      joinBtn.addEventListener("click", () => { void joinWithInviteCode(); });
+      joinActions.appendChild(joinBtn);
+      joinForm.appendChild(joinActions);
+      joinCard.appendChild(joinForm);
+      wrapper.appendChild(joinCard);
+
+      const discoverCard = el("div", { className: "card full", "data-testid": "spaces-public-discover" });
+      discoverCard.appendChild(el("div", { className: "section-label" }, "Public spaces"));
+      discoverCard.appendChild(el("div", { className: "detail-copy" }, "Browse public spaces and join directly. Invite-only spaces require a code."));
+      const refreshRow = el("div", { className: "button-row" });
+      const refreshBtn = el("button", { className: "btn-secondary", type: "button" }, state.discoverLoading ? "Refreshing..." : "Refresh public spaces");
+      if (state.discoverLoading) refreshBtn.disabled = true;
+      refreshBtn.addEventListener("click", () => { void loadDiscoverSpaces({ force: true }); });
+      refreshRow.appendChild(refreshBtn);
+      discoverCard.appendChild(refreshRow);
+
+      if (state.discoverLoading) {
+        discoverCard.appendChild(el("div", { className: "detail-copy" }, "Loading public spaces..."));
+        wrapper.appendChild(discoverCard);
+        return;
+      }
+
+      if (!state.discoverLoaded) {
+        discoverCard.appendChild(el("div", { className: "detail-copy" }, "Open Discover to load public spaces."));
+        wrapper.appendChild(discoverCard);
+        return;
+      }
+
+      if (!state.discoverSpaces.length) {
+        discoverCard.appendChild(el("div", { className: "detail-copy" }, "No public spaces are available right now."));
+        wrapper.appendChild(discoverCard);
+        return;
+      }
+
+      const list = el("div", { className: "list-shell" });
+      for (const space of state.discoverSpaces) {
+        const spaceId = spaceIdOf(space);
+        const isJoined = discoverSpaceJoined(space);
+        const row = el("div", { className: "space-row", dataset: { spaceId } });
+        row.appendChild(el("div", { className: "space-avatar" }, initials(space.name)));
+
+        const main = el("div", { className: "space-main" });
+        main.appendChild(el("div", { className: "space-name" }, space.name || "Unnamed space"));
+        const sublineParts = [];
+        if (space.slug) sublineParts.push(space.slug);
+        sublineParts.push(isJoined ? "Already joined" : "Public");
+        main.appendChild(el("div", { className: "space-subline" }, sublineParts.join(" · ")));
+        row.appendChild(main);
+
+        row.appendChild(el("div", { className: "space-summary" }, summaryText(space)));
+        row.appendChild(el("div", { className: "space-pill pill-fresh" }, "Public"));
+        row.appendChild(el("div", { className: "space-meta" }, Number.isFinite(space.member_count) ? String(space.member_count) + (space.member_count === 1 ? " member" : " members") : "Members unknown"));
+        const action = el("div", { className: "discover-action" });
+        const joinPublicBtn = el("button", { className: "btn-secondary", type: "button" }, state.joinPublicBusyFor === spaceId ? "Joining..." : (isJoined ? "Joined" : "Join"));
+        if (isJoined || state.joinPublicBusyFor === spaceId || !canCreateSpaces()) joinPublicBtn.disabled = true;
+        joinPublicBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void joinPublicSpace(space);
+        });
+        action.appendChild(joinPublicBtn);
+        row.appendChild(action);
+        list.appendChild(row);
+      }
+      discoverCard.appendChild(list);
+      wrapper.appendChild(discoverCard);
+    }
+
+    function renderListView(root) {
+      const wrapper = el("div", { className: "panel-body", "data-testid": "spaces-list-view" });
+      renderNotice(wrapper);
+      renderPermissionNotice(wrapper);
+      renderSurfaceTabs(wrapper);
+
+      if (state.activeTab === "discover") {
+        renderDiscoverView(wrapper);
+        root.appendChild(wrapper);
+        notifyHostHeight();
+        return;
+      }
+
+      const filters = el("div", { className: "filters" });
+
+      const scopeRow = el("div", { className: "filter-row", "data-testid": "spaces-filter-row" });
+      scopeRow.appendChild(el("span", { className: "filter-row-label" }, "Filter"));
+      const scopes = [
+        { value: "my", label: "My spaces" },
+        { value: "all", label: "All" },
+        { value: "archived", label: "Archived" },
+      ];
+      for (const scope of scopes) {
+        const chip = el("button", {
+          className: "chip" + (state.activeScope === scope.value ? " active" : ""),
+          type: "button",
+          "data-testid": "spaces-filter-" + scope.value,
+        });
+        chip.appendChild(document.createTextNode(scope.label));
+        chip.appendChild(el("span", { className: "chip-count" }, String(countByScope(scope.value))));
+        chip.addEventListener("click", () => {
+          state.activeScope = scope.value;
+          paint();
+        });
+        scopeRow.appendChild(chip);
+      }
+      filters.appendChild(scopeRow);
+
+      const visibilityRow = el("div", { className: "filter-row", "data-testid": "spaces-visibility-row" });
+      visibilityRow.appendChild(el("span", { className: "filter-row-label" }, "Visibility"));
+      const visibilities = [
+        { value: "all", label: "All" },
+        { value: "private", label: "Private" },
+        { value: "invite_only", label: "Invite Only" },
+        { value: "public", label: "Public" },
+      ];
+      for (const item of visibilities) {
+        const chip = el("button", {
+          className: "chip" + (state.activeVisibility === item.value ? " active" : ""),
+          type: "button",
+        }, item.label);
+        chip.addEventListener("click", () => {
+          state.activeVisibility = item.value;
+          paint();
+        });
+        visibilityRow.appendChild(chip);
+      }
+      filters.appendChild(visibilityRow);
+      wrapper.appendChild(filters);
+
+      const toolbar = el("div", { className: "toolbar" });
+      toolbar.appendChild(el("div", { className: "toolbar-note" }, "Browse your workspaces, open details in place, and keep archived spaces visible without losing the current list state."));
+      const sortWrap = el("div", { className: "sort-wrap" });
+      sortWrap.appendChild(el("label", { for: "spaces-sort" }, "Sort"));
+      const select = el("select", { className: "sort-select", id: "spaces-sort", "data-testid": "spaces-sort-select" });
+      const options = [
+        { value: "activity", label: "Most recent activity" },
+        { value: "name", label: "Name" },
+        { value: "members", label: "Member count" },
+      ];
+      for (const option of options) {
+        const node = el("option", { value: option.value }, option.label);
+        if (state.sortMode === option.value) node.selected = true;
+        select.appendChild(node);
+      }
+      select.addEventListener("change", (event) => {
+        state.sortMode = event.target.value || "activity";
+        paint();
+      });
+      sortWrap.appendChild(select);
+      toolbar.appendChild(sortWrap);
+      wrapper.appendChild(toolbar);
+
+      const visible = visibleSpaces();
+      if (!visible.length) {
+        const empty = el("div", { className: "empty-state", "data-testid": "spaces-empty-state" });
+        const hasFilters = state.activeScope !== "my" || state.activeVisibility !== "all";
+        empty.appendChild(el("div", { className: "state-title" }, hasFilters ? "No spaces match the current filters." : "No spaces yet."));
+        empty.appendChild(el("div", { className: "state-copy" }, hasFilters
+          ? "Clear the filters to see the rest of your spaces, or create a new one."
+          : "Create your first space to start collaborating with people and agents."));
+        const actions = el("div", { className: "button-row" });
+        if (hasFilters) {
+          const clearBtn = el("button", { className: "btn-secondary", type: "button" }, "Clear filters");
+          clearBtn.addEventListener("click", () => {
+            state.activeScope = "my";
+            state.activeVisibility = "all";
+            paint();
+          });
+          actions.appendChild(clearBtn);
+        }
+        if (canCreateSpaces()) {
+          const createBtn = el("button", { className: "btn-primary", type: "button" }, "Create space");
+          createBtn.addEventListener("click", () => {
+            state.view = "create";
+            state.createDraft = { name: "", description: "", visibility: "private" };
+            state.formError = null;
+            paint();
+          });
+          actions.appendChild(createBtn);
+        }
+        if (actions.childElementCount) empty.appendChild(actions);
+        wrapper.appendChild(empty);
+        root.appendChild(wrapper);
+        notifyHostHeight();
+        return;
+      }
+
+      const list = el("div", { className: "list-shell" });
+      for (const space of visible) {
+        const row = el("button", { className: "space-row", type: "button", dataset: { spaceId: space.id || "" } });
+        row.appendChild(el("div", { className: "space-avatar" }, initials(space.name)));
+
+        const main = el("div", { className: "space-main" });
+        main.appendChild(el("div", { className: "space-name" }, space.name || "Unnamed space"));
+        const sublineParts = [];
+        if (space.slug) sublineParts.push(space.slug);
+        if (space.viewer_role) sublineParts.push(titleCase(space.viewer_role));
+        if (space.is_current) sublineParts.push("Current space");
+        if (space.is_archived) sublineParts.push("Archived");
+        if (sublineParts.length) main.appendChild(el("div", { className: "space-subline" }, sublineParts.join(" · ")));
+        row.appendChild(main);
+
+        row.appendChild(el("div", { className: "space-summary" }, summaryText(space)));
+        row.appendChild(el("div", { className: "space-pill pill-" + activityState(space) }, activityLabel(space)));
+        row.appendChild(el("div", { className: "space-meta" }, Number.isFinite(space.member_count) ? String(space.member_count) + " members" : "Members unknown"));
+        row.appendChild(el("div", { className: "space-freshness" }, relDate(lastActivityAt(space))));
+
+        row.addEventListener("click", () => {
+          void openSpaceDetail(space);
+        });
+        list.appendChild(row);
+      }
+
+      wrapper.appendChild(list);
+      root.appendChild(wrapper);
+      notifyHostHeight();
+    }
+
+    function renderOverviewTab(parent, space) {
+      const grid = el("div", { className: "section-grid", "data-testid": "spaces-overview-view" });
+
+      const summaryCard = el("div", { className: "card" });
+      summaryCard.appendChild(el("div", { className: "section-label" }, "Purpose"));
+      const purpose = String(space?.description || "").trim();
+      summaryCard.appendChild(el("div", { className: purpose ? "detail-copy" : "detail-copy" }, purpose || "Add a short purpose so people and agents understand what this space is for."));
+      grid.appendChild(summaryCard);
+
+      const activityCard = el("div", { className: "card" });
+      activityCard.appendChild(el("div", { className: "section-label" }, "Activity"));
+      activityCard.appendChild(el("div", { className: "detail-copy" }, (space?.activity?.messages_24h || 0) + " messages in the last day, " + (space?.activity?.tasks_open || 0) + " open tasks, " + (space?.activity?.agent_count || 0) + " active agents."));
+      grid.appendChild(activityCard);
+
+      const fields = el("div", { className: "card full" });
+      fields.appendChild(el("div", { className: "section-label" }, "Space details"));
+      const fieldGrid = el("div", { className: "field-grid" });
+
+      const detailFields = [
+        ["Visibility", visibilityLabel(space)],
+        ["Role", titleCase(space?.viewer_role || "member")],
+        ["Members", String(space?.member_count || 0)],
+        ["Activity", activityLabel(space)],
+        ["Slug", space?.slug || "Pending"],
+        ["Created", space?.created_at ? new Date(space.created_at).toLocaleDateString() : "Unknown"],
+      ];
+      for (const [label, value] of detailFields) {
+        const field = el("div", { className: "field" });
+        field.appendChild(el("div", { className: "field-label" }, label));
+        field.appendChild(el("div", { className: "field-value" + (label === "Slug" ? " mono" : "") }, value));
+        fieldGrid.appendChild(field);
+      }
+      fields.appendChild(fieldGrid);
+      grid.appendChild(fields);
+
+      if (state.editMode && canUpdateSpaces()) {
+        const editor = el("div", { className: "card full", "data-testid": "spaces-edit-view" });
+        editor.appendChild(el("div", { className: "section-label" }, "Edit space"));
+        const form = el("div", { className: "form-grid" });
+
+        const nameField = el("div", { className: "form-field" });
+        nameField.appendChild(el("label", { for: "space-edit-name" }, "Name"));
+        const nameInput = el("input", {
+          id: "space-edit-name",
+          type: "text",
+          value: space?.name || "",
+          "data-testid": "spaces-detail-name",
+          maxlength: "100",
+        });
+        nameField.appendChild(nameInput);
+        nameField.appendChild(el("div", { className: "field-help" }, "Keep the name clear and stable. The slug stays the same."));
+        form.appendChild(nameField);
+
+        const descField = el("div", { className: "form-field" });
+        descField.appendChild(el("label", { for: "space-edit-description" }, "Purpose"));
+        const descInput = el("textarea", {
+          id: "space-edit-description",
+          "data-testid": "spaces-detail-description",
+          maxlength: "1000",
+        });
+        descInput.value = space?.description || "";
+        descField.appendChild(descInput);
+        descField.appendChild(el("div", { className: "field-help" }, "This description is visible to collaborators and agents in the space."));
+        form.appendChild(descField);
+
+        const actions = el("div", { className: "button-row" });
+        const saveBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "spaces-detail-save" }, "Save space");
+        saveBtn.addEventListener("click", () => {
+          void submitSpaceUpdate(space, {
+            name: nameInput.value,
+            description: descInput.value,
+          });
+        });
+        actions.appendChild(saveBtn);
+
+        const cancelBtn = el("button", { className: "btn-secondary", type: "button" }, "Cancel");
+        cancelBtn.addEventListener("click", () => {
+          state.editMode = false;
+          state.formError = null;
+          paint();
+        });
+        actions.appendChild(cancelBtn);
+        form.appendChild(actions);
+        editor.appendChild(form);
+        grid.appendChild(editor);
+      }
+
+      parent.appendChild(grid);
+    }
+
+    function renderMembersTab(parent, space) {
+      const card = el("div", { className: "card full", "data-testid": "spaces-members-view" });
+      card.appendChild(el("div", { className: "section-label" }, "Members"));
+      const isPersonalWorkspace = String(space?.description || "").startsWith("Personal workspace for");
+      if (canUpdateSpaces() && !isPersonalWorkspace && String(space?.visibility || "private") !== "public") {
+        const invitePanel = el("div", { className: "create-shell", "data-testid": "spaces-invite-panel" });
+        invitePanel.appendChild(el("div", { className: "section-label" }, "Invite people"));
+        invitePanel.appendChild(el("div", { className: "detail-copy" }, "Generate a code that another user can paste in Discover to join this team space."));
+        const activeInviteCode = state.createdInvite && String(state.createdInvite.space_id || "") === String(space?.id || space?.space_id || "")
+          ? String(state.createdInvite.invite_code || "").trim()
+          : "";
+        if (activeInviteCode) {
+          const inviteCodeRow = el("div", { className: "invite-code-row", "data-testid": "spaces-invite-code-result" });
+          inviteCodeRow.appendChild(el("span", { className: "invite-code-value" }, activeInviteCode));
+          const copyBtn = el(
+            "button",
+            { className: "btn-secondary", type: "button", "data-testid": "spaces-copy-invite" },
+            state.inviteCopiedFor === activeInviteCode ? "Copied" : "Copy",
+          );
+          copyBtn.addEventListener("click", () => { void copyInviteCode(activeInviteCode); });
+          inviteCodeRow.appendChild(copyBtn);
+          invitePanel.appendChild(inviteCodeRow);
+        }
+        const inviteActions = el("div", { className: "button-row" });
+        const inviteBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "spaces-create-invite" }, state.inviteCreating ? "Generating..." : "Generate invite code");
+        if (state.inviteCreating) inviteBtn.disabled = true;
+        inviteBtn.addEventListener("click", () => { void createSpaceInvite(space); });
+        inviteActions.appendChild(inviteBtn);
+        invitePanel.appendChild(inviteActions);
+        card.appendChild(invitePanel);
+      }
+      if (state.loadingMembers) {
+        card.appendChild(el("div", { className: "detail-copy" }, "Loading members..."));
+        parent.appendChild(card);
+        return;
+      }
+      if (!memberEntries().length) {
+        card.appendChild(el("div", { className: "detail-copy" }, "No members found for this space yet."));
+        parent.appendChild(card);
+        return;
+      }
+
+      const list = el("div", { className: "member-list", "data-testid": "spaces-member-list" });
+      for (const member of memberEntries()) {
+        const row = el("div", { className: "member-card" });
+        const displayName = memberDisplayName(member);
+        row.appendChild(el("div", { className: "member-avatar" }, initials(displayName)));
+
+        const info = el("div");
+        info.appendChild(el("div", { className: "member-name" }, displayName));
+        const sub = [];
+        if (member.username && String(member.username).trim() !== displayName) sub.push("@" + member.username);
+        if (member.joined_at) sub.push("Joined " + relDate(member.joined_at));
+        if (sub.length) info.appendChild(el("div", { className: "member-meta" }, sub.join(" · ")));
+        row.appendChild(info);
+
+        const badges = el("div", { className: "member-badges" });
+        badges.appendChild(el("span", { className: "member-badge" }, titleCase(member.role || "member")));
+        if (Number.isFinite(member.agent_count)) {
+          badges.appendChild(el("span", { className: "member-badge" }, String(member.agent_count) + " agents"));
+        }
+        row.appendChild(badges);
+        list.appendChild(row);
+      }
+
+      card.appendChild(list);
+      parent.appendChild(card);
+    }
+
+    function renderDetailView(root) {
+      const space = selectedSpace();
+      const wrapper = el("div", { className: "panel-body", "data-testid": "spaces-detail-view" });
+      renderNotice(wrapper);
+
+      const backBtn = el("button", { className: "back-btn", type: "button" }, "← Back to spaces");
+      backBtn.addEventListener("click", () => {
+        state.view = "list";
+        state.editMode = false;
+        state.formError = null;
+        paint();
+      });
+      wrapper.appendChild(backBtn);
+
+      const detail = el("div", { className: "detail-shell" });
+      const head = el("div", { className: "detail-head" });
+      const heading = el("div");
+      heading.appendChild(el("div", { className: "detail-title", "data-testid": "spaces-detail-title" }, space?.name || "Unnamed space"));
+      const pills = el("div", { className: "detail-pills" });
+      pills.appendChild(el("span", { className: "space-pill pill-" + activityState(space) }, activityLabel(space)));
+      pills.appendChild(el("span", { className: "space-pill pill-fresh" }, visibilityLabel(space)));
+      if (space?.is_current) pills.appendChild(el("span", { className: "space-pill pill-active" }, "Current space"));
+      if (space?.is_archived) pills.appendChild(el("span", { className: "space-pill pill-fresh" }, "Archived"));
+      heading.appendChild(pills);
+      head.appendChild(heading);
+
+      const actions = el("div", { className: "button-row" });
+      if (state.detailTab === "overview" && canUpdateSpaces()) {
+        const editBtn = el("button", { className: "btn-secondary", type: "button" }, state.editMode ? "Editing space" : "Edit space");
+        editBtn.addEventListener("click", () => {
+          state.editMode = !state.editMode;
+          state.formError = null;
+          paint();
+        });
+        actions.appendChild(editBtn);
+      }
+
+      if (canArchiveSpaces()) {
+        const archiveBtn = el("button", { className: "btn-secondary", type: "button" }, state.archiveBusy
+          ? (space?.is_archived ? "Restoring..." : "Archiving...")
+          : (space?.is_archived ? "Restore space" : "Archive space"));
+        if (state.archiveBusy) archiveBtn.disabled = true;
+        archiveBtn.addEventListener("click", () => {
+          if (state.archiveBusy) return;
+          const shouldArchive = !space?.is_archived;
+          const confirmed = window.confirm(shouldArchive
+            ? "Archive this space? It will stay visible under Archived."
+            : "Restore this space to the active list?");
+          if (!confirmed) return;
+          void toggleArchive(space, shouldArchive);
+        });
+        actions.appendChild(archiveBtn);
+      }
+      head.appendChild(actions);
+      detail.appendChild(head);
+
+      const tabs = el("div", { className: "tab-row" });
+      const overviewTab = el("button", { className: "tab" + (state.detailTab === "overview" ? " active" : ""), type: "button", "data-testid": "spaces-tab-overview" }, "Overview");
+      overviewTab.addEventListener("click", () => {
+        state.detailTab = "overview";
+        paint();
+      });
+      tabs.appendChild(overviewTab);
+      const membersTab = el("button", { className: "tab" + (state.detailTab === "members" ? " active" : ""), type: "button", "data-testid": "spaces-tab-members" }, "Members");
+      membersTab.addEventListener("click", () => {
+        state.detailTab = "members";
+        paint();
+        void ensureMembersLoaded(space);
+      });
+      tabs.appendChild(membersTab);
+      detail.appendChild(tabs);
+
+      if (state.formError) {
+        detail.appendChild(el("div", { className: "notice error" }, state.formError));
+      }
+
+      if (state.detailTab === "members") renderMembersTab(detail, space);
+      else renderOverviewTab(detail, space);
+
+      wrapper.appendChild(detail);
+      root.appendChild(wrapper);
+      notifyHostHeight();
+    }
+
+    function renderCreateView(root) {
+      const wrapper = el("div", { className: "panel-body", "data-testid": "spaces-create-view" });
+      renderNotice(wrapper);
+      renderPermissionNotice(wrapper);
+
+      const backBtn = el("button", { className: "back-btn", type: "button" }, "← Back to spaces");
+      backBtn.addEventListener("click", () => {
+        if (state.createSubmitting) return;
+        state.view = "list";
+        state.formError = null;
+        paint();
+      });
+      wrapper.appendChild(backBtn);
+
+      const create = el("div", { className: "create-shell" });
+      if (!canCreateSpaces()) {
+        create.appendChild(el("div", { className: "notice error" }, readOnlyMessage()));
+        wrapper.appendChild(create);
+        root.appendChild(wrapper);
+        notifyHostHeight();
+        return;
+      }
+      create.appendChild(el("div", { className: "detail-title" }, "Create a new space"));
+      create.appendChild(el("div", { className: "detail-copy" }, "Create a shared workspace for people and agents. Saving keeps you on the new space detail view."));
+
+      if (state.formError) {
+        create.appendChild(el("div", { className: "notice error" }, state.formError));
+      }
+
+      const form = el("div", { className: "form-grid" });
+
+      const nameField = el("div", { className: "form-field" });
+      nameField.appendChild(el("label", { for: "space-create-name" }, "Name"));
+      const nameInput = el("input", {
+        id: "space-create-name",
+        type: "text",
+        maxlength: "100",
+        placeholder: "Product discovery",
+        "data-testid": "spaces-create-name",
+      });
+      nameInput.value = state.createDraft.name;
+      nameInput.addEventListener("input", (event) => {
+        state.createDraft.name = event.target.value || "";
+      });
+      nameField.appendChild(nameInput);
+      nameField.appendChild(el("div", { className: "field-help" }, "Use a clear name that collaborators will recognize immediately."));
+      form.appendChild(nameField);
+
+      const descField = el("div", { className: "form-field" });
+      descField.appendChild(el("label", { for: "space-create-description" }, "Purpose"));
+      const descInput = el("textarea", {
+        id: "space-create-description",
+        maxlength: "500",
+        placeholder: "What is this space for?",
+        "data-testid": "spaces-create-description",
+      });
+      descInput.value = state.createDraft.description;
+      descInput.addEventListener("input", (event) => {
+        state.createDraft.description = event.target.value || "";
+      });
+      descField.appendChild(descInput);
+      descField.appendChild(el("div", { className: "field-help" }, "This description becomes the one-line purpose shown in the list."));
+      form.appendChild(descField);
+
+      const visibilityField = el("div", { className: "form-field" });
+      visibilityField.appendChild(el("label", { for: "space-create-visibility" }, "Visibility"));
+      const visibilitySelect = el("select", { id: "space-create-visibility", "data-testid": "spaces-create-visibility" });
+      const visibilityOptions = [
+        { value: "private", label: "Private" },
+        { value: "invite_only", label: "Invite only" },
+        { value: "public", label: "Public" },
+      ];
+      for (const option of visibilityOptions) {
+        const node = el("option", { value: option.value }, option.label);
+        if (state.createDraft.visibility === option.value) node.selected = true;
+        visibilitySelect.appendChild(node);
+      }
+      visibilitySelect.addEventListener("change", (event) => {
+        state.createDraft.visibility = event.target.value || "private";
+      });
+      visibilityField.appendChild(visibilitySelect);
+      visibilityField.appendChild(el("div", { className: "field-help" }, "Invite-only spaces stay discoverable to invited people, while public spaces can be joined more broadly."));
+      form.appendChild(visibilityField);
+
+      const actions = el("div", { className: "button-row" });
+      const saveBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "spaces-create-submit" }, state.createSubmitting ? "Creating..." : "Create space");
+      if (state.createSubmitting) saveBtn.disabled = true;
+      saveBtn.addEventListener("click", () => { void submitCreate(); });
+      actions.appendChild(saveBtn);
+
+      const keepBrowsingBtn = el("button", { className: "btn-secondary", type: "button" }, "Keep browsing");
+      keepBrowsingBtn.addEventListener("click", () => {
+        if (state.createSubmitting) return;
+        state.view = "list";
+        state.formError = null;
+        paint();
+      });
+      actions.appendChild(keepBrowsingBtn);
+      form.appendChild(actions);
+
+      create.appendChild(form);
+      wrapper.appendChild(create);
+      root.appendChild(wrapper);
+      notifyHostHeight();
+      setTimeout(() => {
+        try { nameInput.focus(); } catch {}
+      }, 0);
+    }
+
+    function renderSpaceDraftView(root) {
+      const wrapper = el("div", { className: "panel-body", "data-testid": "spaces-draft-view" });
+      renderNotice(wrapper);
+
+      const backBtn = el("button", { className: "back-btn", type: "button" }, "← Back to spaces");
+      backBtn.addEventListener("click", () => {
+        if (state.draftSending) return;
+        state.draft = null;
+        state.draftFields = {};
+        state.draftRefreshedFor = "";
+        state.view = "list";
+        state.formError = null;
+        state.notice = null;
+        paint();
+      });
+      wrapper.appendChild(backBtn);
+
+      const draft = state.draft || {};
+      const fields = state.draftFields || {};
+      const draftId = fields.draft_id || draft.draft_id || "";
+      const draftVersion = Number(fields.version || draft.version || 0);
+      const mode = fields.space_mode || draft.space_mode || "personal";
+      const requiredFields = state.draftRequiredFields || ["name"];
+      const visibilityOptions = spaceDraftVisibilityOptions(mode);
+
+      const card = el("div", { className: "create-shell" });
+      card.appendChild(el("div", { className: "detail-title" }, "Review Space Draft"));
+      card.appendChild(el(
+        "div",
+        { className: "detail-copy" },
+        "This draft is waiting for user approval. Edit the supported fields, then approve to create the space with your user session."
+      ));
+      card.appendChild(el(
+        "div",
+        { className: "field-help" },
+        "Draft " + draftId.slice(0, 8) + " · version " + String(draftVersion) + " · status " + (draft.status || "under_review") + " · mode " + titleCase(mode)
+      ));
+
+      if (state.formError) {
+        card.appendChild(el("div", { className: "notice error" }, state.formError));
+      }
+
+      const form = el("div", { className: "form-grid" });
+
+      const nameField = el("div", { className: "form-field" });
+      const nameLabel = el("label", { for: "space-draft-name" }, "Name");
+      if (requiredFields.includes("name")) nameLabel.appendChild(document.createTextNode(" *"));
+      nameField.appendChild(nameLabel);
+      const nameInput = el("input", {
+        id: "space-draft-name",
+        type: "text",
+        maxlength: "100",
+        placeholder: "The Thunderdome",
+        "data-testid": "spaces-draft-name",
+      });
+      nameInput.value = fields.name || "";
+      if (state.draftSending) nameInput.disabled = true;
+      nameInput.addEventListener("input", (event) => {
+        state.draftFields.name = event.target.value || "";
+      });
+      nameField.appendChild(nameInput);
+      form.appendChild(nameField);
+
+      const descField = el("div", { className: "form-field" });
+      descField.appendChild(el("label", { for: "space-draft-description" }, "Purpose"));
+      const descInput = el("textarea", {
+        id: "space-draft-description",
+        maxlength: "500",
+        placeholder: "What is this space for?",
+        "data-testid": "spaces-draft-description",
+      });
+      descInput.value = fields.description || "";
+      if (state.draftSending) descInput.disabled = true;
+      descInput.addEventListener("input", (event) => {
+        state.draftFields.description = event.target.value || "";
+      });
+      descField.appendChild(descInput);
+      descField.appendChild(el("div", { className: "field-help" }, "This becomes the purpose shown in the space list and detail view."));
+      form.appendChild(descField);
+
+      const modeField = el("div", { className: "form-field" });
+      modeField.appendChild(el("label", { for: "space-draft-mode" }, "Space type"));
+      const modeSelect = el("select", { id: "space-draft-mode", "data-testid": "spaces-draft-mode" });
+      for (const option of spaceDraftModeOptions()) {
+        const node = el("option", { value: option.value }, option.label);
+        if (mode === option.value) node.selected = true;
+        modeSelect.appendChild(node);
+      }
+      if (state.draftSending) modeSelect.disabled = true;
+      modeSelect.addEventListener("change", (event) => {
+        const nextMode = event.target.value || "personal";
+        state.draftFields.space_mode = nextMode;
+        state.draftFields.visibility = coerceSpaceVisibilityForMode(nextMode, state.draftFields.visibility || "private");
+        paint();
+      });
+      modeField.appendChild(modeSelect);
+      modeField.appendChild(el("div", { className: "field-help" }, "Switch the draft between a personal workspace, private team space, or public community before approval."));
+      form.appendChild(modeField);
+
+      const visibilityField = el("div", { className: "form-field" });
+      visibilityField.appendChild(el("label", { for: "space-draft-visibility" }, "Visibility"));
+      const visibilitySelect = el("select", { id: "space-draft-visibility", "data-testid": "spaces-draft-visibility" });
+      for (const option of visibilityOptions) {
+        const node = el("option", { value: option.value }, option.label);
+        if ((fields.visibility || "private") === option.value) node.selected = true;
+        visibilitySelect.appendChild(node);
+      }
+      if (state.draftSending || visibilityOptions.length < 2) visibilitySelect.disabled = true;
+      visibilitySelect.addEventListener("change", (event) => {
+        state.draftFields.visibility = event.target.value || "private";
+      });
+      visibilityField.appendChild(visibilitySelect);
+      visibilityField.appendChild(el("div", { className: "field-help" }, visibilityOptions.length < 2
+        ? "Visibility is locked by this draft type. Ask Waystation for a different space type if needed."
+        : "Team drafts can stay invite-only or private before approval."));
+      form.appendChild(visibilityField);
+
+      const actions = el("div", { className: "button-row" });
+      const approveBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "spaces-draft-approve" }, state.draftSending ? "Approving..." : "Approve and create");
+      if (state.draftSending) approveBtn.disabled = true;
+      approveBtn.addEventListener("click", async () => {
+        if (state.draftSending) return;
+        const name = String(state.draftFields.name || "").trim();
+        if (!name) {
+          state.formError = "Space name is required.";
+          paint();
+          return;
+        }
+        state.draftSending = true;
+        state.formError = null;
+        state.notice = null;
+        paint();
+        try {
+          let nextDraftId = draftId;
+          let nextVersion = draftVersion;
+          const changes = spaceDraftEditableChanges();
+          if (Object.keys(changes).length > 0) {
+            const editRes = await host.callServerTool("spaces", {
+              action: "edit_draft",
+              draft_id: nextDraftId,
+              version: nextVersion,
+              changes,
+            });
+            const editData = extractPayload(editRes);
+            if (editData?.scope === "create" && editData.draft) {
+              nextDraftId = editData.draft.draft_id;
+              nextVersion = Number(editData.draft.version || nextVersion);
+              applySpaceDraftPayload(editData.draft, editData.required_fields);
+            } else if (editData?.scope === "create_error" || editData?.error) {
+              state.draftSending = false;
+              state.formError = editData.hint || editData.error || "Could not update the draft.";
+              paint();
+              return;
+            }
+          }
+          const approveRes = await host.callServerTool("spaces", {
+            action: "approve_draft",
+            draft_id: nextDraftId,
+            version: nextVersion,
+          });
+          handleResult(approveRes, "draft");
+        } catch (error) {
+          showSpacesError(errorMessageFromUnknown(error, "Could not approve space draft."), { form: true });
+        } finally {
+          state.draftSending = false;
+          paint();
+        }
+      });
+      actions.appendChild(approveBtn);
+
+      const rejectBtn = el("button", { className: "btn-secondary", type: "button", "data-testid": "spaces-draft-reject" }, state.draftSending ? "Working..." : "Reject draft");
+      if (state.draftSending) rejectBtn.disabled = true;
+      rejectBtn.addEventListener("click", async () => {
+        if (state.draftSending) return;
+        state.draftSending = true;
+        state.formError = null;
+        state.notice = null;
+        paint();
+        try {
+          const rejectRes = await host.callServerTool("spaces", {
+            action: "reject_draft",
+            draft_id: draftId,
+            version: draftVersion,
+          });
+          handleResult(rejectRes, "draft");
+        } catch (error) {
+          showSpacesError(errorMessageFromUnknown(error, "Could not reject space draft."), { form: true });
+        } finally {
+          state.draftSending = false;
+          paint();
+        }
+      });
+      actions.appendChild(rejectBtn);
+      form.appendChild(actions);
+
+      card.appendChild(form);
+      wrapper.appendChild(card);
+      root.appendChild(wrapper);
+      notifyHostHeight();
+      setTimeout(() => {
+        try { nameInput.focus(); } catch {}
+      }, 0);
+    }
+
+    function renderTerminalDraftView(root) {
+      const terminal = state.terminalDraft || {};
+      const created = terminal.created || terminal.space || {};
+      const wrapper = el("div", { className: "panel-body", "data-testid": "spaces-terminal-draft-view" });
+      const card = el("div", { className: "card full terminal-card" });
+      const dismissed = terminal.status === "dismissed";
+      card.appendChild(el("div", { className: "section-label" }, dismissed ? "Draft closed" : "Space created"));
+      card.appendChild(el("div", { className: "terminal-title" }, dismissed ? "This draft has been dismissed." : "Space '" + (created.name || terminal.name || "New space") + "' is ready."));
+      card.appendChild(el("div", { className: "detail-copy" }, dismissed ? "The review window is closed. You can keep browsing spaces." : "The draft was approved and will not reopen when this widget lazy-loads again."));
+
+      if (!dismissed) {
+        const detail = el("div", { className: "terminal-detail" });
+        if (created.slug) detail.appendChild(el("span", null, created.slug));
+        if (created.visibility) detail.appendChild(el("span", null, visibilityLabel(created)));
+        if (created.id || created.space_id) detail.appendChild(el("span", null, "ID " + String(created.id || created.space_id).slice(0, 8)));
+        card.appendChild(detail);
+      }
+
+      const actions = el("div", { className: "button-row" });
+      if (!dismissed && (created.id || created.space_id)) {
+        const openBtn = el("button", { className: "btn-primary", type: "button" }, "Open details");
+        openBtn.addEventListener("click", () => {
+          state.terminalDraft = null;
+          void openSpaceDetail(created);
+        });
+        actions.appendChild(openBtn);
+      }
+      const browseBtn = el("button", { className: "btn-secondary", type: "button" }, "Back to spaces");
+      browseBtn.addEventListener("click", () => {
+        state.terminalDraft = null;
+        state.view = "list";
+        state.notice = null;
+        paint();
+        void refreshSpacesList();
+      });
+      actions.appendChild(browseBtn);
+      card.appendChild(actions);
+      wrapper.appendChild(card);
+      root.appendChild(wrapper);
+      notifyHostHeight();
+    }
+
+    function paint() {
+      const root = document.getElementById("app");
+      root.textContent = "";
+      if (!state.hydrated) {
+        renderBootstrapState(root);
+        return;
+      }
+
+      const panel = el("div", { className: "panel" });
+      panel.appendChild(renderPanelHeader());
+
+      if (state.terminalDraft) renderTerminalDraftView(panel);
+      else if (state.draft) renderSpaceDraftView(panel);
+      else if (state.view === "detail" && selectedSpace()) renderDetailView(panel);
+      else if (state.view === "create") renderCreateView(panel);
+      else renderListView(panel);
+
+      root.appendChild(panel);
+      notifyHostHeight();
+    }
+
+    function syncSpaceInList(space) {
+      const id = space?.id || space?.space_id;
+      if (!id) return;
+      const next = [...state.spaces];
+      const index = next.findIndex((item) => (item.id || item.space_id) === id);
+      if (index >= 0) next[index] = { ...next[index], ...space };
+      else next.unshift(space);
+      state.spaces = next;
+      state.total = next.length;
+    }
+
+    function handleResult(result, source = "tool") {
+      const formSource = source === "create" || source === "update" || source === "draft" || source === "draft-refresh";
+      const message = extractErrorMessage(result);
+      if (message) {
+        showSpacesError(message, { bootstrap: !state.hydrated, form: formSource });
+        return false;
+      }
+
+      const envelope = extractData(result);
+      if (!envelope) return false;
+      if (envelope.error) {
+        showSpacesError(String(envelope.error), { bootstrap: !state.hydrated, form: formSource });
+        return false;
+      }
+
+      const inner = unwrapEnvelope(envelope);
+      const kind = envelope.kind || inner?.kind || "";
+      state.spaceContext = inner?.space_context || envelope.space_context || state.spaceContext;
+      state.permissions = inner?.permissions || envelope.permissions || state.permissions;
+      const notice = envelope.notice || inner?.notice;
+      if (notice && notice.message) {
+        state.notice = {
+          severity: notice.severity === "error" ? "error" : "info",
+          message: notice.message,
+        };
+      } else if (source !== "bootstrap" && source !== "discover-background") {
+        state.notice = null;
+      }
+
+      state.hydrated = true;
+      state.bootstrapping = false;
+      state.bootstrapError = null;
+
+      const scope = inner?.scope || envelope.scope || "";
+      if (scope === "create_blocked" || scope === "update_blocked" || String(scope).endsWith("_blocked")) {
+        paint();
+        return false;
+      }
+
+      if (scope === "discover") {
+        state.discoverSpaces = (Array.isArray(inner?.items) ? inner.items : []).map((space) => {
+          return state.joinedPublicSpaceIds.includes(spaceIdOf(space)) ? { ...space, is_member: true } : space;
+        });
+        state.discoverTotal = inner?.count != null ? inner.count : state.discoverSpaces.length;
+        state.discoverLoaded = true;
+        if (source !== "discover-background") {
+          state.activeTab = "discover";
+          paint();
+        }
+        return true;
+      }
+
+      if (scope === "join_result") {
+        const joinedName = inner?.space_name || inner?.joined?.space_name || "space";
+        if (state.joinPublicBusyFor) markDiscoverSpaceJoined(state.joinPublicBusyFor, inner?.joined || {});
+        state.notice = { severity: "info", message: "Joined " + joinedName + "." };
+        paint();
+        return true;
+      }
+
+      if (scope === "join_error" || scope === "invite_error") {
+        state.notice = { severity: "error", message: inner?.hint || "Space request failed." };
+        paint();
+        return false;
+      }
+
+      if (scope === "invite_created" || scope === "invite_details") {
+        state.createdInvite = inner?.invite || null;
+        const inviteCode = state.createdInvite?.invite_code || "";
+        state.notice = { severity: "info", message: inviteCode ? "Invite code ready: " + inviteCode : "Invite code ready." };
+        paint();
+        return true;
+      }
+
+      if (scope === "create" && inner?.draft) {
+        const draftId = inner.draft.draft_id || "";
+        const terminal = readTerminalDraft(draftId);
+        if (terminal) {
+          applyTerminalDraft(terminal);
+          paint();
+          return true;
+        }
+        applySpaceDraftPayload(inner.draft, inner.required_fields);
+        paint();
+        if (draftId && state.draftRefreshedFor !== draftId && !state.draftRefreshInFlight) {
+          void refreshSpaceDraftStatus(draftId);
+        }
+        return true;
+      }
+
+      if (scope === "created" && inner?.created) {
+        const draftId = inner?.draft?.draft_id || state.draft?.draft_id || "";
+        if (draftId) {
+          const terminal = { status: "created", created: inner.created };
+          storeTerminalDraft(draftId, terminal);
+          applyTerminalDraft(terminal);
+          syncSpaceInList(inner.created);
+          paint();
+          return true;
+        }
+        state.draft = null;
+        state.draftFields = {};
+        state.draftRequiredFields = ["name"];
+        state.draftRefreshedFor = "";
+        state.members = [];
+        state.membersLoadedFor = null;
+        state.selected = inner.created;
+        syncSpaceInList(inner.created);
+        state.view = "detail";
+        state.editMode = false;
+        state.notice = {
+          severity: "info",
+          message: "Space '" + (inner.created.name || "New space") + "' created!",
+        };
+        paint();
+        return true;
+      }
+
+      if (scope === "draft_dismissed") {
+        const draftId = inner?.draft?.draft_id || state.draft?.draft_id || "";
+        if (draftId) {
+          const terminal = { status: "dismissed", hint: inner.hint || "Draft dismissed." };
+          storeTerminalDraft(draftId, terminal);
+          applyTerminalDraft(terminal);
+          paint();
+          return true;
+        }
+        state.draft = null;
+        state.draftFields = {};
+        state.draftRequiredFields = ["name"];
+        state.draftRefreshedFor = "";
+        state.view = "list";
+        state.notice = { severity: "info", message: inner.hint || "Draft dismissed." };
+        paint();
+        return true;
+      }
+
+      if (scope === "create_error") {
+        state.draftSending = false;
+        state.formError = inner.hint || "Space creation is not available right now.";
+        state.notice = { severity: "error", message: state.formError };
+        paint();
+        return false;
+      }
+
+      if (kind === "space_members") {
+        state.members = Array.isArray(inner?.items) ? inner.items : [];
+        state.membersLoadedFor = inner?.space_id || state.membersLoadedFor;
+        paint();
+        return true;
+      }
+
+      if (kind === "space_detail") {
+        const space = inner?.space || (Array.isArray(inner?.items) ? inner.items[0] : null);
+        if (space) {
+          state.selected = space;
+          syncSpaceInList(space);
+          state.view = "detail";
+          state.editMode = false;
+        }
+        paint();
+        return true;
+      }
+
+      state.spaces = Array.isArray(inner?.items) ? inner.items : [];
+      state.total = inner?.count != null ? inner.count : state.spaces.length;
+      if (state.view === "list") {
+        state.notice = source === "bootstrap" ? null : state.notice;
+      }
+      paint();
+      return true;
+    }
+
+    async function bootstrapSpaces() {
+      if (state.bootstrapping) return;
+      state.bootstrapping = true;
+      state.bootstrapError = null;
+      paint();
+      const timeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Loading spaces timed out. Retry and the widget will fetch again.")), 15000);
+      });
+      try {
+        const result = await Promise.race([
+          host.callServerTool("spaces", { action: "list" }),
+          timeout,
+        ]);
+        const ok = handleResult(result, "bootstrap");
+        if (ok) {
+          void loadDiscoverSpaces({ force: true, activate: false, silent: true });
+        }
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error, "Could not load spaces."), { bootstrap: true });
+      }
+    }
+
+    async function refreshSpacesList() {
+      try {
+        const result = await host.callServerTool("spaces", { action: "list" });
+        handleResult(result, "list");
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error));
+      }
+    }
+
+    async function loadDiscoverSpaces(opts = {}) {
+      if (state.discoverLoading && !opts.force) return;
+      const activate = opts.activate !== false;
+      const silent = !!opts.silent;
+      state.discoverLoading = true;
+      if (!silent) {
+        state.notice = null;
+        if (activate) state.activeTab = "discover";
+        paint();
+      }
+      try {
+        const result = await host.callServerTool("spaces", { action: "discover" });
+        handleResult(result, activate ? "discover" : "discover-background");
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error, "Could not load public spaces."));
+      } finally {
+        state.discoverLoading = false;
+        if (!silent || state.activeTab === "discover" || !activate) paint();
+      }
+    }
+
+    async function joinWithInviteCode() {
+      if (!canCreateSpaces()) {
+        showSpacesError(readOnlyMessage());
+        return;
+      }
+      const inviteCode = String(state.joinInviteCode || "").trim();
+      if (!inviteCode) {
+        state.notice = { severity: "error", message: "Invite code is required." };
+        paint();
+        return;
+      }
+      state.joinBusy = true;
+      state.notice = null;
+      paint();
+      try {
+        const result = await host.callServerTool("spaces", { action: "join_invite", invite_code: inviteCode });
+        const ok = handleResult(result, "join");
+        if (ok) {
+          state.joinInviteCode = "";
+          await refreshSpacesList();
+          await loadDiscoverSpaces({ force: true, activate: false, silent: true });
+        }
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error, "Could not join space with that invite code."));
+      } finally {
+        state.joinBusy = false;
+        paint();
+      }
+    }
+
+    async function joinPublicSpace(space) {
+      if (!canCreateSpaces()) {
+        showSpacesError(readOnlyMessage());
+        return;
+      }
+      const spaceId = spaceIdOf(space);
+      if (!spaceId) return;
+      state.joinPublicBusyFor = spaceId;
+      state.notice = null;
+      paint();
+      try {
+        const result = await host.callServerTool("spaces", { action: "join_public", space_id: spaceId });
+        const ok = handleResult(result, "join");
+        if (ok) {
+          markDiscoverSpaceJoined(space, { ...(space || {}), is_member: true });
+          paint();
+          await refreshSpacesList();
+          await loadDiscoverSpaces({ force: true, activate: false, silent: true });
+        }
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error, "Could not join public space."));
+      } finally {
+        state.joinPublicBusyFor = null;
+        paint();
+      }
+    }
+
+    async function createSpaceInvite(space) {
+      if (!canUpdateSpaces()) {
+        showSpacesError(readOnlyMessage());
+        return;
+      }
+      const spaceId = space?.id || space?.space_id;
+      if (!spaceId) return;
+      state.inviteCreating = true;
+      state.notice = null;
+      paint();
+      try {
+        const result = await host.callServerTool("spaces", {
+          action: "create_invite",
+          space_id: spaceId,
+          expires_hours: 168,
+        });
+        handleResult(result, "invite");
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error, "Could not create invite code."));
+      } finally {
+        state.inviteCreating = false;
+        paint();
+      }
+    }
+
+    async function copyInviteCode(inviteCode) {
+      const code = String(inviteCode || "").trim();
+      if (!code) return;
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(code);
+        } else {
+          const textArea = document.createElement("textarea");
+          textArea.value = code;
+          textArea.setAttribute("readonly", "");
+          textArea.style.position = "fixed";
+          textArea.style.left = "-9999px";
+          document.body.appendChild(textArea);
+          try {
+            textArea.select();
+            const copied = document.execCommand("copy");
+            if (!copied) {
+              throw new Error("execCommand returned false");
+            }
+          } finally {
+            document.body.removeChild(textArea);
+          }
+        }
+        state.inviteCopiedFor = code;
+        state.notice = { severity: "info", message: "Invite code copied." };
+        paint();
+        window.setTimeout(() => {
+          if (state.inviteCopiedFor === code) {
+            state.inviteCopiedFor = null;
+            paint();
+          }
+        }, 1800);
+      } catch {
+        showSpacesError("Could not copy invite code.");
+      }
+    }
+
+    async function openSpaceDetail(space) {
+      const spaceId = space?.id || space?.space_id;
+      if (!spaceId) return;
+      state.selected = space;
+      state.view = "detail";
+      state.detailTab = "overview";
+      state.editMode = false;
+      state.formError = null;
+      paint();
+      try {
+        const result = await host.callServerTool("spaces", { action: "get", space_id: spaceId });
+        handleResult(result, "detail");
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error));
+      }
+    }
+
+    async function ensureMembersLoaded(space) {
+      const spaceId = space?.id || space?.space_id;
+      if (!spaceId) return;
+      if (state.membersLoadedFor === spaceId || state.loadingMembers) return;
+      state.loadingMembers = true;
+      paint();
+      try {
+        const result = await host.callServerTool("spaces", { action: "members", space_id: spaceId });
+        handleResult(result, "members");
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error));
+      } finally {
+        state.loadingMembers = false;
+        paint();
+      }
+    }
+
+    async function submitCreate() {
+      if (!canCreateSpaces()) {
+        showSpacesError(readOnlyMessage(), { form: true });
+        return;
+      }
+      const name = String(state.createDraft.name || "").trim();
+      if (!name) {
+        state.formError = "Space name is required.";
+        paint();
+        return;
+      }
+      state.createSubmitting = true;
+      state.formError = null;
+      clearTransientErrors();
+      paint();
+      try {
+        const args = {
+          action: "create",
+          name,
+          visibility: state.createDraft.visibility || "private",
+        };
+        const description = String(state.createDraft.description || "").trim();
+        if (description) args.description = description;
+        const result = await host.callServerTool("spaces", args);
+        const ok = handleResult(result, "create");
+        if (ok) {
+          state.createDraft = { name: "", description: "", visibility: "private" };
+          state.members = [];
+          state.membersLoadedFor = null;
+          await refreshSpacesList();
+        }
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error, "Could not create space."), { form: true });
+      } finally {
+        state.createSubmitting = false;
+        paint();
+      }
+    }
+
+    async function submitSpaceUpdate(space, fields) {
+      if (!canUpdateSpaces()) {
+        showSpacesError(readOnlyMessage(), { form: true });
+        return;
+      }
+      const spaceId = space?.id || space?.space_id;
+      if (!spaceId) return;
+      const payload = {};
+      const name = String(fields?.name || "").trim();
+      const description = String(fields?.description || "").trim();
+      if (name && name !== String(space?.name || "").trim()) payload.name = name;
+      if (description !== String(space?.description || "").trim()) payload.description = description;
+      if (!Object.keys(payload).length) {
+        state.editMode = false;
+        state.formError = null;
+        paint();
+        return;
+      }
+      clearTransientErrors();
+      try {
+        const result = await host.callServerTool("spaces", { action: "update", space_id: spaceId, ...payload });
+        const ok = handleResult(result, "update");
+        if (ok) {
+          await refreshSpacesList();
+        }
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error, "Could not save space."), { form: true });
+      }
+    }
+
+    async function toggleArchive(space, nextValue) {
+      if (!canArchiveSpaces()) {
+        showSpacesError(readOnlyMessage());
+        return;
+      }
+      const spaceId = space?.id || space?.space_id;
+      if (!spaceId) return;
+      state.archiveBusy = true;
+      clearTransientErrors();
+      paint();
+      try {
+        const result = await host.callServerTool("spaces", {
+          action: "update",
+          space_id: spaceId,
+          is_archived: nextValue,
+        });
+        const ok = handleResult(result, "update");
+        if (ok) {
+          await refreshSpacesList();
+        }
+      } catch (error) {
+        showSpacesError(errorMessageFromUnknown(error, "Could not update archive state."));
+      } finally {
+        state.archiveBusy = false;
+        paint();
+      }
+    }
+
+    host.setToolResultHandler((result) => {
+      void handleResult(result, "push");
+    });
+
+    await host.connect();
+    if (!state.hydrated) {
+      await bootstrapSpaces();
+    }
+  </script>
+</body>
+</html>

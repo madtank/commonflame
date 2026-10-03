@@ -1,0 +1,3182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Board - Waystation</title>
+  <style>
+    :root {
+      --ax-bg: var(--color-background-primary, #0a0f1a);
+      --ax-surface: var(--color-background-secondary, rgba(15,23,42,0.92));
+      --ax-surface-strong: var(--color-background-tertiary, rgba(30,41,59,0.96));
+      --ax-text: var(--color-foreground-primary, hsl(210, 40%, 98%));
+      --ax-text-dim: var(--color-foreground-secondary, hsl(215, 20.2%, 65.1%));
+      --ax-border: var(--color-border-default, rgba(255,255,255,0.1));
+      --ax-accent: var(--color-accent-primary, #22d3ee);
+      --ax-accent-soft: rgba(6,182,212,0.12);
+      --ax-warning: #fbbf24;
+      --ax-danger: #fb7185;
+      --ax-shadow: 0 12px 24px -8px rgba(0,0,0,0.25);
+      --ax-radius: 16px;
+      --ax-font: var(--font-family-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+    html, body { min-height: 100%; background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); }
+    body { padding: 16px; }
+    .shell { width: 100%; max-width: 1180px; margin: 0 auto; }
+    .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .header-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .header h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+    .count { font-size: 12px; color: var(--ax-text-dim); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .stat { white-space: nowrap; }
+    .stat-num { font-weight: 700; color: var(--ax-text); }
+    .stat-divider { color: rgba(255,255,255,0.16); }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .primary-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(180deg, #e7c680, #d6b26b);
+      color: #1a1408;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 10px 22px rgba(214,178,107,0.18);
+    }
+    .primary-action:hover { filter: brightness(1.04); }
+    .filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filter-row-label {
+      min-width: 64px;
+      font-size: 11px;
+      color: var(--ax-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .filter-btn {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--ax-border);
+      background: var(--ax-surface);
+      color: var(--ax-text-dim);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-btn:hover { border-color: rgba(214,178,107,0.42); color: var(--ax-text); background: rgba(255,255,255,0.03); }
+    .filter-btn.active {
+      background: rgba(214,178,107,0.14);
+      color: var(--ax-text);
+      border-color: rgba(214,178,107,0.35);
+      box-shadow: inset 0 0 0 1px rgba(214,178,107,0.06);
+    }
+    .filter-count { color: var(--ax-text-dim); font-size: 11px; }
+    .filter-btn.active .filter-count { color: rgba(230,233,238,0.8); }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .toolbar-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .toolbar-label { font-size: 11px; color: var(--ax-text-dim); text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+    .sort-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 9px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--ax-border);
+    }
+    .sort-select, .status-select {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--ax-border);
+      background: var(--ax-surface);
+      color: var(--ax-text);
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--ax-border);
+      border: 1px solid var(--ax-border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .task-card {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 6px minmax(0, 1.6fr) auto auto auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      border: none;
+      background: var(--ax-surface);
+      color: var(--ax-text);
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .task-card:hover { background: rgba(255,255,255,0.05); }
+    .task-card:focus-visible { outline: 2px solid rgba(214,178,107,0.45); outline-offset: -2px; }
+    .task-marker {
+      align-self: stretch;
+      border-radius: 999px;
+      background: var(--ax-text-dim);
+    }
+    .priority-critical, .priority-urgent { background: var(--ax-danger); }
+    .priority-high { background: var(--ax-warning); }
+    .priority-medium { background: var(--ax-accent); }
+    .priority-low { background: rgba(148,163,184,0.65); }
+    .task-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .task-title { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+    .task-summary {
+      font-size: 12.5px;
+      color: var(--ax-text-dim);
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-secondary-meta {
+      font-size: 11.5px;
+      color: rgba(148,163,184,0.75);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid rgba(255,255,255,0.08);
+      white-space: nowrap;
+    }
+    .status-open { background: rgba(106,169,255,0.12); color: #a8c8ff; border-color: rgba(106,169,255,0.24); }
+    .status-pending { background: rgba(224,164,88,0.12); color: #f0c083; border-color: rgba(224,164,88,0.24); }
+    .status-in_progress { background: rgba(79,192,141,0.12); color: #8fe0b5; border-color: rgba(79,192,141,0.24); }
+    .status-completed, .status-cancelled, .status-canceled { background: rgba(148,163,184,0.12); color: rgba(226,232,240,0.8); border-color: rgba(148,163,184,0.18); }
+    .task-assignee, .task-freshness, .task-due {
+      font-size: 11.5px;
+      color: rgba(148,163,184,0.8);
+      white-space: nowrap;
+    }
+    .task-assignee { min-width: 0; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .task-due {
+      color: rgba(226,232,240,0.82);
+      font-weight: 650;
+    }
+    .task-due.overdue { color: var(--ax-danger); }
+    .task-due.upcoming { color: var(--ax-warning); }
+    .task-reminder {
+      color: #8fe0b5;
+      font-weight: 650;
+    }
+    .task-queue {
+      color: rgba(226,232,240,0.82);
+      font-weight: 650;
+    }
+    .task-ref-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 180px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.035);
+      color: rgba(226,232,240,0.86);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-ref-action {
+      padding: 5px 9px;
+      border-radius: 9px;
+      border: 1px solid var(--ax-border);
+      background: rgba(255,255,255,0.03);
+      color: var(--ax-text-dim);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .task-ref-action:hover { color: var(--ax-text); border-color: rgba(214,178,107,0.35); }
+    .task-ref-link { color: #8fd5ff; text-decoration: none; }
+    .task-ref-link:hover { text-decoration: underline; }
+    .detail-ref-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 10px; }
+    .detail-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 14px 0 16px;
+    }
+    .btn-danger {
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(251,113,133,0.34);
+      background: rgba(251,113,133,0.12);
+      color: #fecdd3;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .detail-card { background: var(--ax-surface-strong); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); padding: 16px; box-shadow: var(--ax-shadow); }
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-dim); font-size: 13px; cursor: pointer; margin-bottom: 12px; }
+    .back-btn:hover { border-color: rgba(214,178,107,0.3); color: var(--ax-text); }
+    .detail-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.01em; }
+    .detail-summary { font-size: 14px; color: var(--ax-text-dim); margin-bottom: 10px; line-height: 1.45; }
+    .task-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .detail-desc {
+      font-size: 14px;
+      color: var(--ax-text-dim);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .detail-desc > :first-child { margin-top: 0; }
+    .detail-desc > :last-child { margin-bottom: 0; }
+    .detail-desc p,
+    .detail-desc ul,
+    .detail-desc ol,
+    .detail-desc pre,
+    .detail-desc blockquote { margin: 0 0 14px; }
+    .detail-desc h1,
+    .detail-desc h2,
+    .detail-desc h3,
+    .detail-desc h4,
+    .detail-desc h5,
+    .detail-desc h6 {
+      color: var(--ax-text);
+      font-weight: 700;
+      line-height: 1.3;
+      margin: 18px 0 10px;
+    }
+    .detail-desc h1 { font-size: 20px; }
+    .detail-desc h2 { font-size: 18px; }
+    .detail-desc h3 { font-size: 16px; }
+    .detail-desc h4,
+    .detail-desc h5,
+    .detail-desc h6 { font-size: 14px; }
+    .detail-desc ul,
+    .detail-desc ol { padding-left: 22px; }
+    .detail-desc li + li { margin-top: 6px; }
+    .detail-desc strong { color: var(--ax-text); }
+    .detail-desc em { color: rgba(226,232,240,0.92); }
+    .detail-desc a { color: #8fd5ff; }
+    .detail-desc code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      padding: 0.12em 0.38em;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.06);
+      color: #f8fafc;
+    }
+    .detail-desc pre {
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(2,6,23,0.55);
+      overflow-x: auto;
+    }
+    .detail-desc pre code {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+    }
+    .detail-desc blockquote {
+      padding-left: 14px;
+      border-left: 3px solid rgba(214,178,107,0.4);
+      color: rgba(226,232,240,0.85);
+    }
+    .detail-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .detail-fields.primary-fields { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .detail-fields.signal-fields { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: stretch; }
+    .field { min-width: 0; background: rgba(255,255,255,0.02); border-radius: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.04); }
+    .field.optional-signal { background: rgba(255,255,255,0.016); }
+    .field-label { font-size: 10px; color: var(--ax-text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+    .field-value { font-size: 14px; font-weight: 500; }
+    .work-pulse {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+      margin: 12px 0;
+      padding: 10px;
+      border: 1px solid rgba(214,178,107,0.16);
+      border-radius: 14px;
+      background: rgba(214,178,107,0.045);
+    }
+    .work-pulse.is-empty {
+      display: block;
+      color: var(--ax-text-dim);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .metadata-drawer {
+      margin: 4px 0 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.014);
+    }
+    .metadata-drawer summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      color: var(--ax-text-dim);
+      font-size: 12px;
+      font-weight: 650;
+      list-style: none;
+    }
+    .metadata-drawer summary::-webkit-details-marker { display: none; }
+    .metadata-drawer summary::after {
+      content: "+";
+      float: right;
+      color: rgba(148,163,184,0.85);
+    }
+    .metadata-drawer[open] summary::after { content: "-"; }
+    .metadata-drawer .detail-fields {
+      padding: 0 10px 10px;
+      margin-bottom: 0;
+    }
+    .audit-row {
+      display: grid;
+      grid-template-columns: minmax(86px, auto) minmax(0, 1fr);
+      gap: 8px;
+      padding: 8px 10px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      color: var(--ax-text-dim);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .audit-row strong { color: var(--ax-text); }
+    .audit-empty { padding: 0 10px 10px; color: var(--ax-text-dim); font-size: 12px; }
+    .reminder-action-strip {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 8px;
+      margin: 10px 0 12px;
+      padding: 9px 10px;
+      border-radius: 13px;
+      border: 1px solid rgba(6,182,212,0.16);
+      background: rgba(6,182,212,0.055);
+    }
+    .reminder-strip-chips { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+    .strip-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.035);
+      color: var(--ax-text);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.25;
+    }
+    .strip-chip-muted { color: var(--ax-text-dim); font-weight: 500; }
+    .strip-label { color: rgba(148,163,184,0.88); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .strip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ax-text-dim); box-shadow: 0 0 0 3px rgba(148,163,184,0.11); flex: 0 0 auto; }
+    .strip-dot.active, .strip-dot.armed, .strip-dot.in_progress { background: #8fe0b5; box-shadow: 0 0 0 3px rgba(143,224,181,0.13); }
+    .strip-dot.snoozed, .strip-dot.waiting, .strip-dot.queued { background: var(--ax-warning); box-shadow: 0 0 0 3px rgba(251,191,36,0.13); }
+    .strip-dot.fired, .strip-dot.overdue, .strip-dot.stale { background: var(--ax-danger); box-shadow: 0 0 0 3px rgba(251,113,133,0.13); }
+    .strip-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+    .strip-action-btn {
+      padding: 5px 9px;
+      border-radius: 9px;
+      border: 1px solid var(--ax-border);
+      background: rgba(255,255,255,0.03);
+      color: var(--ax-text-dim);
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .strip-action-btn:hover:not(:disabled) { color: var(--ax-text); border-color: rgba(214,178,107,0.35); }
+    .strip-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .pulse-item {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .pulse-label {
+      font-size: 10px;
+      color: rgba(148,163,184,0.82);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .pulse-value {
+      min-width: 0;
+      color: var(--ax-text);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pulse-muted { color: var(--ax-text-dim); font-weight: 500; }
+    .detail-editor { margin-top: 16px; padding: 18px; background: rgba(255,255,255,0.02); border: 1px solid var(--ax-border); border-radius: 14px; }
+    .detail-editor h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ax-text-dim); margin-bottom: 14px; }
+    .create-form { background: var(--ax-surface-strong); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); padding: 20px; margin-bottom: 16px; }
+    .form-field { margin-bottom: 12px; }
+    .form-field label { display: block; font-size: 11px; color: var(--ax-text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .form-field input, .form-field textarea, .form-field select {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--ax-border);
+      background: rgba(255,255,255,0.02);
+      color: var(--ax-text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .form-field input[type="checkbox"] {
+      width: 16px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0;
+      margin: 0;
+      accent-color: var(--ax-accent);
+      cursor: pointer;
+    }
+    .checkbox-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .checkbox-row label {
+      display: inline;
+      margin: 0;
+      color: var(--ax-text);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.25;
+      letter-spacing: 0;
+      text-transform: none;
+      cursor: pointer;
+    }
+    .form-field textarea { resize: vertical; min-height: 60px; }
+    .field-help { margin-top: 6px; font-size: 11px; color: rgba(148,163,184,0.76); }
+    .form-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .save-feedback { font-size: 12px; color: var(--ax-text-dim); min-height: 18px; }
+    .save-feedback.success { color: #8fe0b5; }
+    .save-feedback.info { color: var(--ax-accent); }
+    .save-feedback.error { color: var(--ax-danger); }
+    .btn-primary {
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(180deg, #e7c680, #d6b26b);
+      color: #1a1408;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-secondary { padding: 8px 16px; border-radius: 10px; border: 1px solid var(--ax-border); background: rgba(255,255,255,0.02); color: var(--ax-text-dim); font-size: 13px; cursor: pointer; }
+    .loading { text-align: center; padding: 40px; color: var(--ax-text-dim); }
+    .empty-state {
+      padding: 28px 24px;
+      text-align: center;
+      background: var(--ax-surface);
+      color: var(--ax-text-dim);
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+    .empty-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .pager { display: flex; align-items: center; gap: 8px; margin-top: 16px; justify-content: center; }
+    .pager-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-dim); font-size: 13px; cursor: pointer; }
+    .pager-btn:hover:not(:disabled) { border-color: var(--ax-accent); color: var(--ax-accent); }
+    .pager-btn:disabled { opacity: 0.4; cursor: default; }
+    .pager-info { font-size: 12px; color: var(--ax-text-dim); }
+    .priority-filters { display: flex; gap: 4px; }
+    .prio-btn { padding: 5px 12px; border-radius: 14px; border: 1px solid var(--ax-border); background: var(--ax-surface); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .prio-btn:hover { opacity: 0.85; }
+    .prio-btn[data-prio="critical"] { color: var(--ax-danger); }
+    .prio-btn[data-prio="critical"].active { background: var(--ax-danger); border-color: var(--ax-danger); color: #fff; }
+    .prio-btn[data-prio="high"] { color: var(--ax-danger); }
+    .prio-btn[data-prio="high"].active { background: var(--ax-danger); border-color: var(--ax-danger); color: #fff; }
+    .prio-btn[data-prio="medium"] { color: var(--ax-warning); }
+    .prio-btn[data-prio="medium"].active { background: var(--ax-warning); border-color: var(--ax-warning); color: #fff; }
+    .prio-btn[data-prio="low"] { color: var(--ax-accent); }
+    .prio-btn[data-prio="low"].active { background: var(--ax-accent); border-color: var(--ax-accent); color: #fff; }
+    .prio-btn.active { box-shadow: 0 10px 24px rgba(16,24,40,0.14); }
+    .notice { margin-bottom: 12px; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+    .notice-info { background: rgba(6,182,212,0.12); color: var(--ax-accent); border: 1px solid rgba(6,182,212,0.18); }
+    .notice-error { background: rgba(186,59,45,0.12); color: var(--ax-danger); border: 1px solid rgba(186,59,45,0.2); }
+    @media (max-width: 640px) {
+      body { padding: 14px; }
+      .task-card {
+        grid-template-columns: 6px minmax(0, 1fr);
+        align-items: flex-start;
+        row-gap: 6px;
+      }
+      .task-card .task-main,
+      .task-card .status-pill,
+      .task-card .task-ref-action,
+      .task-card .task-assignee,
+      .task-card .task-freshness {
+        grid-column: 2;
+      }
+      .task-card .status-pill {
+        justify-self: start;
+      }
+      .task-card .task-assignee,
+      .task-card .task-freshness {
+        white-space: normal;
+      }
+      .detail-fields { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+      .reminder-action-strip { grid-template-columns: minmax(0, 1fr); }
+      .strip-actions { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app"><div class="loading">Loading tasks...</div></div>
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+    const app = new App({ name: "Task Board", version: "1.0.0" });
+    const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
+
+    function getOpenAiBridge() {
+      return typeof window !== "undefined" ? window.openai : undefined;
+    }
+
+    function normalizeToolResult(result) {
+      if (result && typeof result === "object" && ("structuredContent" in result || "content" in result)) {
+        return result;
+      }
+      return { structuredContent: result };
+    }
+
+    function notifyHostHeight() {
+      const openaiBridge = getOpenAiBridge();
+      if (openaiBridge && typeof openaiBridge.notifyIntrinsicHeight === "function") {
+        requestAnimationFrame(() => {
+          try {
+            const appRoot = document.getElementById("app");
+            const bodyStyles = window.getComputedStyle(document.body);
+            const paddingTop = parseFloat(bodyStyles.paddingTop || "0") || 0;
+            const paddingBottom = parseFloat(bodyStyles.paddingBottom || "0") || 0;
+            const contentHeight = appRoot
+              ? Math.ceil(appRoot.getBoundingClientRect().height + paddingTop + paddingBottom)
+              : Math.ceil(document.body.getBoundingClientRect().height);
+            openaiBridge.notifyIntrinsicHeight(Math.max(120, contentHeight));
+          } catch {}
+        });
+      }
+    }
+
+    const host = {
+      _toolResultHandler: null,
+      _globalsListener: null,
+      setToolResultHandler(handler) {
+        this._toolResultHandler = handler;
+        app.ontoolresult = handler;
+        // Fallback: listen for raw postMessage from hosts that send
+        // ui/notifications/tool-result directly (e.g., Waystation frontend)
+        window.addEventListener("message", (event) => {
+          let msg = event.data;
+          if (!msg) return;
+          if (typeof msg === "string") {
+            try { msg = JSON.parse(msg); } catch { return; }
+          }
+          if (typeof msg !== "object") return;
+          // MCP Apps spec: {jsonrpc: "2.0", method: "ui/notifications/tool-result", params: {...}}
+          if (msg.method === "ui/notifications/tool-result" && msg.params) {
+            handler(normalizeToolResult(msg.params));
+            return;
+          }
+          // Direct result push
+          if (msg.type === "tool_result" && (msg.initial_data || msg.structuredContent || msg.content)) {
+            handler(normalizeToolResult(msg.initial_data || msg));
+            return;
+          }
+          // Flat structuredContent push
+          if (msg.structuredContent || msg.kind) {
+            handler(normalizeToolResult(msg));
+          }
+        });
+      },
+      _deliverToolOutput(globals) {
+        const openaiBridge = getOpenAiBridge();
+        const output = globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")
+          ? globals.toolOutput
+          : openaiBridge?.toolOutput;
+        if (this._toolResultHandler && output !== undefined) {
+          this._toolResultHandler(normalizeToolResult(output));
+        }
+      },
+      async connect() {
+        if (!this._globalsListener) {
+          this._globalsListener = (event) => {
+            const globals = event?.detail?.globals;
+            if (globals && Object.prototype.hasOwnProperty.call(globals, "toolOutput")) {
+              this._deliverToolOutput(globals);
+            }
+            notifyHostHeight();
+          };
+          window.addEventListener(OPENAI_SET_GLOBALS_EVENT, this._globalsListener, { passive: true });
+        }
+        await app.connect();
+        this._deliverToolOutput();
+        notifyHostHeight();
+      },
+      async callServerTool(name, args) {
+        const openaiBridge = getOpenAiBridge();
+        if (openaiBridge && typeof openaiBridge.callTool === "function") {
+          return normalizeToolResult(await openaiBridge.callTool(name, args));
+        }
+        return app.callServerTool({ name, arguments: args });
+      },
+      setHostCommandHandler(handler) {
+        window.addEventListener("message", (event) => {
+          let msg = event.data;
+          if (!msg) return;
+          if (typeof msg === "string") {
+            try { msg = JSON.parse(msg); } catch { return; }
+          }
+          if (!msg || typeof msg !== "object") return;
+          if (msg.type === "ax/host-command") {
+            handler(msg.command, msg);
+          }
+        });
+      },
+    };
+
+    let state = {
+      view: "list",
+      tasks: [],
+      total: 0,
+      selected: null,
+      hydrated: false,
+      bootstrapping: false,
+      bootstrapError: null,
+      showCreate: false,
+      activeFilter: null,
+      activeStatus: null,
+      activePriority: null,
+      activeReminderFilter: null,
+      activeAssignee: "",
+      excludeDone: true,
+      sortMode: "newest",
+      limit: 100,
+      offset: 0,
+      notice: null,
+      agents: [],
+      assignees: [],
+      agentsLoaded: false,
+      loadingAgents: false,
+      agentsLoadError: null,
+    };
+
+    function formatDuration(ms) {
+      const abs = Math.abs(ms);
+      const mins = Math.floor(abs / 60000);
+      if (mins < 1) return "just now";
+      if (mins < 60) return mins + "m";
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + "h";
+      const days = Math.floor(hrs / 24);
+      if (days < 30) return days + "d";
+      return "";
+    }
+
+    function relDate(d) {
+      if (!d) return "";
+      const ts = new Date(d).getTime();
+      if (isNaN(ts)) return String(d).slice(0, 10);
+      const diff = Date.now() - ts;
+      if (diff < 0) {
+        const future = formatDuration(diff);
+        return future ? "in " + future : new Date(ts).toLocaleDateString();
+      }
+      const past = formatDuration(diff);
+      if (past) return past === "just now" ? past : past + " ago";
+      return new Date(ts).toLocaleDateString();
+    }
+
+    function dueState(d) {
+      if (!d) return "";
+      const ts = new Date(d).getTime();
+      if (isNaN(ts)) return "";
+      const diff = ts - Date.now();
+      if (diff < 0) return "overdue";
+      if (diff <= 24 * 60 * 60 * 1000) return "upcoming";
+      return "";
+    }
+
+    function formatDueLabel(d) {
+      if (!d) return "";
+      const ts = new Date(d).getTime();
+      if (isNaN(ts)) return "Due " + String(d).slice(0, 10);
+      const diff = ts - Date.now();
+      const duration = formatDuration(diff);
+      if (!duration) return "Due " + new Date(ts).toLocaleDateString();
+      if (diff < 0) return "Overdue " + duration;
+      return "Due in " + duration;
+    }
+
+    // Status values that mean a task is no longer accepting work. Defined
+    // up here so the reminder helpers below can use it (the original
+    // declaration further down at the filter section is the same list,
+    // re-asserted there for visibility next to the status filter UI).
+    const DONE_STATUSES = ["completed", "cancelled", "canceled"];
+
+    function isTerminalTaskStatus(status) {
+      return DONE_STATUSES.includes(String(status || "").toLowerCase());
+    }
+
+    function mergeReminderSource(target, source) {
+      if (typeof source === "string") {
+        target.policy = source;
+        return target;
+      }
+      if (!source || typeof source !== "object") return target;
+      for (const [key, value] of Object.entries(source)) {
+        if (value !== undefined) target[key] = value;
+      }
+      return target;
+    }
+
+    function findListTaskForDetail(task) {
+      const taskId = task?.id || task?.task_id;
+      if (!taskId) return null;
+      return state.tasks.find((item) => String(item?.id || item?.task_id || "") === String(taskId)) || null;
+    }
+
+    function mergeFlatReminderFields(target, source) {
+      if (!source || typeof source !== "object") return target;
+      // Last write wins, and this order is intentional: canonical field names
+      // appear after legacy aliases so fresher/direct fields override fallbacks.
+      const mapping = {
+        reminder_state: "state",
+        reminder_status: "status",
+        reminder_next_fire_at: "next_fire_at",
+        reminder_next_at: "next_reminder_at",
+        next_fire_at: "next_fire_at",
+        next_reminder_at: "next_reminder_at",
+        reminder_last_fire_at: "last_fire_at",
+        reminder_last_fired_at: "last_fired_at",
+        last_fire_at: "last_fire_at",
+        last_reminded_at: "last_reminded_at",
+        last_reminder_at: "last_reminded_at",
+        last_fired_at: "last_fired_at",
+        reminder_snoozed_until: "snoozed_until",
+        snoozed_until: "snoozed_until",
+        reminder_cadence_minutes: "cadence_minutes",
+        reminder_interval_minutes: "cadence_minutes",
+        cadence_minutes: "cadence_minutes",
+        reminder_max_count: "max_count",
+        max_count: "max_count",
+        reminder_until_done: "until_done",
+        until_done: "until_done",
+        reminder_policy: "policy",
+        reminder_count: "reminder_count",
+        fire_count: "fire_count",
+      };
+      for (const [sourceKey, targetKey] of Object.entries(mapping)) {
+        const value = source[sourceKey];
+        if (value !== undefined) target[targetKey] = value;
+      }
+      return target;
+    }
+
+    function reminderPayloadFromTask(task, detail = null) {
+      const listTask = detail ? findListTaskForDetail(task) : null;
+      const reminder = {};
+      // Detail payloads can omit reminder fields that are already present in the
+      // list projection. Merge list first, then detail/task so list/detail render
+      // the same canonical state without letting stale list values override the
+      // fresher selected payload.
+      for (const source of [listTask, detail, task]) {
+        mergeFlatReminderFields(reminder, source);
+        mergeReminderSource(reminder, source?.reminder_policy);
+        mergeReminderSource(reminder, source?.reminder);
+      }
+      return reminder;
+    }
+
+    // Spec 06-task-contract.md §6.9 rule 1: a reminder on a terminal task
+    // MUST render as inactive everywhere the widget projects reminder state.
+    // This helper is the single source of truth — every reminder-rendering
+    // path goes through it so label, dot, drawer, and any future projection
+    // stay consistent. It also preserves explicit inactive/cancelled reminder
+    // states before inferring armed/overdue from timestamps.
+
+    const ARMING_REMINDER_STATES = ["armed", "active", "scheduled", "queued", "in_progress", "looping", "exhausted"];
+    const ACTIVE_REMINDER_STATES = ARMING_REMINDER_STATES.concat(["snoozed", "overdue", "fired", "due", "stale"]);
+
+    function looksArmedReminder(rawState, reminder, nextAt) {
+      // Caller handles explicit inactive/cancelled states before reaching this
+      // armability heuristic; keep that ordering so stored policy/cadence data
+      // on a cancelled reminder does not re-arm the projection.
+      const policy = String(reminder.policy || "").toLowerCase();
+      const policyArms = Boolean(reminder.policy) && !["none", "inactive", "off", "disabled", "cancelled", "canceled"].includes(policy);
+      return ARMING_REMINDER_STATES.includes(rawState)
+        || reminder.active === true
+        || Boolean(nextAt || reminder.cadence_minutes || policyArms || reminder.until_done || reminder.max_count);
+    }
+
+    function canonicalReminderState(task, detail = null) {
+      const reminder = reminderPayloadFromTask(task, detail);
+      const nextAt = reminder.next_fire_at || reminder.next_reminder_at || reminder.reminder_next_fire_at || reminder.reminder_next_at;
+      const lastAt = reminder.last_fire_at || reminder.last_reminded_at || reminder.last_fired_at || reminder.reminder_last_fire_at || reminder.reminder_last_fired_at;
+      const snoozedUntil = reminder.snoozed_until || reminder.reminder_snoozed_until;
+      const rawState = String(reminder.state || reminder.status || reminder.reminder_state || reminder.reminder_status || "").toLowerCase();
+      const explicitInactive = ["inactive", "cancelled", "canceled", "stopped", "none", "off", "disabled"].includes(rawState);
+      const terminal = isTerminalTaskStatus(task?.status);
+      const now = Date.now();
+      const nextMs = nextAt ? new Date(nextAt).getTime() : NaN;
+      const snoozedMs = snoozedUntil ? new Date(snoozedUntil).getTime() : NaN;
+      const hasFutureSnooze = Number.isFinite(snoozedMs) && snoozedMs > now;
+      let stateValue = rawState || "none";
+      if (terminal) stateValue = "inactive";
+      else if (explicitInactive) stateValue = rawState;
+      else if (rawState === "snoozed" && (!snoozedUntil || hasFutureSnooze)) stateValue = "snoozed";
+      else if (hasFutureSnooze) stateValue = "snoozed";
+      else if (["overdue", "fired", "due", "stale"].includes(rawState) || (Number.isFinite(nextMs) && nextMs <= now)) stateValue = "overdue";
+      else if (looksArmedReminder(rawState, reminder, nextAt)) stateValue = "armed";
+      else stateValue = "none";
+
+      const hasReminder = !terminal && !explicitInactive && ACTIVE_REMINDER_STATES.includes(stateValue);
+      let label = "";
+      if (stateValue === "inactive") label = "Reminder: inactive";
+      else if (stateValue === "cancelled" || stateValue === "canceled") label = "Reminder: cancelled";
+      else if (stateValue === "snoozed") label = "Snoozed " + (snoozedUntil ? relDate(snoozedUntil) : "");
+      else if (["overdue", "fired", "due", "stale"].includes(stateValue)) label = nextAt ? "Overdue " + relDate(nextAt) : "Reminder overdue";
+      else if (hasReminder && nextAt) label = "Reminder " + relDate(nextAt);
+      else if (hasReminder && reminder.policy) label = "Reminder: " + String(reminder.policy);
+      else if (hasReminder) label = "Reminder: " + String(stateValue);
+      else if (lastAt) label = "Last reminder " + relDate(lastAt);
+
+      return Object.assign({}, reminder, {
+        raw_state: rawState,
+        state: stateValue,
+        status: stateValue,
+        next_fire_at: nextAt || reminder.next_fire_at,
+        next_reminder_at: nextAt || reminder.next_reminder_at,
+        last_fire_at: lastAt || reminder.last_fire_at,
+        last_reminded_at: lastAt || reminder.last_reminded_at,
+        snoozed_until: snoozedUntil || reminder.snoozed_until,
+        active: hasReminder,
+        has_reminder: hasReminder,
+        label: label.trim(),
+        queue_state: terminal ? "stopped" : reminder.queue_state,
+      });
+    }
+
+    function projectedReminder(task, detail = null) {
+      return canonicalReminderState(task, detail);
+    }
+
+    function hasArmedReminder(task, detail = null) {
+      return Boolean(projectedReminder(task, detail).has_reminder);
+    }
+
+    function formatReminderLabel(reminder, task, detail = null) {
+      const canonical = canonicalReminderState(Object.assign({}, task || {}, { reminder }), detail);
+      return canonical.label;
+    }
+
+    function reminderStateValue(reminder, task, detail = null) {
+      return canonicalReminderState(Object.assign({}, task || {}, { reminder }), detail).state;
+    }
+
+    function reminderNextAt(reminder) {
+      return reminder?.next_fire_at || reminder?.next_reminder_at || reminder?.reminder_next_fire_at || reminder?.reminder_next_at || null;
+    }
+
+    function reminderFireCount(reminder) {
+      const historyCounts = Array.isArray(reminder?.history)
+        ? reminder.history.map(item => Number(item?.fire_count)).filter(Number.isFinite)
+        : [];
+      const raw = reminder?.fire_count ?? reminder?.reminder_count;
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) return parsed;
+      return historyCounts.length ? Math.max(...historyCounts) : 0;
+    }
+
+    function reminderMaxCount(reminder) {
+      const parsed = Number(reminder?.max_count ?? reminder?.policy?.max_count);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    function isReminderDue(task, reminder = projectedReminder(task)) {
+      if (isTerminalTaskStatus(task?.status)) return false;
+      const state = reminderStateValue(reminder, task);
+      if (["inactive", "cancelled", "canceled", "stopped", "none"].includes(state)) return false;
+      const nextAt = reminderNextAt(reminder);
+      return Boolean(nextAt && new Date(nextAt).getTime() <= Date.now());
+    }
+
+    function isReminderSnoozed(task, reminder = projectedReminder(task)) {
+      if (isTerminalTaskStatus(task?.status)) return false;
+      return reminderStateValue(reminder, task) === "snoozed";
+    }
+
+    function isReminderNoisy(task, reminder = projectedReminder(task)) {
+      if (isTerminalTaskStatus(task?.status)) return false;
+      const state = reminderStateValue(reminder, task);
+      const rawState = String(reminder.raw_state || "").toLowerCase();
+      const maxCount = reminderMaxCount(reminder);
+      return rawState === "looping" || rawState === "exhausted" || state === "looping" || state === "exhausted" || Boolean(maxCount && reminderFireCount(reminder) >= maxCount);
+    }
+
+    function matchesReminderFilter(task, filter) {
+      if (!filter) return true;
+      const reminder = projectedReminder(task);
+      if (filter === "due" || filter === "overdue") return isReminderDue(task, reminder);
+      if (filter === "snoozed") return isReminderSnoozed(task, reminder);
+      if (filter === "noisy") return isReminderNoisy(task, reminder);
+      if (filter === "has" || filter === "armed") return reminder.has_reminder;
+      if (filter === "none") return !reminder.has_reminder;
+      // The "mine" half is enforced by the paired backend `my_tasks` list filter
+      // set when the Mine due chip is selected; this predicate owns due-ness.
+      if (filter === "mine_due") return isReminderDue(task, reminder);
+      return true;
+    }
+
+    function taskAssigneeKey(task) {
+      const assignee = task?.assignee || {};
+      const type = assignee.type || task?.assignee_type || (task?.assigned_agent_id ? "agent" : "");
+      const id = assignee.id || task?.assignee_id || task?.assigned_agent_id || "";
+      return id ? `${type || "agent"}:${id}` : "";
+    }
+
+    function supervisorPulseSource(detail, task) {
+      const source = detail?.supervisor_pulse || detail?.supervisor || task?.supervisor_pulse || task?.supervisor || task?.pulse;
+      return source && typeof source === "object" ? source : {};
+    }
+
+    function supervisorPulseStateValue(detail, task) {
+      const pulse = supervisorPulseSource(detail, task);
+      return pulse.state || pulse.status || pulse.mode || task?.supervisor_state || task?.pulse_state || "";
+    }
+
+    function formatSupervisorPulseLabel(detail, task) {
+      const pulse = supervisorPulseSource(detail, task);
+      const stateValue = supervisorPulseStateValue(detail, task);
+      const label = pulse.label || pulse.summary || pulse.message;
+      const lastAt = pulse.last_received_at || pulse.last_check_at || pulse.last_pulse_at || pulse.updated_at;
+      if (label && stateValue) return `${formatQueueLabel(stateValue)} · ${shortenSummary(String(label), 72)}`;
+      if (label) return shortenSummary(String(label), 86);
+      if (stateValue && lastAt) return `${formatQueueLabel(stateValue)} · received ${relDate(lastAt)}`;
+      if (stateValue) return formatQueueLabel(stateValue);
+      if (lastAt) return "Supervisor pulse received " + relDate(lastAt);
+      return "No supervisor pulse";
+    }
+
+    function supervisorPulseState(detail, task) {
+      return String(supervisorPulseStateValue(detail, task) || "none").toLowerCase();
+    }
+
+    function formatPulseTimestamp(value) {
+      return value ? relDate(value) : "";
+    }
+
+    function formatPulseCount(value, singular, plural) {
+      if (value === undefined || value === null || value === "") return "";
+      const num = Number(value);
+      if (!Number.isFinite(num)) return "";
+      const label = Math.abs(num) === 1 ? singular : plural;
+      return `${num} ${label}`;
+    }
+
+    function formatStaleDuration(value, staleSince) {
+      const seconds = Number(value);
+      if (Number.isFinite(seconds) && seconds > 0) {
+        const duration = formatDuration(seconds * 1000);
+        return duration ? duration + " stale" : `${Math.round(seconds)}s stale`;
+      }
+      if (staleSince) return "Stale since " + relDate(staleSince);
+      return "";
+    }
+
+    function formatSupervisorWorkingLabel(detail, task) {
+      const pulse = supervisorPulseSource(detail, task);
+      const parts = [];
+      if (pulse.claimed_by) parts.push("claimed by " + String(pulse.claimed_by));
+      if (pulse.claimed_at) parts.push("claimed " + relDate(pulse.claimed_at));
+      if (pulse.current_activity) parts.push(shortenSummary(String(pulse.current_activity), 72));
+      return parts.join(" · ");
+    }
+
+    function formatSupervisorResultLabel(detail, task) {
+      const pulse = supervisorPulseSource(detail, task);
+      const result = pulse.last_result || pulse.last_reply;
+      const at = pulse.last_result_at || pulse.last_reply_at;
+      const parts = [];
+      if (result) parts.push(shortenSummary(String(result), 72));
+      if (at) parts.push(relDate(at));
+      return parts.join(" · ");
+    }
+
+    function formatSupervisorBacklogLabel(detail, task) {
+      const pulse = supervisorPulseSource(detail, task);
+      return [
+        formatPulseCount(pulse.queue_depth, "queued", "queued"),
+        formatPulseCount(pulse.backlog, "backlog", "backlog"),
+      ].filter(Boolean).join(" · ");
+    }
+
+    function formatMissingSignalsLabel(detail, task) {
+      const pulse = supervisorPulseSource(detail, task);
+      if (!Array.isArray(pulse.missing_signals) || !pulse.missing_signals.length) return "";
+      return pulse.missing_signals.map((item) => formatQueueLabel(item)).join(", ");
+    }
+
+    function normalizePriorityValue(value) {
+      const priority = String(value || "medium").trim().toLowerCase();
+      if (!priority) return "medium";
+      return priority === "urgent" ? "critical" : priority;
+    }
+
+    function formatPriorityLabel(value) {
+      const priority = normalizePriorityValue(value);
+      return priority.charAt(0).toUpperCase() + priority.slice(1);
+    }
+
+    function getPriorityWeight(value) {
+      switch (normalizePriorityValue(value)) {
+        case "critical": return 4;
+        case "high": return 3;
+        case "medium": return 2;
+        case "low": return 1;
+        default: return 0;
+      }
+    }
+
+    function getStatusCounts(tasks, activeFilter) {
+      const counts = {
+        open: 0,
+        my_tasks: activeFilter === "my_tasks" ? tasks.length : null,
+        pending: 0,
+        in_progress: 0,
+        completed: 0,
+      };
+
+      for (const task of tasks) {
+        const status = String(task?.status || "").toLowerCase();
+        if (DONE_STATUSES.includes(status)) counts.completed += 1;
+        else counts.open += 1;
+        if (status === "pending") counts.pending += 1;
+        if (status === "in_progress") counts.in_progress += 1;
+      }
+
+      return counts;
+    }
+
+    function toDateTimeLocalValue(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      const pad = (n) => String(n).padStart(2, "0");
+      return [
+        date.getFullYear(),
+        "-",
+        pad(date.getMonth() + 1),
+        "-",
+        pad(date.getDate()),
+        "T",
+        pad(date.getHours()),
+        ":",
+        pad(date.getMinutes()),
+      ].join("");
+    }
+
+    function fromDateTimeLocalValue(value) {
+      if (!value) return null;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toISOString();
+    }
+
+    function parsePositiveInteger(value) {
+      const parsed = Number.parseInt(String(value || "").trim(), 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    function buildReminderScheduleArgs(cadenceInput, maxCountInput, untilDoneInput, nextFireInput) {
+      const args = { reminder_action: "schedule" };
+      const cadence = parsePositiveInteger(cadenceInput?.value);
+      const maxCount = parsePositiveInteger(maxCountInput?.value);
+      const nextFireAt = fromDateTimeLocalValue(nextFireInput?.value);
+      if (cadence !== null) args.reminder_cadence_minutes = cadence;
+      if (maxCount !== null) args.reminder_max_count = maxCount;
+      if (untilDoneInput) args.reminder_until_done = Boolean(untilDoneInput.checked);
+      if (nextFireAt) args.next_fire_at = nextFireAt;
+      return Object.keys(args).length > 1 ? args : null;
+    }
+
+    function minutesFromNowIso(minutes) {
+      return new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    }
+
+    function tomorrowMorningIso(hour = 9) {
+      const date = new Date();
+      date.setDate(date.getDate() + 1);
+      date.setHours(hour, 0, 0, 0);
+      return date.toISOString();
+    }
+
+    function stringifyRequirements(value) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+      const keys = Object.keys(value);
+      if (keys.length === 1 && typeof value.notes === "string") return value.notes;
+      if (keys.length === 1 && typeof value.text === "string") return value.text;
+      if (keys.length === 1 && Array.isArray(value.items)) {
+        return value.items.map((item) => `- ${String(item)}`).join("\n");
+      }
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return "";
+      }
+    }
+
+    function parseRequirementsDraft(raw, hasExistingValue) {
+      const trimmed = String(raw || "").trim();
+      if (!trimmed) {
+        return {
+          ok: true,
+          value: hasExistingValue ? {} : null,
+        };
+      }
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return { ok: true, value: { items: parsed.map((item) => String(item)) } };
+          }
+          if (!parsed || typeof parsed !== "object") {
+            return {
+              ok: false,
+              error: "Requirements can be plain text or a JSON object.",
+            };
+          }
+          return { ok: true, value: parsed };
+        } catch {
+          return {
+            ok: false,
+            error: "Requirements can be plain text, or valid JSON when using structured fields.",
+          };
+        }
+      }
+      const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const listItems = lines
+        .map((line) => line.replace(/^[-*]\s+/, "").replace(/^\d+[.)]\s+/, "").trim())
+        .filter(Boolean);
+      if (listItems.length > 1) return { ok: true, value: { items: listItems } };
+      return { ok: true, value: { notes: trimmed } };
+    }
+
+    function errorMessageFromUnknown(error, fallback = "Task request failed.") {
+      if (error instanceof Error && error.message) return error.message;
+      if (typeof error === "string" && error.trim()) return error;
+      return fallback;
+    }
+
+    function isTaskNotFoundMessage(message) {
+      return /api error 404|task not found|not found/i.test(String(message || ""));
+    }
+
+    function friendlyTaskErrorMessage(message) {
+      const raw = String(message || "").trim();
+      if (isTaskNotFoundMessage(raw)) {
+        return "That task is no longer available. The task list has been refreshed.";
+      }
+      return raw || "Task request failed.";
+    }
+
+    function showTaskError(message, opts = {}) {
+      const friendlyMessage = friendlyTaskErrorMessage(message);
+      const staleTaskDetail = isTaskNotFoundMessage(message) && state.hydrated && state.view === "list";
+      state.notice = staleTaskDetail
+        ? { severity: "info", message: friendlyMessage }
+        : { severity: "error", message: friendlyMessage };
+      if (opts.bootstrap && !state.hydrated) {
+        state.bootstrapping = false;
+        state.bootstrapError = friendlyMessage;
+      }
+      render();
+      notifyHostHeight();
+    }
+
+    function stripMarkdownSummary(value) {
+      const source = String(value || "");
+      if (!source) return "";
+      return source
+        .replace(/```[\s\S]*?```/g, " ")
+        .replace(/`([^`]*)`/g, "$1")
+        .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+        .replace(/(^|\n)\s{0,3}#{1,6}\s*/g, " ")
+        .replace(/(^|\n)\s*[-*+]\s+/g, " ")
+        .replace(/(^|\n)\s*\d+\.\s+/g, " ")
+        .replace(/[*_~>#]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function appendInlineMarkdown(target, text) {
+      const source = String(text || "");
+      const tokenRe = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_)/;
+      let remaining = source;
+      while (remaining) {
+        const match = tokenRe.exec(remaining);
+        if (!match) {
+          target.appendChild(document.createTextNode(remaining));
+          return;
+        }
+        if (match.index > 0) {
+          target.appendChild(document.createTextNode(remaining.slice(0, match.index)));
+        }
+        if (match[2] && match[3]) {
+          const anchor = document.createElement("a");
+          anchor.href = match[3];
+          anchor.target = "_blank";
+          anchor.rel = "noreferrer noopener";
+          appendInlineMarkdown(anchor, match[2]);
+          target.appendChild(anchor);
+        } else if (match[4]) {
+          const code = document.createElement("code");
+          code.textContent = match[4];
+          target.appendChild(code);
+        } else if (match[5] || match[6]) {
+          const strong = document.createElement("strong");
+          appendInlineMarkdown(strong, match[5] || match[6] || "");
+          target.appendChild(strong);
+        } else if (match[7] || match[8]) {
+          const emphasis = document.createElement("em");
+          appendInlineMarkdown(emphasis, match[7] || match[8] || "");
+          target.appendChild(emphasis);
+        } else {
+          target.appendChild(document.createTextNode(match[0]));
+        }
+        remaining = remaining.slice(match.index + match[0].length);
+      }
+    }
+
+    function isMarkdownBlockStart(line) {
+      const trimmed = String(line || "").trim();
+      return /^```/.test(trimmed)
+        || /^#{1,6}\s+/.test(trimmed)
+        || /^>\s?/.test(trimmed)
+        || /^[-*+]\s+/.test(trimmed)
+        || /^\d+[.)]\s+/.test(trimmed);
+    }
+
+    function renderMarkdown(markdown) {
+      const fragment = document.createDocumentFragment();
+      const lines = String(markdown || "").replace(/\r\n?/g, "\n").split("\n");
+      let index = 0;
+
+      while (index < lines.length) {
+        const rawLine = lines[index];
+        const line = String(rawLine || "");
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          index += 1;
+          continue;
+        }
+
+        if (/^```/.test(trimmed)) {
+          index += 1;
+          const codeLines = [];
+          while (index < lines.length && !/^```/.test(String(lines[index] || "").trim())) {
+            codeLines.push(lines[index]);
+            index += 1;
+          }
+          if (index < lines.length) index += 1;
+          const pre = document.createElement("pre");
+          const code = document.createElement("code");
+          code.textContent = codeLines.join("\n");
+          pre.appendChild(code);
+          fragment.appendChild(pre);
+          continue;
+        }
+
+        const heading = trimmed.match(/^(#{1,6})\s+(.*)$/);
+        if (heading) {
+          const level = Math.min(heading[1].length, 6);
+          const node = document.createElement(`h${level}`);
+          appendInlineMarkdown(node, heading[2]);
+          fragment.appendChild(node);
+          index += 1;
+          continue;
+        }
+
+        if (/^>\s?/.test(trimmed)) {
+          const quoteLines = [];
+          while (index < lines.length && /^>\s?/.test(String(lines[index] || "").trim())) {
+            quoteLines.push(String(lines[index] || "").trim().replace(/^>\s?/, ""));
+            index += 1;
+          }
+          const quote = document.createElement("blockquote");
+          quote.appendChild(renderMarkdown(quoteLines.join("\n")));
+          fragment.appendChild(quote);
+          continue;
+        }
+
+        if (/^[-*+]\s+/.test(trimmed)) {
+          const list = document.createElement("ul");
+          while (index < lines.length) {
+            const current = String(lines[index] || "").trim();
+            const match = current.match(/^[-*+]\s+(.*)$/);
+            if (!match) break;
+            const item = document.createElement("li");
+            appendInlineMarkdown(item, match[1]);
+            list.appendChild(item);
+            index += 1;
+          }
+          fragment.appendChild(list);
+          continue;
+        }
+
+        if (/^\d+[.)]\s+/.test(trimmed)) {
+          const list = document.createElement("ol");
+          while (index < lines.length) {
+            const current = String(lines[index] || "").trim();
+            const match = current.match(/^\d+[.)]\s+(.*)$/);
+            if (!match) break;
+            const item = document.createElement("li");
+            appendInlineMarkdown(item, match[1]);
+            list.appendChild(item);
+            index += 1;
+          }
+          fragment.appendChild(list);
+          continue;
+        }
+
+        const paragraphLines = [];
+        while (index < lines.length) {
+          const current = String(lines[index] || "");
+          const currentTrimmed = current.trim();
+          if (!currentTrimmed) {
+            index += 1;
+            break;
+          }
+          if (paragraphLines.length > 0 && isMarkdownBlockStart(current)) break;
+          paragraphLines.push(currentTrimmed);
+          index += 1;
+        }
+        if (paragraphLines.length > 0) {
+          const paragraph = document.createElement("p");
+          appendInlineMarkdown(paragraph, paragraphLines.join(" "));
+          fragment.appendChild(paragraph);
+        }
+      }
+
+      if (!fragment.childNodes.length) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = String(markdown || "");
+        fragment.appendChild(paragraph);
+      }
+
+      return fragment;
+    }
+
+    function shortenSummary(text, limit = 120) {
+      if (!text || text.length <= limit) return text;
+      let clipped = text.slice(0, limit - 1).trim();
+      const lastSpace = clipped.lastIndexOf(" ");
+      if (lastSpace > 48) clipped = clipped.slice(0, lastSpace);
+      return clipped.replace(/[ ,;:-]+$/, "") + "...";
+    }
+
+    function comparableSummaryText(text) {
+      return stripMarkdownSummary(text || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+    }
+
+    function shouldShowDetailSummary(task, summary) {
+      if (!summary) return false;
+      const description = task?.description || "";
+      if (!description) return true;
+      const comparableSummary = comparableSummaryText(summary);
+      const comparableDescription = comparableSummaryText(description);
+      if (!comparableSummary || !comparableDescription) return true;
+      if (comparableSummary === comparableDescription) return false;
+      // Detail pages already render the full description below. When the
+      // summary is just the leading sentence/prefix of that description, showing
+      // both reads as a duplicated description in live demos.
+      if (comparableDescription.startsWith(comparableSummary)) return false;
+      const firstDescriptionSentence = comparableDescription.split(/(?<=[.!?])\s+/)[0] || comparableDescription;
+      return comparableSummary !== firstDescriptionSentence;
+    }
+
+    function summaryForTask(task) {
+      const candidate = task?.ai_summary || task?.summary || task?.description;
+      if (!candidate) return "";
+      const cleaned = stripMarkdownSummary(candidate);
+      if (!cleaned) return "";
+      const firstSentence = cleaned.split(/(?<=[.!?])\s+/)[0] || cleaned;
+      return shortenSummary(firstSentence);
+    }
+
+    function normalizeAgentOptions(result) {
+      const data = extractData(result);
+      const items = data?.items || data?.data?.items || data?.agents || [];
+      if (!Array.isArray(items)) return [];
+      return items
+        .map((item) => {
+          const id = item?.id || "";
+          const handle = item?.handle || item?.name || "";
+          const displayName = item?.display_name || item?.name || handle || "Unknown agent";
+          if (!id && !handle) return null;
+          return { id, handle, displayName };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+    }
+
+    function normalizeAssigneeOptions(result) {
+      const data = extractData(result);
+      const items = data?.items || data?.data?.items || data?.members || [];
+      if (!Array.isArray(items)) return [];
+      return items
+        .map((item) => {
+          const id = item?.id || item?.user_id || item?.agent_id || "";
+          const type = String(item?.type || item?.member_type || "").toLowerCase() === "human"
+            ? "user"
+            : String(item?.type || item?.member_type || "agent").toLowerCase();
+          const handle = item?.handle || item?.username || item?.name || "";
+          const displayName = item?.display_name || item?.full_name || item?.name || handle || (type === "user" ? "Unknown user" : "Unknown agent");
+          if (!id) return null;
+          if (type !== "user" && type !== "agent") return null;
+          return { id, type, handle, displayName };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+          if (a.type !== b.type) return a.type === "user" ? -1 : 1;
+          return a.displayName.localeCompare(b.displayName);
+        });
+    }
+
+    function truncateMiddle(value, limit = 54) {
+      const text = String(value || "");
+      if (text.length <= limit) return text;
+      const headLength = Math.ceil((limit - 3) * 0.58);
+      const tailLength = Math.floor((limit - 3) * 0.42);
+      return text.slice(0, headLength).trimEnd() + "..." + text.slice(-tailLength).trimStart();
+    }
+
+    function assigneeOptionValue(assignee) {
+      return assignee?.id ? `${assignee.type}:${assignee.id}` : "";
+    }
+
+    function parseAssigneeOptionValue(value) {
+      const [type, ...idParts] = String(value || "").split(":");
+      const id = idParts.join(":");
+      if ((type === "user" || type === "agent") && id) return { assignee_type: type, assignee_id: id };
+      return { assignee_type: null, assignee_id: null };
+    }
+
+    function agentOptionLabel(agent) {
+      const prefix = agent?.type === "user" ? "User" : "Agent";
+      const full = agent?.handle ? `${agent.displayName} (@${agent.handle})` : (agent?.displayName || `Unknown ${prefix.toLowerCase()}`);
+      return `${prefix}: ${truncateMiddle(full, 56)}`;
+    }
+
+    function currentAssigneeValue(task) {
+      const assignee = task?.assignee;
+      if (!assignee?.id) return "";
+      const type = assignee.type === "user" ? "user" : "agent";
+      return `${type}:${assignee.id}`;
+    }
+
+    function assigneeOptionLabel(agent) {
+      const prefix = agent?.type === "user" ? "User" : "Agent";
+      const full = agent?.handle ? `${agent.displayName} (@${agent.handle})` : (agent?.displayName || `Unknown ${prefix.toLowerCase()}`);
+      return truncateMiddle(full, 64);
+    }
+
+    function assigneeLabel(task) {
+      const assignee = task?.assignee;
+      if (!assignee) return "Unassigned";
+      if (assignee.type === "user") return assignee.display_name || assignee.full_name || assignee.handle || "Assigned user";
+      if (assignee.handle) return `@${assignee.handle}`;
+      if (assignee.display_name) return assignee.display_name;
+      const matched = state.assignees.find((agent) => agent.id && agent.id === assignee.id);
+      if (matched) return matched.handle ? `@${matched.handle}` : matched.displayName;
+      return assignee.id ? "Assigned" : "Unassigned";
+    }
+
+    function actorLabel(actor, fallback = "Not set") {
+      if (!actor || typeof actor !== "object") return fallback;
+      if (actor.handle) return `@${actor.handle}`;
+      if (actor.display_name) return actor.display_name;
+      if (actor.name) return actor.name;
+      if (actor.username) return `@${actor.username}`;
+      return actor.id ? "Set" : fallback;
+    }
+
+    function ownerLabel(task) {
+      return actorLabel(task?.owner || task?.creator, "Unowned");
+    }
+
+    function creatorLabel(task) {
+      return actorLabel(task?.creator, "Unknown");
+    }
+
+    function formatQueueLabel(value) {
+      const queue = String(value || "").trim();
+      if (!queue) return "";
+      return queue.replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
+    }
+
+    function taskCopyableRef(task) {
+      const structuredRef = task?.task_reference?.copyable_ref;
+      if (structuredRef) return String(structuredRef);
+      if (task?.task_ref) return String(task.task_ref);
+      const displayId = task?.task_display_id || task?.display_id;
+      // Backend emits task_legacy for unnumbered tasks; prefer UUID over a non-copyable sentinel.
+      if (displayId && displayId !== "task_legacy") return String(displayId);
+      return task?.id ? String(task.id) : "";
+    }
+
+    function isSafeTaskLink(value) {
+      const url = String(value || "").trim();
+      return /^https?:\/\//i.test(url) || (url.startsWith("/") && !url.startsWith("//"));
+    }
+
+    function isExternalTaskLink(value) {
+      return /^https?:\/\//i.test(String(value || "").trim());
+    }
+
+    function taskDeepLink(task) {
+      const structuredLink = task?.task_reference?.deep_link;
+      if (structuredLink && isSafeTaskLink(structuredLink)) return String(structuredLink);
+      const flatLink = task?.task_deep_link;
+      if (flatLink && isSafeTaskLink(flatLink)) return String(flatLink);
+      const ref = taskCopyableRef(task);
+      if (!ref) return "";
+      const query = task?.space_id ? `?space_id=${encodeURIComponent(String(task.space_id))}` : "";
+      return `/ax/tasks/${encodeURIComponent(ref)}${query}`;
+    }
+
+    async function copyTaskRef(task, button) {
+      const ref = taskCopyableRef(task);
+      if (!ref) return;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(ref);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = ref;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        try {
+          textarea.select();
+          const ok = document.execCommand("copy");
+          if (!ok) throw new Error("copy command failed");
+        } finally {
+          textarea.remove();
+        }
+      }
+      if (button) {
+        const original = button.textContent;
+        button.textContent = "Copied";
+        setTimeout(() => { button.textContent = original; }, 1200);
+      }
+    }
+
+    function latestActivityLabel(activity) {
+      if (!Array.isArray(activity) || !activity.length) return "No activity yet";
+      const item = activity[0] || {};
+      const summary = [item.actor_label, item.summary].filter(Boolean).join(": ");
+      if (summary) return shortenSummary(summary, 86);
+      if (item.timestamp) return "Updated " + relDate(item.timestamp);
+      return "Activity update";
+    }
+
+    function provenanceLabel(provenance) {
+      if (!provenance || typeof provenance !== "object") return "No linked source";
+      if (provenance.label) return provenance.label;
+      if (provenance.kind && provenance.id) return `${provenance.kind}: ${truncateMiddle(provenance.id, 34)}`;
+      if (provenance.id) return truncateMiddle(provenance.id, 34);
+      return "Linked source";
+    }
+
+    function isUsefulSignal(value) {
+      const text = String(value || "").trim();
+      if (!text) return false;
+      const normalized = text.toLowerCase().replace(/[.]+$/, "");
+      return ![
+        "unknown",
+        "unowned",
+        "unassigned",
+        "not queued",
+        "no reminder",
+        "no reminder armed",
+        "no reminder policy configured yet",
+        "no supervisor pulse",
+        "no linked source",
+        "no activity yet",
+        "not set",
+      ].includes(normalized);
+    }
+
+    function appendPulseItem(root, label, value, testId, options = {}) {
+      if (!options.always && !isUsefulSignal(value)) return false;
+      const item = el("div", { className: "pulse-item", "data-testid": testId });
+      item.appendChild(el("div", { className: "pulse-label" }, label));
+      item.appendChild(el(
+        "div",
+        { className: "pulse-value" + (value ? "" : " pulse-muted") },
+        value || "Not set",
+      ));
+      root.appendChild(item);
+      return true;
+    }
+
+    function renderWorkPulse(detail, task) {
+      const pulse = el("div", { className: "work-pulse", "data-testid": "task-work-pulse" });
+      let count = 0;
+      count += appendPulseItem(pulse, "Owner", ownerLabel(task), "task-work-pulse-owner") ? 1 : 0;
+      count += appendPulseItem(pulse, "Assignee", assigneeLabel(task), "task-work-pulse-assignee") ? 1 : 0;
+      count += appendPulseItem(pulse, "Supervisor", formatSupervisorPulseLabel(detail, task), "task-work-pulse-supervisor") ? 1 : 0;
+      count += appendPulseItem(pulse, "Last received", formatPulseTimestamp(supervisorPulseSource(detail, task).last_received_at), "task-work-pulse-last-received") ? 1 : 0;
+      count += appendPulseItem(pulse, "Working", formatSupervisorWorkingLabel(detail, task), "task-work-pulse-working") ? 1 : 0;
+      count += appendPulseItem(pulse, "Last result", formatSupervisorResultLabel(detail, task), "task-work-pulse-last-result") ? 1 : 0;
+      count += appendPulseItem(pulse, "Backlog", formatSupervisorBacklogLabel(detail, task), "task-work-pulse-backlog") ? 1 : 0;
+      count += appendPulseItem(pulse, "Stale", formatStaleDuration(supervisorPulseSource(detail, task).stale_duration_seconds, supervisorPulseSource(detail, task).stale_since), "task-work-pulse-stale") ? 1 : 0;
+      count += appendPulseItem(pulse, "Missing", formatMissingSignalsLabel(detail, task), "task-work-pulse-missing-signals") ? 1 : 0;
+      count += appendPulseItem(pulse, "Queue", formatQueueLabel(task.queue_state) || "Not queued", "task-work-pulse-queue") ? 1 : 0;
+      const pulseReminder = projectedReminder(task, detail);
+      count += appendPulseItem(pulse, "Reminder", pulseReminder.label || "No reminder", "task-work-pulse-reminder") ? 1 : 0;
+      count += appendPulseItem(pulse, "Latest", latestActivityLabel(detail.activity), "task-work-pulse-activity") ? 1 : 0;
+      count += appendPulseItem(pulse, "Source", provenanceLabel(detail.provenance), "task-work-pulse-source") ? 1 : 0;
+      if (!count) {
+        pulse.className += " is-empty";
+        pulse.textContent = "No assignment, reminder, queue, or supervisor activity yet.";
+      }
+      return pulse;
+    }
+
+    function appendDetailField(root, label, value, testId, options = {}) {
+      if (!options.always && !isUsefulSignal(value)) return false;
+      const field = el("div", { className: "field" + (options.optional ? " optional-signal" : "") });
+      field.appendChild(el("div", { className: "field-label" }, label));
+      field.appendChild(el("div", { className: "field-value", "data-testid": testId }, value || "Not set"));
+      root.appendChild(field);
+      return true;
+    }
+
+    function stripStateClass(value) {
+      return String(value || "").toLowerCase().replace(/[^a-z0-9_-]+/g, "_");
+    }
+
+    function renderStripChip(label, value, stateClass, testId) {
+      const chip = el("div", { className: "strip-chip", "data-testid": testId });
+      chip.appendChild(el("span", { className: "strip-dot " + stripStateClass(stateClass) }));
+      chip.appendChild(el("span", { className: "strip-label" }, label));
+      chip.appendChild(el("span", { className: value ? "" : "strip-chip-muted" }, value || "Not set"));
+      return chip;
+    }
+
+    function renderReminderActionStrip(detail, task) {
+      const reminder = projectedReminder(task, detail);
+      const reminderState = reminder.state;
+      const strip = el("div", { className: "reminder-action-strip", "data-testid": "task-reminder-action-strip" });
+      const chips = el("div", { className: "reminder-strip-chips", "data-testid": "task-reminder-strip-chips" });
+      chips.appendChild(renderStripChip(
+        "Reminder",
+        reminder.label || "No reminder armed",
+        reminderState,
+        "task-reminder-strip-state",
+      ));
+      chips.appendChild(renderStripChip(
+        "Supervisor",
+        formatSupervisorPulseLabel(detail, task),
+        supervisorPulseState(detail, task),
+        "task-supervisor-pulse-state",
+      ));
+      strip.appendChild(chips);
+
+      const actions = el("div", { className: "strip-actions", "data-testid": "task-reminder-strip-actions" });
+      const done = DONE_STATUSES.includes(String(task.status || "").toLowerCase());
+      if (done) {
+        actions.appendChild(el("button", { className: "strip-action-btn", type: "button", disabled: "disabled", "data-testid": "task-reminder-strip-terminal" }, "Closed"));
+      } else {
+        const completeBtn = el("button", { className: "strip-action-btn", type: "button", "data-testid": "task-reminder-strip-complete" }, "Mark done");
+        completeBtn.addEventListener("click", async () => {
+          await updateTask(task.id, { status: "completed" });
+        });
+        actions.appendChild(completeBtn);
+
+        const cancelTaskBtn = el("button", { className: "strip-action-btn", type: "button", "data-testid": "task-reminder-strip-cancel-task" }, "Cancel task");
+        cancelTaskBtn.addEventListener("click", async () => {
+          await updateTask(task.id, { status: "cancelled" });
+        });
+        actions.appendChild(cancelTaskBtn);
+      }
+      if (!done) {
+        const nudgeBtn = el("button", { className: "strip-action-btn", type: "button", "data-testid": "task-reminder-strip-nudge" }, "Nudge now");
+        nudgeBtn.addEventListener("click", async () => {
+          // Out-of-band nudge: fires immediately even while recurring reminder
+          // delivery is paused. Rescheduling next_fire_at silently no-ops under
+          // a pause, so it is NOT a substitute for this call.
+          await nudgeTask(task.id);
+        });
+        actions.appendChild(nudgeBtn);
+      }
+
+      if (!done && hasArmedReminder(task, detail)) {
+        for (const snooze of [
+          { label: "Snooze 10m", until: () => minutesFromNowIso(10), testId: "task-reminder-strip-snooze" },
+          { label: "Snooze 1h", until: () => minutesFromNowIso(60), testId: "task-reminder-strip-snooze-1h" },
+          { label: "Snooze 4h", until: () => minutesFromNowIso(240), testId: "task-reminder-strip-snooze-4h" },
+          { label: "Snooze tomorrow 9", until: () => tomorrowMorningIso(9), testId: "task-reminder-strip-snooze-tomorrow" },
+          { label: "Snooze 3d", until: () => minutesFromNowIso(3 * 24 * 60), testId: "task-reminder-strip-snooze-3d" },
+          { label: "Snooze 1w", until: () => minutesFromNowIso(7 * 24 * 60), testId: "task-reminder-strip-snooze-1w" },
+        ]) {
+          const snoozeBtn = el("button", { className: "strip-action-btn", type: "button", "data-testid": snooze.testId }, snooze.label);
+          snoozeBtn.addEventListener("click", async () => {
+            const snoozedUntil = snooze.until();
+            // Backend treats reminder snooze as postponement of the existing
+            // cadence, not enablement for unarmed tasks.
+            await updateTask(task.id, { reminder_action: "snooze", snoozed_until: snoozedUntil });
+          });
+          actions.appendChild(snoozeBtn);
+        }
+
+        const indefiniteBtn = el("button", { className: "strip-action-btn", type: "button", "data-testid": "task-reminder-strip-snooze-indefinite" }, "Snooze until re-enabled");
+        indefiniteBtn.addEventListener("click", async () => {
+          await updateTask(task.id, { reminder_action: "snooze", snoozed_until: "9999-12-31T23:59:59.000Z" });
+        });
+        actions.appendChild(indefiniteBtn);
+
+        const cancelReminderBtn = el("button", { className: "strip-action-btn", type: "button", "data-testid": "task-reminder-strip-cancel" }, "Cancel reminder");
+        cancelReminderBtn.addEventListener("click", async () => {
+          await updateTask(task.id, { reminder_action: "cancel" });
+        });
+        actions.appendChild(cancelReminderBtn);
+      } else if (!done) {
+        const scheduleUntilDoneBtn = el("button", { className: "strip-action-btn", type: "button", "data-testid": "task-reminder-strip-schedule-until-done" }, "Remind until done");
+        scheduleUntilDoneBtn.addEventListener("click", async () => {
+          await updateTask(task.id, { reminder_action: "schedule", reminder_cadence_minutes: 10, reminder_until_done: true, next_fire_at: minutesFromNowIso(10) });
+        });
+        actions.appendChild(scheduleUntilDoneBtn);
+      }
+      strip.appendChild(actions);
+      return strip;
+    }
+
+    const MAX_REMINDER_AUDIT_ROWS = 5;
+
+    function normalizeReminderHistory(reminder, detail) {
+      const events = [];
+      if (Array.isArray(reminder?.history)) events.push(...reminder.history);
+      if (Array.isArray(detail?.activity)) {
+        const reminderEventPattern = /reminder|snooze|nudge/i;
+        events.push(...detail.activity.filter((item) => {
+          const typedEvent = String(item?.type || item?.event || "");
+          if (typedEvent) return reminderEventPattern.test(typedEvent);
+          return reminderEventPattern.test(String(item?.summary || ""));
+        }));
+      }
+      const timestamp = (item) => new Date(item?.created_at || item?.timestamp || item?.at || item?.fired_at || item?.updated_at || 0).getTime() || 0;
+      const deduped = [];
+      const seen = new Set();
+      for (const event of events) {
+        const key = JSON.stringify([
+          event?.id || event?.dedupe_key || "",
+          event?.event || event?.type || event?.action || "",
+          event?.created_at || event?.timestamp || event?.at || event?.fired_at || event?.updated_at || "",
+          event?.summary || event?.message || event?.details || "",
+        ]);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(event);
+      }
+      deduped.sort((a, b) => timestamp(b) - timestamp(a));
+      return { items: deduped.slice(0, MAX_REMINDER_AUDIT_ROWS), total: deduped.length };
+    }
+
+    function reminderAuditLabel(item) {
+      const event = item?.event || item?.type || item?.action || item?.summary || "Reminder event";
+      const actor = item?.actor_label || item?.actor || item?.created_by || item?.target_assignee || "system";
+      const reason = item?.reason || item?.message || item?.details || item?.dedupe_key || "";
+      return [String(actor), String(event), reason ? String(reason) : null].filter(Boolean).join(" · ");
+    }
+
+    function renderReminderHistoryDrawer(reminder, detail) {
+      const drawer = el("details", { className: "metadata-drawer", "data-testid": "task-reminder-history-drawer" });
+      drawer.appendChild(el("summary", null, "Reminder history / audit"));
+      const history = normalizeReminderHistory(reminder, detail);
+      const events = history.items;
+      if (!events.length) {
+        drawer.appendChild(el("div", { className: "audit-empty", "data-testid": "task-reminder-history-empty" }, "No reminder history returned yet."));
+        return drawer;
+      }
+      for (const item of events) {
+        const at = item?.created_at || item?.timestamp || item?.at || item?.fired_at || item?.updated_at;
+        const row = el("div", { className: "audit-row", "data-testid": "task-reminder-history-row" });
+        row.appendChild(el("strong", null, at ? relDate(at) : "recent"));
+        row.appendChild(el("span", null, reminderAuditLabel(item)));
+        drawer.appendChild(row);
+      }
+      if (history.total > events.length) {
+        drawer.appendChild(el("div", { className: "audit-empty", "data-testid": "task-reminder-history-truncated" }, `Showing ${events.length} of ${history.total} reminder event(s).`));
+      }
+      return drawer;
+    }
+
+    function timeoutAfter(ms, message) {
+      return new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error(message)), ms);
+      });
+    }
+
+    async function callServerToolWithTimeout(name, args, timeoutMs, message) {
+      return Promise.race([
+        host.callServerTool(name, args),
+        timeoutAfter(timeoutMs, message),
+      ]);
+    }
+
+    async function ensureAgentsLoaded() {
+      if (state.agentsLoaded || state.loadingAgents) return;
+      state.loadingAgents = true;
+      state.agentsLoadError = null;
+      try {
+        const memberRes = await callServerToolWithTimeout(
+          "spaces",
+          { action: "members" },
+          10000,
+          "Space member list did not respond in time.",
+        );
+        const assignees = normalizeAssigneeOptions(memberRes);
+        if (assignees.length) {
+          state.assignees = assignees;
+          state.agents = assignees.filter((item) => item.type === "agent");
+        } else {
+          const agentRes = await callServerToolWithTimeout(
+            "agents",
+            { action: "list", limit: 100, offset: 0 },
+            10000,
+            "Agent list did not respond in time.",
+          );
+          state.agents = normalizeAgentOptions(agentRes).map((agent) => ({ ...agent, type: "agent" }));
+          state.assignees = state.agents;
+        }
+        state.agentsLoaded = true;
+      } catch (error) {
+        const message = errorMessageFromUnknown(error, "Could not load agent list.");
+        state.agents = [];
+        state.assignees = [];
+        state.agentsLoaded = true;
+        state.agentsLoadError = message;
+        state.notice = { severity: "error", message };
+      } finally {
+        state.loadingAgents = false;
+        if (state.view === "detail") {
+          render();
+          notifyHostHeight();
+        }
+      }
+    }
+
+    function taskMatchesAssigneeSelection(task, expectedAssignee) {
+      if (!expectedAssignee) return true;
+      const expectedId = expectedAssignee.assignee_id || "";
+      const expectedType = expectedAssignee.assignee_type || "";
+      const currentAssignee = task?.assignee || {};
+      const currentId = currentAssignee.id || task?.assignee_id || task?.assigned_agent_id || "";
+      const currentType = currentAssignee.type || task?.assignee_type || (task?.assigned_agent_id ? "agent" : "");
+
+      if (!expectedId) return !currentId;
+      return currentId === expectedId && (!expectedType || !currentType || currentType === expectedType);
+    }
+
+    async function nudgeTask(taskId) {
+      try {
+        const res = await host.callServerTool("tasks", { action: "nudge", task_id: taskId });
+        return handleResult(res, "detail", { preserveViewport: true });
+      } catch (error) {
+        showTaskError(errorMessageFromUnknown(error));
+        return false;
+      }
+    }
+
+    async function setReminderPause(paused) {
+      try {
+        const res = await host.callServerTool("tasks", {
+          action: "reminder_pause",
+          reminder_paused: paused,
+          reminder_pause_reason: paused ? "Muted from task board" : "Unmuted from task board",
+        });
+        const data = extractData(res);
+        if (data?.state === "error" || data?.error) {
+          showTaskError(data.error || "Failed to update reminder mute state.");
+          return false;
+        }
+        state.notice = {
+          severity: "info",
+          message: paused ? "Task reminders muted for this space." : "Task reminders unmuted for this space.",
+        };
+        render();
+        notifyHostHeight();
+        return true;
+      } catch (error) {
+        showTaskError(errorMessageFromUnknown(error, "Failed to update reminder mute state."));
+        return false;
+      }
+    }
+
+    async function updateTask(taskId, fields, options = {}) {
+      try {
+        const payload = { action: "update", task_id: taskId, ...fields };
+        const updateRes = await host.callServerTool("tasks", payload);
+        const ok = handleResult(updateRes, "detail", { preserveViewport: true });
+        if (ok && options.expectedAssignee && !taskMatchesAssigneeSelection(state.selected?.task, options.expectedAssignee)) {
+          showTaskError("Assignment did not update. The server returned the previous assignee, so the change was not saved.");
+          render();
+          notifyHostHeight();
+          return false;
+        }
+        return ok;
+      } catch (error) {
+        showTaskError(errorMessageFromUnknown(error));
+        return false;
+      }
+    }
+
+    function resetViewport() {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    }
+
+    // XSS-safe text escaper: uses DOM textContent to neutralize HTML entities
+    function esc(s) { const d = document.createElement("div"); d.textContent = String(s || ""); return d.innerHTML; }
+
+    // Safe DOM builder: creates element, sets textContent (not innerHTML), returns element
+    function el(tag, attrs, text) {
+      const e = document.createElement(tag);
+      if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === "className") e.className = v;
+        else if (k.startsWith("data-")) e.setAttribute(k, v);
+        else e.setAttribute(k, v);
+      });
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    function render() {
+      const root = document.getElementById("app");
+      root.textContent = "";
+      if (!state.hydrated) {
+        renderBootstrapState(root);
+        return;
+      }
+      if (state.notice) {
+        const severity = typeof state.notice === "string" ? "error" : (state.notice.severity || "info");
+        const message = typeof state.notice === "string" ? state.notice : (state.notice.message || "");
+        // Signal cards own success/info receipts; the app surface only needs blocking errors.
+        if (severity === "error") {
+          root.appendChild(el("div", { className: "notice notice-error" }, message));
+        }
+      }
+      if (state.showCreate) { renderCreate(root); return; }
+      if (state.view === "detail" && state.selected) { renderDetail(root); return; }
+      renderList(root);
+    }
+
+    function buildListArgs() {
+      const args = { action: "list", limit: state.limit, offset: state.offset };
+      if (state.activeFilter) args.filter = state.activeFilter;
+      if (state.activeStatus) args.status = state.activeStatus;
+      return args;
+    }
+
+    async function fetchList() {
+      // Fetch first page
+      const res = await host.callServerTool("tasks", buildListArgs());
+      const ok = handleResult(res);
+      if (!ok) {
+        throw new Error(extractErrorMessage(res) || state.bootstrapError || "Task request failed.");
+      }
+
+      // If there are more tasks, fetch remaining pages in background for accurate counts
+      if (state.total > state.tasks.length) {
+        let offset = state.tasks.length;
+        while (offset < state.total) {
+          const args = buildListArgs();
+          args.offset = offset;
+          const more = await host.callServerTool("tasks", args);
+          const moreData = extractData(more);
+          if (!moreData) break;
+          const moreItems = moreData.data?.items || moreData.tasks || [];
+          if (moreItems.length === 0) break;
+          state.tasks = state.tasks.concat(moreItems);
+          offset += moreItems.length;
+        }
+        render(); // Re-render with accurate counts
+      }
+    }
+
+    // DONE_STATUSES is declared at the top of the script block alongside
+    // isTerminalTaskStatus / projectedReminder; the original declaration
+    // here was kept for proximity to the status filter UI but is now
+    // redundant. Keep this comment as a breadcrumb.
+    const STATUS_OPTIONS = [
+      { value: "not_started", label: "Open" },
+      { value: "in_progress", label: "In progress" },
+      { value: "blocked", label: "Blocked" },
+      { value: "completed", label: "Completed" },
+      { value: "cancelled", label: "Cancelled" },
+    ];
+    function canonicalStatusValue(value) {
+      const status = String(value || "").trim().toLowerCase();
+      if (!status || status === "open" || status === "pending" || status === "assigned") return "not_started";
+      if (status === "canceled") return "cancelled";
+      return status;
+    }
+
+    function getDisplayTasks() {
+      let tasks = [...state.tasks];
+      // Exclude completed/cancelled unless viewing that filter specifically
+      if (state.excludeDone) {
+        tasks = tasks.filter(t => !DONE_STATUSES.includes((t.status || "").toLowerCase()));
+      }
+      // Client-side priority/reminder/assignee filters (backend support is partial).
+      if (state.activePriority) {
+        tasks = tasks.filter(t => normalizePriorityValue(t.priority) === state.activePriority);
+      }
+      if (state.activeReminderFilter) {
+        tasks = tasks.filter(t => matchesReminderFilter(t, state.activeReminderFilter));
+      }
+      if (state.activeAssignee) {
+        tasks = tasks.filter(t => taskAssigneeKey(t) === state.activeAssignee);
+      }
+      tasks.sort((a, b) => {
+        const aUpdated = new Date(a?.updated_at || a?.created_at || 0).getTime() || 0;
+        const bUpdated = new Date(b?.updated_at || b?.created_at || 0).getTime() || 0;
+
+        if (state.sortMode === "priority") {
+          const priorityDelta = getPriorityWeight(b?.priority) - getPriorityWeight(a?.priority);
+          if (priorityDelta !== 0) return priorityDelta;
+          return bUpdated - aUpdated;
+        }
+
+        if (state.sortMode === "oldest") {
+          return aUpdated - bUpdated;
+        }
+
+        return bUpdated - aUpdated;
+      });
+      return tasks;
+    }
+
+    function renderList(root) {
+      const displayTasks = getDisplayTasks();
+      const statusCounts = getStatusCounts(state.tasks, state.activeFilter);
+      const hasActiveFilters = Boolean(state.activeFilter || state.activeStatus || state.activePriority || state.activeReminderFilter || state.activeAssignee || !state.excludeDone);
+
+      // Header with stats
+      const header = el("div", { className: "header", "data-testid": "tasks-widget-header" });
+      const headerMain = el("div", { className: "header-main" });
+      headerMain.appendChild(el("h2", { "data-testid": "tasks-widget-title" }, "Tasks"));
+
+      const stats = el("div", { className: "count", "data-testid": "tasks-widget-counts" });
+      const totalStat = el("span", { className: "stat" });
+      totalStat.appendChild(el("span", { className: "stat-num" }, String(state.total)));
+      totalStat.appendChild(document.createTextNode(" total"));
+      stats.appendChild(totalStat);
+
+      stats.appendChild(el("span", { className: "stat-divider" }, "|"));
+
+      const openStat = el("span", { className: "stat" });
+      openStat.appendChild(el("span", { className: "stat-num", style: "color: var(--ax-accent)" }, String(statusCounts.open)));
+      openStat.appendChild(document.createTextNode(" open"));
+      stats.appendChild(openStat);
+
+      stats.appendChild(el("span", { className: "stat-divider" }, "|"));
+
+      const doneStat = el("span", { className: "stat" });
+      doneStat.appendChild(el("span", { className: "stat-num" }, String(statusCounts.completed)));
+      doneStat.appendChild(document.createTextNode(" done"));
+      stats.appendChild(doneStat);
+
+      headerMain.appendChild(stats);
+      header.appendChild(headerMain);
+
+      const headerActions = el("div", { className: "header-actions" });
+      const createBtn = el(
+        "button",
+        {
+          className: "primary-action",
+          type: "button",
+          "data-testid": "tasks-create-button",
+        },
+        "+ New Task",
+      );
+      createBtn.addEventListener("click", () => {
+        state.showCreate = true;
+        render();
+        notifyHostHeight();
+      });
+      headerActions.appendChild(createBtn);
+      const muteBtn = el("button", { className: "btn-secondary", type: "button", "data-testid": "tasks-mute-reminders" }, "Mute reminders");
+      muteBtn.addEventListener("click", async () => {
+        await setReminderPause(true);
+      });
+      headerActions.appendChild(muteBtn);
+      const unmuteBtn = el("button", { className: "btn-secondary", type: "button", "data-testid": "tasks-unmute-reminders" }, "Unmute");
+      unmuteBtn.addEventListener("click", async () => {
+        await setReminderPause(false);
+      });
+      headerActions.appendChild(unmuteBtn);
+      header.appendChild(headerActions);
+      root.appendChild(header);
+
+      // Status and priority filter rows
+      const filtersDiv = el("div", { className: "filters" });
+      const statusRow = el("div", { className: "filter-row", "data-testid": "tasks-status-row" });
+      statusRow.appendChild(el("span", { className: "filter-row-label" }, "Status"));
+
+      const statusFilters = [
+        { label: "Open", filter: "", status: "", excludeDone: true, count: statusCounts.open, testId: "tasks-filter-open" },
+        { label: "My Tasks", filter: "my_tasks", status: "", excludeDone: true, count: statusCounts.my_tasks, testId: "tasks-filter-my-tasks" },
+        { label: "Pending", filter: "", status: "pending", excludeDone: false, count: statusCounts.pending, testId: "tasks-filter-pending" },
+        { label: "In Progress", filter: "", status: "in_progress", excludeDone: false, count: statusCounts.in_progress, testId: "tasks-filter-in-progress" },
+        { label: "Completed", filter: "", status: "completed", excludeDone: false, count: statusCounts.completed, testId: "tasks-filter-completed" },
+      ];
+      for (const f of statusFilters) {
+        const active = (state.activeFilter || "") === f.filter && (state.activeStatus || "") === f.status && state.excludeDone === !!f.excludeDone;
+        const btn = el("button", {
+          className: "filter-btn" + (active ? " active" : ""),
+          "data-filter": f.filter,
+          "data-status": f.status,
+          "data-testid": f.testId,
+          type: "button",
+        });
+        btn.appendChild(document.createTextNode(f.label));
+        if (Number.isFinite(f.count)) {
+          btn.appendChild(el("span", { className: "filter-count" }, String(f.count)));
+        }
+        btn.addEventListener("click", async () => {
+          state.activeFilter = f.filter || null;
+          state.activeStatus = f.status || null;
+          state.excludeDone = !!f.excludeDone;
+          state.offset = 0;
+          render();
+          try {
+            await fetchList();
+          } catch (error) {
+            showTaskError(errorMessageFromUnknown(error));
+          }
+        });
+        statusRow.appendChild(btn);
+      }
+      filtersDiv.appendChild(statusRow);
+
+      const priorityRow = el("div", { className: "filter-row", "data-testid": "tasks-priority-row" });
+      priorityRow.appendChild(el("span", { className: "filter-row-label" }, "Priority"));
+      const priorities = [
+        { label: "Critical", value: "critical" },
+        { label: "High", value: "high" },
+        { label: "Medium", value: "medium" },
+        { label: "Low", value: "low" },
+      ];
+      for (const p of priorities) {
+        const active = state.activePriority === p.value;
+        const btn = el("button", {
+          className: "filter-btn" + (active ? " active" : ""),
+          "data-testid": `tasks-priority-${p.value}`,
+          type: "button",
+        }, p.label);
+        btn.addEventListener("click", () => {
+          state.activePriority = state.activePriority === p.value ? null : p.value;
+          render();
+          notifyHostHeight();
+        });
+        priorityRow.appendChild(btn);
+      }
+      filtersDiv.appendChild(priorityRow);
+
+      const reminderRow = el("div", { className: "filter-row", "data-testid": "tasks-reminder-filter-row" });
+      reminderRow.appendChild(el("span", { className: "filter-row-label" }, "Reminder"));
+      for (const f of [
+        { label: "Armed", value: "armed", testId: "tasks-reminder-filter-armed" },
+        { label: "Overdue", value: "overdue", testId: "tasks-reminder-filter-overdue" },
+        { label: "No reminder", value: "none", testId: "tasks-reminder-filter-none" },
+        { label: "Snoozed", value: "snoozed", testId: "tasks-reminder-filter-snoozed" },
+        { label: "Noisy", value: "noisy", testId: "tasks-reminder-filter-noisy" },
+        { label: "Mine due", value: "mine_due", filter: "my_tasks", testId: "tasks-reminder-filter-mine-due" },
+      ]) {
+        const active = state.activeReminderFilter === f.value && (!f.filter || state.activeFilter === f.filter);
+        const btn = el("button", { className: "filter-btn" + (active ? " active" : ""), "data-testid": f.testId, type: "button" }, f.label);
+        btn.addEventListener("click", async () => {
+          const nextActive = state.activeReminderFilter === f.value ? null : f.value;
+          state.activeReminderFilter = nextActive;
+          if (f.filter) state.activeFilter = nextActive ? f.filter : null;
+          state.excludeDone = true;
+          state.offset = 0;
+          render();
+          try { await fetchList(); } catch (error) { showTaskError(errorMessageFromUnknown(error)); }
+        });
+        reminderRow.appendChild(btn);
+      }
+      filtersDiv.appendChild(reminderRow);
+
+      const assigneeRow = el("div", { className: "filter-row", "data-testid": "tasks-assignee-filter-row" });
+      assigneeRow.appendChild(el("span", { className: "filter-row-label" }, "Assignee"));
+      const assigneeFilter = document.createElement("select");
+      assigneeFilter.className = "sort-select";
+      assigneeFilter.setAttribute("data-testid", "tasks-assignee-filter");
+      assigneeFilter.appendChild(el("option", { value: "" }, "Any assignee"));
+      const seenAssignees = new Set();
+      for (const task of state.tasks) {
+        const key = taskAssigneeKey(task);
+        if (!key || seenAssignees.has(key)) continue;
+        seenAssignees.add(key);
+        const option = el("option", { value: key }, assigneeLabel(task));
+        if (state.activeAssignee === key) option.selected = true;
+        assigneeFilter.appendChild(option);
+      }
+      assigneeFilter.addEventListener("change", () => {
+        state.activeAssignee = assigneeFilter.value;
+        render();
+        notifyHostHeight();
+      });
+      assigneeRow.appendChild(assigneeFilter);
+      filtersDiv.appendChild(assigneeRow);
+      root.appendChild(filtersDiv);
+
+      // Toolbar: sort selector
+      const toolbar = el("div", { className: "toolbar" });
+      toolbar.appendChild(el("div"));
+      const sortGroup = el("div", { className: "sort-wrap", "data-testid": "tasks-sort-wrap" });
+      sortGroup.appendChild(el("span", { className: "toolbar-label" }, "Sort"));
+      const sortSelect = document.createElement("select");
+      sortSelect.className = "sort-select";
+      sortSelect.setAttribute("data-testid", "tasks-sort-select");
+      for (const option of [
+        { value: "newest", label: "Newest" },
+        { value: "oldest", label: "Oldest" },
+        { value: "priority", label: "Priority" },
+      ]) {
+        const opt = el("option", { value: option.value }, option.label);
+        if (option.value === state.sortMode) opt.selected = true;
+        sortSelect.appendChild(opt);
+      }
+      sortSelect.addEventListener("change", () => {
+        state.sortMode = sortSelect.value;
+        render();
+        notifyHostHeight();
+      });
+      sortGroup.appendChild(sortSelect);
+      toolbar.appendChild(sortGroup);
+      root.appendChild(toolbar);
+
+      // Task list
+      const list = el("div", { className: "task-list", "data-testid": "tasks-widget-list" });
+      if (displayTasks.length === 0) {
+        const empty = el("div", { className: "empty-state", "data-testid": "tasks-empty-state" });
+        const emptyMessage = hasActiveFilters
+          ? "No tasks match the current filters."
+          : "No tasks yet. Create your first task from this widget.";
+        empty.appendChild(el("div", null, emptyMessage));
+        const emptyActions = el("div", { className: "empty-actions" });
+        if (hasActiveFilters) {
+          const clearBtn = el("button", { className: "btn-secondary", type: "button" }, "Clear filters");
+          clearBtn.addEventListener("click", async () => {
+            state.activeFilter = null;
+            state.activeStatus = null;
+            state.activePriority = null;
+            state.activeReminderFilter = null;
+            state.activeAssignee = "";
+            state.excludeDone = true;
+            state.offset = 0;
+            render();
+            try {
+              await fetchList();
+            } catch (error) {
+              showTaskError(errorMessageFromUnknown(error));
+            }
+          });
+          emptyActions.appendChild(clearBtn);
+        }
+        const createCta = el("button", { className: "btn-primary", type: "button" }, "Create task");
+        createCta.addEventListener("click", () => {
+          state.showCreate = true;
+          render();
+          notifyHostHeight();
+        });
+        emptyActions.appendChild(createCta);
+        empty.appendChild(emptyActions);
+        list.appendChild(empty);
+      }
+      for (const task of displayTasks) {
+        const st = canonicalStatusValue(task.status || "not_started").replace(/ /g, "_").toLowerCase();
+        const pr = normalizePriorityValue(task.priority);
+        const card = el("div", {
+          className: "task-card",
+          "data-id": task.id || "",
+          "data-testid": task.id ? `task-row-${task.id}` : "task-row",
+          role: "button",
+          tabindex: "0",
+        });
+
+        card.appendChild(el("span", { className: `task-marker priority-${pr}` }));
+
+        const main = el("div", { className: "task-main" });
+        main.appendChild(el("div", { className: "task-title" }, task.title || "Untitled"));
+        const summary = summaryForTask(task);
+        if (summary) {
+          main.appendChild(el("div", { className: "task-summary" }, summary));
+        }
+        const secondaryMeta = el("div", { className: "task-secondary-meta" });
+        secondaryMeta.appendChild(el("span", null, formatPriorityLabel(pr)));
+        if (task.due_at) {
+          secondaryMeta.appendChild(el(
+            "span",
+            { className: "task-due " + dueState(task.due_at), "data-testid": "task-due-label" },
+            formatDueLabel(task.due_at),
+          ));
+        }
+        const reminderLabel = projectedReminder(task).label;
+        if (reminderLabel) {
+          secondaryMeta.appendChild(el(
+            "span",
+            { className: "task-reminder", "data-testid": "task-reminder-label" },
+            reminderLabel,
+          ));
+        }
+        const queueLabel = formatQueueLabel(task.queue_state);
+        if (queueLabel) {
+          secondaryMeta.appendChild(el(
+            "span",
+            { className: "task-queue", "data-testid": "task-queue-label" },
+            queueLabel,
+          ));
+        }
+        const copyableRef = taskCopyableRef(task);
+        if (copyableRef) {
+          secondaryMeta.appendChild(el(
+            "span",
+            { className: "task-ref-chip", "data-testid": "task-ref-chip", title: copyableRef },
+            copyableRef,
+          ));
+        }
+        main.appendChild(secondaryMeta);
+        card.appendChild(main);
+
+        card.appendChild(el("span", { className: "status-pill status-" + st }, task.status_label || st.replace(/_/g, " ")));
+        if (copyableRef) {
+          const copyRefBtn = el("button", { className: "task-ref-action", type: "button", "data-testid": "task-copy-ref", title: `Copy ${copyableRef}` }, "Copy ref");
+          copyRefBtn.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            try {
+              await copyTaskRef(task, copyRefBtn);
+            } catch (error) {
+              showTaskError(errorMessageFromUnknown(error, "Could not copy task reference."));
+            }
+          });
+          card.appendChild(copyRefBtn);
+        }
+        card.appendChild(el("span", { className: "task-assignee" }, assigneeLabel(task)));
+        card.appendChild(el("span", { className: "task-freshness" }, task.updated_at ? relDate(task.updated_at) : ""));
+
+        async function openTaskDetail() {
+          const id = task.id;
+          if (!id) return;
+          try {
+            const res = await host.callServerTool("tasks", { action: "get", task_id: id });
+            handleResult(res, "detail");
+          } catch (error) {
+            showTaskError(errorMessageFromUnknown(error));
+          }
+        }
+
+        card.addEventListener("click", () => { void openTaskDetail(); });
+        card.addEventListener("keydown", (event) => {
+          if (event.target?.closest?.("button, a, input, select, textarea")) return;
+          if (event.key === " ") event.preventDefault();
+          if (event.key === "Enter") {
+            event.preventDefault();
+            void openTaskDetail();
+          }
+        });
+        card.addEventListener("keyup", (event) => {
+          if (event.target?.closest?.("button, a, input, select, textarea")) return;
+          if (event.key !== " ") return;
+          event.preventDefault();
+          void openTaskDetail();
+        });
+        list.appendChild(card);
+      }
+      root.appendChild(list);
+
+    }
+
+    function renderCreate(root) {
+      if (!state.agentsLoaded && !state.loadingAgents) {
+        void ensureAgentsLoaded();
+      }
+
+      const backBtn = el("button", { className: "back-btn", type: "button", "data-testid": "tasks-create-back" }, "\u2190 Cancel");
+      backBtn.addEventListener("click", () => {
+        state.showCreate = false;
+        render();
+        resetViewport();
+        notifyHostHeight();
+      });
+      root.appendChild(backBtn);
+
+      const card = el("div", { className: "detail-card", "data-testid": "tasks-create-view" });
+      card.appendChild(el("div", { className: "detail-title" }, "New Task"));
+      card.appendChild(el("div", { className: "detail-summary" }, "Create a task without leaving the widget. Save keeps you on the new task detail view."));
+
+      const form = el("div", { className: "create-form", "data-testid": "tasks-create-form" });
+
+      const titleField = el("div", { className: "form-field" });
+      titleField.appendChild(el("label", null, "Title"));
+      const titleInput = el("input", { id: "cf-title", placeholder: "Task title", "data-testid": "tasks-create-title" });
+      titleField.appendChild(titleInput);
+      form.appendChild(titleField);
+
+      const descField = el("div", { className: "form-field" });
+      descField.appendChild(el("label", null, "Description"));
+      const descInput = document.createElement("textarea");
+      descInput.id = "cf-desc";
+      descInput.placeholder = "Optional description";
+      descInput.setAttribute("data-testid", "tasks-create-description");
+      descField.appendChild(descInput);
+      form.appendChild(descField);
+
+      const requirementsField = el("div", { className: "form-field" });
+      requirementsField.appendChild(el("label", null, "Requirements"));
+      const requirementsInput = document.createElement("textarea");
+      requirementsInput.id = "cf-requirements";
+      requirementsInput.placeholder = "What should be true when this is done?\n- Expected outcome\n- Constraints\n- Definition of done";
+      requirementsInput.setAttribute("data-testid", "tasks-create-requirements");
+      requirementsField.appendChild(requirementsInput);
+      requirementsField.appendChild(el("div", { className: "field-help" }, "Plain language is fine. Paste JSON only if you need structured fields."));
+      form.appendChild(requirementsField);
+
+      const prioField = el("div", { className: "form-field" });
+      prioField.appendChild(el("label", null, "Priority"));
+      const prioSelect = document.createElement("select");
+      prioSelect.id = "cf-priority";
+      prioSelect.setAttribute("data-testid", "tasks-create-priority");
+      for (const p of ["critical", "high", "medium", "low"]) {
+        const opt = el("option", { value: p }, p.charAt(0).toUpperCase() + p.slice(1));
+        prioSelect.appendChild(opt);
+      }
+      prioField.appendChild(prioSelect);
+      form.appendChild(prioField);
+
+      const deadlineField = el("div", { className: "form-field" });
+      deadlineField.appendChild(el("label", null, "Deadline"));
+      const deadlineInput = document.createElement("input");
+      deadlineInput.type = "datetime-local";
+      deadlineInput.id = "cf-deadline";
+      deadlineInput.setAttribute("data-testid", "tasks-create-deadline");
+      deadlineField.appendChild(deadlineInput);
+      deadlineField.appendChild(el("div", { className: "field-help" }, "Leave blank to create the task without a deadline."));
+      form.appendChild(deadlineField);
+
+      const reminderCadenceField = el("div", { className: "form-field" });
+      reminderCadenceField.appendChild(el("label", null, "Reminder cadence minutes"));
+      const reminderCadenceInput = el("input", { id: "cf-reminder-cadence", type: "number", min: "1", placeholder: "10", "data-testid": "tasks-create-reminder-cadence" });
+      reminderCadenceField.appendChild(reminderCadenceInput);
+      form.appendChild(reminderCadenceField);
+
+      const reminderMaxField = el("div", { className: "form-field" });
+      reminderMaxField.appendChild(el("label", null, "Reminder max count"));
+      const reminderMaxInput = el("input", { id: "cf-reminder-max-count", type: "number", min: "1", placeholder: "5", "data-testid": "tasks-create-reminder-max-count" });
+      reminderMaxField.appendChild(reminderMaxInput);
+      form.appendChild(reminderMaxField);
+
+      const reminderNextField = el("div", { className: "form-field" });
+      reminderNextField.appendChild(el("label", null, "Reminder next fire"));
+      const reminderNextInput = el("input", { id: "cf-reminder-next-fire", type: "datetime-local", "data-testid": "tasks-create-reminder-next-fire" });
+      reminderNextField.appendChild(reminderNextInput);
+      form.appendChild(reminderNextField);
+
+      const reminderUntilField = el("div", { className: "form-field" });
+      const reminderUntilInput = el("input", { id: "cf-reminder-until-done", type: "checkbox", "data-testid": "tasks-create-reminder-until-done" });
+      const reminderUntilRow = el("div", { className: "checkbox-row" });
+      reminderUntilRow.appendChild(reminderUntilInput);
+      reminderUntilRow.appendChild(el("label", { for: "cf-reminder-until-done" }, "Remind until done"));
+      reminderUntilField.appendChild(reminderUntilRow);
+      reminderUntilField.appendChild(el("div", { className: "field-help" }, "Fill at least one reminder field to schedule reminders."));
+      form.appendChild(reminderUntilField);
+
+      const assigneeField = el("div", { className: "form-field" });
+      assigneeField.appendChild(el("label", null, "Assignee"));
+      const assigneeSelect = document.createElement("select");
+      assigneeSelect.id = "cf-assignee";
+      assigneeSelect.setAttribute("data-testid", "tasks-create-assignee");
+      assigneeSelect.appendChild(el("option", { value: "" }, state.loadingAgents ? "Loading assignees..." : "Unassigned"));
+      for (const assignee of state.assignees) {
+        const fullLabel = assignee.handle ? `${assignee.displayName} (@${assignee.handle})` : assignee.displayName;
+        const opt = el("option", { value: assigneeOptionValue(assignee), title: fullLabel }, assigneeOptionLabel(assignee));
+        assigneeSelect.appendChild(opt);
+      }
+      assigneeField.appendChild(assigneeSelect);
+      assigneeField.appendChild(el("div", { className: "field-help" }, state.agentsLoadError || "Assign to a human owner or an agent in this space."));
+      form.appendChild(assigneeField);
+
+      const actions = el("div", { className: "form-actions" });
+      const submitBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "tasks-create-submit" }, "Create task");
+      submitBtn.addEventListener("click", async () => {
+        const title = titleInput.value.trim();
+        if (!title) return;
+        const args = { action: "create", title, priority: prioSelect.value };
+        const desc = descInput.value.trim();
+        if (desc) args.description = desc;
+        const requirementsDraft = parseRequirementsDraft(requirementsInput.value, false);
+        if (!requirementsDraft.ok) {
+          state.notice = { severity: "error", message: requirementsDraft.error };
+          render();
+          notifyHostHeight();
+          return;
+        }
+        if (requirementsDraft.value) args.requirements = requirementsDraft.value;
+        const deadline = fromDateTimeLocalValue(deadlineInput.value);
+        if (deadline) args.deadline = deadline;
+        const reminderArgs = buildReminderScheduleArgs(reminderCadenceInput, reminderMaxInput, reminderUntilInput, reminderNextInput);
+        if (reminderArgs) Object.assign(args, reminderArgs);
+        const selectedAssignee = parseAssigneeOptionValue(assigneeSelect.value);
+        if (selectedAssignee.assignee_id) Object.assign(args, selectedAssignee);
+        state.showCreate = false;
+        try {
+          const createRes = await host.callServerTool("tasks", args);
+          handleResult(createRes, "detail");
+        } catch (error) {
+          showTaskError(errorMessageFromUnknown(error));
+        }
+      });
+      const cancelBtn = el("button", { className: "btn-secondary", type: "button" }, "Keep browsing");
+      cancelBtn.addEventListener("click", () => {
+        state.showCreate = false;
+        render();
+        resetViewport();
+        notifyHostHeight();
+      });
+      actions.appendChild(submitBtn);
+      actions.appendChild(cancelBtn);
+      form.appendChild(actions);
+      card.appendChild(form);
+      root.appendChild(card);
+    }
+
+    function renderDetail(root) {
+      const detail = state.selected || {};
+      const t = detail.task || {};
+      const st = canonicalStatusValue(t.status || "not_started").replace(/ /g, "_").toLowerCase();
+      const pr = normalizePriorityValue(t.priority);
+      if (!state.agentsLoaded && !state.loadingAgents) {
+        void ensureAgentsLoaded();
+      }
+
+      const backBtn = el("button", { className: "back-btn", type: "button", "data-testid": "task-detail-back" }, "\u2190 All tasks");
+      backBtn.addEventListener("click", () => {
+        void showTaskList();
+      });
+      root.appendChild(backBtn);
+
+      const card = el("div", { className: "detail-card", "data-testid": "task-detail-view" });
+
+      const top = el("div", { className: "task-top" });
+      top.appendChild(el("span", { className: "status-pill status-" + st }, t.status_label || st.replace(/_/g, " ")));
+      top.appendChild(el("span", { className: "task-freshness" }, formatPriorityLabel(pr)));
+      card.appendChild(top);
+
+      card.appendChild(el("div", { className: "detail-title" }, t.title || "Untitled"));
+      const detailRef = taskCopyableRef(t);
+      const detailLink = taskDeepLink(t);
+      if (detailRef || detailLink) {
+        const refActions = el("div", { className: "detail-ref-actions", "data-testid": "task-detail-reference-actions" });
+        if (detailRef) {
+          refActions.appendChild(el("span", { className: "task-ref-chip", "data-testid": "task-detail-ref", title: detailRef }, detailRef));
+          const detailCopyBtn = el("button", { className: "task-ref-action", type: "button", "data-testid": "task-detail-copy-ref" }, "Copy ref");
+          detailCopyBtn.addEventListener("click", async () => {
+            try {
+              await copyTaskRef(t, detailCopyBtn);
+            } catch (error) {
+              showTaskError(errorMessageFromUnknown(error, "Could not copy task reference."));
+            }
+          });
+          refActions.appendChild(detailCopyBtn);
+        }
+        if (detailLink) {
+          const link = el("a", {
+            className: "task-ref-link",
+            href: detailLink,
+            target: isExternalTaskLink(detailLink) ? "_blank" : undefined,
+            rel: isExternalTaskLink(detailLink) ? "noopener noreferrer" : undefined,
+            "data-testid": "task-detail-deep-link",
+          }, "Open task link");
+          refActions.appendChild(link);
+        }
+        card.appendChild(refActions);
+      }
+      card.appendChild(renderReminderActionStrip(detail, t));
+      const detailSummary = t.ai_summary || summaryForTask(t);
+      if (shouldShowDetailSummary(t, detailSummary)) card.appendChild(el("div", { className: "detail-summary" }, detailSummary));
+
+      card.appendChild(renderWorkPulse(detail, t));
+
+      if (t.description) {
+        const description = el("div", { className: "detail-desc", "data-testid": "task-detail-description" });
+        description.appendChild(renderMarkdown(t.description));
+        card.appendChild(description);
+      }
+
+      const fields = el("div", { className: "detail-fields primary-fields" });
+
+      // Status selector
+      const statusField = el("div", { className: "field" });
+      statusField.appendChild(el("div", { className: "field-label" }, "Status"));
+      const statusSel = document.createElement("select");
+      statusSel.className = "status-select";
+      for (const option of STATUS_OPTIONS) {
+        const opt = el("option", { value: option.value }, option.label);
+        if (option.value === st) opt.selected = true;
+        statusSel.appendChild(opt);
+      }
+      statusSel.addEventListener("change", async () => {
+        await updateTask(t.id, { status: statusSel.value });
+      });
+      statusField.appendChild(statusSel);
+      fields.appendChild(statusField);
+
+      const priorityField = el("div", { className: "field" });
+      priorityField.appendChild(el("div", { className: "field-label" }, "Priority"));
+      const prioritySel = document.createElement("select");
+      prioritySel.className = "status-select";
+      prioritySel.setAttribute("data-testid", "task-detail-priority");
+      for (const p of ["critical", "high", "medium", "low"]) {
+        const opt = el("option", { value: p }, formatPriorityLabel(p));
+        if (p === pr) opt.selected = true;
+        prioritySel.appendChild(opt);
+      }
+      prioritySel.addEventListener("change", async () => {
+        await updateTask(t.id, { priority: prioritySel.value });
+      });
+      priorityField.appendChild(prioritySel);
+      fields.appendChild(priorityField);
+
+      const assigneeField = el("div", { className: "field" });
+      assigneeField.appendChild(el("div", { className: "field-label" }, "Assignee"));
+      const assigneeSel = document.createElement("select");
+      assigneeSel.className = "status-select";
+      const selectedAssigneeValue = currentAssigneeValue(t);
+      assigneeSel.appendChild(el("option", { value: "" }, state.loadingAgents ? "Loading assignees..." : "Unassigned"));
+      for (const assignee of state.assignees) {
+        const fullLabel = assignee.handle ? `${assignee.displayName} (@${assignee.handle})` : assignee.displayName;
+        const optionValue = assigneeOptionValue(assignee);
+        const opt = el("option", { value: optionValue, title: fullLabel }, assigneeOptionLabel(assignee));
+        if (optionValue && selectedAssigneeValue === optionValue) opt.selected = true;
+        assigneeSel.appendChild(opt);
+      }
+      if (!state.loadingAgents && t.assignee?.id && !state.assignees.some((assignee) => assigneeOptionValue(assignee) === selectedAssigneeValue)) {
+        const fallbackLabel = t.assignee?.handle ? `@${t.assignee.handle}` : (t.assignee?.display_name || "Current assignee");
+        const fallback = el("option", { value: selectedAssigneeValue }, fallbackLabel);
+        fallback.selected = true;
+        assigneeSel.appendChild(fallback);
+      }
+      assigneeSel.addEventListener("change", async () => {
+        const selectedAssignee = parseAssigneeOptionValue(assigneeSel.value);
+        await updateTask(
+          t.id,
+          selectedAssignee.assignee_id ? selectedAssignee : { assignee_type: null, assignee_id: null },
+          { expectedAssignee: selectedAssignee },
+        );
+      });
+      assigneeField.appendChild(assigneeSel);
+      if (state.agentsLoadError) {
+        assigneeField.appendChild(el("div", { className: "field-help" }, state.agentsLoadError));
+      } else {
+        assigneeField.appendChild(el("div", { className: "field-help" }, "Assign to a user for accountability or to an agent for execution."));
+      }
+      fields.appendChild(assigneeField);
+
+      const deadlineField = el("div", { className: "field" });
+      deadlineField.appendChild(el("div", { className: "field-label" }, "Deadline"));
+      const deadlineInput = document.createElement("input");
+      deadlineInput.type = "datetime-local";
+      deadlineInput.className = "status-select";
+      deadlineInput.setAttribute("data-testid", "task-detail-deadline");
+      deadlineInput.value = toDateTimeLocalValue(t.due_at);
+      deadlineInput.addEventListener("change", async () => {
+        const nextDeadline = fromDateTimeLocalValue(deadlineInput.value);
+        const currentDeadline = t.due_at || null;
+        if (!nextDeadline || nextDeadline === currentDeadline) return;
+        await updateTask(t.id, { deadline: nextDeadline });
+      });
+      deadlineField.appendChild(deadlineInput);
+      deadlineField.appendChild(el("div", { className: "field-help" }, t.due_at ? "Changing this saves immediately." : "Pick a date and time to save a deadline."));
+      fields.appendChild(deadlineField);
+      card.appendChild(fields);
+
+      const signalFields = el("div", { className: "detail-fields signal-fields" });
+      appendDetailField(signalFields, "Owner", ownerLabel(t), "task-detail-owner", { optional: true });
+      appendDetailField(signalFields, "Creator", creatorLabel(t), "task-detail-creator", { optional: true });
+      appendDetailField(signalFields, "Queue", formatQueueLabel(t.queue_state) || "Not queued", "task-detail-queue", { optional: true });
+
+      const reminderField = el("div", { className: "field" });
+      reminderField.appendChild(el("div", { className: "field-label" }, "Reminder"));
+      // Use projectedReminder so spec 6.9 rule 1 applies here too: terminal
+      // tasks render State/queue as inactive/stopped regardless of payload.
+      const reminder = projectedReminder(t, detail);
+      const nextReminderAt = reminder.next_fire_at || reminder.next_reminder_at;
+      const lastReminderAt = reminder.last_fire_at || reminder.last_reminded_at || reminder.last_fired_at;
+      const reminderParts = [
+        reminder.policy ? `Policy: ${reminder.policy}` : null,
+        (reminder.state || reminder.status) ? `State: ${reminder.state || reminder.status}` : null,
+        reminder.cadence_minutes ? `Every ${reminder.cadence_minutes}m` : null,
+        reminder.max_count ? `Max ${reminder.max_count}` : null,
+        reminder.until_done ? "Until done" : null,
+        reminder.fire_count !== undefined ? `Fired ${reminder.fire_count}` : null,
+        nextReminderAt ? `Next: ${relDate(nextReminderAt)}` : null,
+        lastReminderAt ? `Last: ${relDate(lastReminderAt)}` : null,
+        reminder.snoozed_until ? `Snoozed: ${relDate(reminder.snoozed_until)}` : null,
+      ].filter(Boolean);
+      if (reminderParts.length) {
+        reminderField.appendChild(el(
+          "div",
+          { className: "field-value", "data-testid": "task-detail-reminder" },
+          reminderParts.join(" | "),
+        ));
+        reminderField.appendChild(el("div", { className: "field-help" }, "Use the action strip/editor to complete, snooze, cancel, or retune this reminder."));
+        signalFields.appendChild(reminderField);
+      }
+
+      if (signalFields.childNodes.length) {
+        card.appendChild(signalFields);
+      }
+      if (reminder.has_reminder || reminder.last_fire_at || reminder.last_reminded_at || reminder.last_fired_at || (Array.isArray(reminder.history) && reminder.history.length)) {
+        card.appendChild(renderReminderHistoryDrawer(reminder, detail));
+      }
+
+      const metadata = el("details", { className: "metadata-drawer" });
+      metadata.appendChild(el("summary", null, "More details"));
+      const metadataFields = el("div", { className: "detail-fields" });
+      if (t.id) appendDetailField(metadataFields, "Task ID", t.id, "task-detail-id", { always: true });
+      appendDetailField(metadataFields, "Owner", ownerLabel(t), "task-detail-owner-meta");
+      appendDetailField(metadataFields, "Creator", creatorLabel(t), "task-detail-creator-meta");
+      appendDetailField(metadataFields, "Queue", formatQueueLabel(t.queue_state) || "Not queued", "task-detail-queue-meta", { always: true });
+      appendDetailField(metadataFields, "Reminder", reminderParts.length ? reminderParts.join(" | ") : "No reminder policy configured yet.", "task-detail-reminder-meta", { always: true });
+
+      if (t.updated_at) {
+        appendDetailField(metadataFields, "Updated", relDate(t.updated_at), "task-detail-updated", { always: true });
+      }
+      if (t.created_at) {
+        appendDetailField(metadataFields, "Created", relDate(t.created_at), "task-detail-created", { always: true });
+      }
+      metadata.appendChild(metadataFields);
+      card.appendChild(metadata);
+
+      const detailActions = el("div", { className: "detail-actions" });
+      if (!DONE_STATUSES.includes(st)) {
+        const completeBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "task-detail-complete" }, "Mark complete");
+        completeBtn.addEventListener("click", async () => {
+          await updateTask(t.id, { status: "completed" });
+        });
+        detailActions.appendChild(completeBtn);
+      }
+      if (st !== "cancelled" && st !== "canceled") {
+        const closeBtn = el("button", { className: "btn-danger", type: "button", "data-testid": "task-detail-close" }, "Cancel task");
+        closeBtn.addEventListener("click", async () => {
+          await updateTask(t.id, { status: "cancelled" });
+        });
+        detailActions.appendChild(closeBtn);
+      }
+      if (detailActions.childNodes.length) {
+        card.appendChild(detailActions);
+      }
+
+      if (detail.provenance?.label) {
+        const provenanceField = el("div", { className: "field", style: "margin-top:8px" });
+        provenanceField.appendChild(el("div", { className: "field-label" }, "Provenance"));
+        provenanceField.appendChild(el("div", { className: "detail-desc" }, detail.provenance.label));
+        card.appendChild(provenanceField);
+      }
+
+      const editor = el("div", { className: "detail-editor" });
+      editor.appendChild(el("h3", null, "Edit Task"));
+
+      const titleField = el("div", { className: "form-field" });
+      titleField.appendChild(el("label", null, "Title"));
+      const titleInput = el("input", { value: t.title || "", placeholder: "Task title" });
+      titleField.appendChild(titleInput);
+      editor.appendChild(titleField);
+
+      const descField = el("div", { className: "form-field" });
+      descField.appendChild(el("label", null, "Notes / Description"));
+      const descInput = document.createElement("textarea");
+      descInput.placeholder = "Add notes, context, or detail";
+      descInput.value = t.description || "";
+      descField.appendChild(descInput);
+      editor.appendChild(descField);
+
+      const requirementsField = el("div", { className: "form-field" });
+      requirementsField.appendChild(el("label", null, "Requirements"));
+      const requirementsInput = document.createElement("textarea");
+      requirementsInput.placeholder = "What should be true when this is done?\n- Expected outcome\n- Constraints\n- Definition of done";
+      requirementsInput.value = stringifyRequirements(t.requirements);
+      requirementsInput.setAttribute("data-testid", "task-detail-requirements");
+      requirementsField.appendChild(requirementsInput);
+      requirementsField.appendChild(el("div", { className: "field-help" }, "Plain language is fine. Paste JSON only if you need structured fields."));
+      editor.appendChild(requirementsField);
+
+      const reminderEditorField = el("div", { className: "form-field" });
+      reminderEditorField.appendChild(el("label", null, "Reminder schedule"));
+      const detailReminderCadenceInput = el("input", { type: "number", min: "1", placeholder: "Cadence minutes", value: reminder.cadence_minutes || "", "data-testid": "task-detail-reminder-cadence" });
+      const detailReminderMaxInput = el("input", { type: "number", min: "1", placeholder: "Max count", value: reminder.max_count || "", "data-testid": "task-detail-reminder-max-count" });
+      const detailReminderNextInput = el("input", { type: "datetime-local", value: toDateTimeLocalValue(nextReminderAt), "data-testid": "task-detail-reminder-next-fire" });
+      const detailReminderUntilInput = el("input", { id: "df-reminder-until-done", type: "checkbox", "data-testid": "task-detail-reminder-until-done" });
+      detailReminderUntilInput.checked = Boolean(reminder.until_done);
+      const detailReminderUntilRow = el("div", { className: "checkbox-row" });
+      detailReminderUntilRow.appendChild(detailReminderUntilInput);
+      detailReminderUntilRow.appendChild(el("label", { for: "df-reminder-until-done" }, "Remind until done"));
+      reminderEditorField.appendChild(detailReminderCadenceInput);
+      reminderEditorField.appendChild(detailReminderMaxInput);
+      reminderEditorField.appendChild(detailReminderNextInput);
+      reminderEditorField.appendChild(detailReminderUntilRow);
+      reminderEditorField.appendChild(el("div", { className: "field-help" }, "Changing reminder fields schedules a reminder when you save."));
+      editor.appendChild(reminderEditorField);
+
+      const editorActions = el("div", { className: "form-actions" });
+      const saveBtn = el("button", { className: "btn-primary", type: "button", "data-testid": "task-detail-save" }, "Save changes");
+      const saveFeedback = el("span", { className: "save-feedback", "data-testid": "task-detail-save-feedback", role: "status", "aria-live": "polite" });
+      function setSaveFeedback(message, severity = "info") {
+        saveFeedback.className = `save-feedback ${severity}`;
+        saveFeedback.textContent = message || "";
+      }
+      saveBtn.addEventListener("click", async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Checking...";
+        setSaveFeedback("Checking for changes...", "info");
+        const nextTitle = titleInput.value.trim();
+        const nextDescription = descInput.value.trim();
+        const fields = {};
+        if (nextTitle !== (t.title || "")) fields.title = nextTitle;
+        if (nextDescription !== (t.description || "")) fields.description = nextDescription;
+        const requirementsDraft = parseRequirementsDraft(requirementsInput.value, Boolean(t.requirements));
+        if (!requirementsDraft.ok) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save changes";
+          setSaveFeedback(requirementsDraft.error, "error");
+          state.notice = { severity: "error", message: requirementsDraft.error };
+          render();
+          notifyHostHeight();
+          return;
+        }
+        const currentRequirements = stringifyRequirements(t.requirements);
+        const nextRequirements = stringifyRequirements(requirementsDraft.value);
+        if (currentRequirements !== nextRequirements && requirementsDraft.value !== null) {
+          fields.requirements = requirementsDraft.value;
+        }
+        const nextDeadline = fromDateTimeLocalValue(deadlineInput.value);
+        const currentDeadline = t.due_at || null;
+        if (nextDeadline && nextDeadline !== currentDeadline) {
+          fields.deadline = nextDeadline;
+        }
+        const reminderArgs = buildReminderScheduleArgs(detailReminderCadenceInput, detailReminderMaxInput, detailReminderUntilInput, detailReminderNextInput);
+        if (reminderArgs) Object.assign(fields, reminderArgs);
+        if (!Object.keys(fields).length) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save changes";
+          setSaveFeedback("No changes to save.", "info");
+          return;
+        }
+        saveBtn.textContent = "Saving...";
+        setSaveFeedback("Saving changes...", "info");
+        const ok = await updateTask(t.id, fields);
+        if (!ok) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save changes";
+          setSaveFeedback("Save failed. Check the error above.", "error");
+        }
+      });
+      editorActions.appendChild(saveBtn);
+      editorActions.appendChild(saveFeedback);
+      editor.appendChild(editorActions);
+      card.appendChild(editor);
+
+      if (Array.isArray(detail.activity) && detail.activity.length > 0) {
+        const activityField = el("div", { className: "field", style: "margin-top:8px" });
+        activityField.appendChild(el("div", { className: "field-label" }, "Recent activity"));
+        for (const item of detail.activity.slice(0, 3)) {
+          const summary = [item.actor_label, item.summary].filter(Boolean).join(": ");
+          activityField.appendChild(el("div", { className: "detail-desc" }, summary || "Activity update"));
+        }
+        card.appendChild(activityField);
+      }
+
+      root.appendChild(card);
+    }
+
+    function extractData(result) {
+      if (result.structuredContent) return result.structuredContent;
+      const text = result.content?.find(c => c.type === "text");
+      if (!text) return null;
+      try {
+        const parsed = JSON.parse(text.text);
+        return parsed.structuredContent || parsed;
+      } catch { return null; }
+    }
+
+    function extractErrorMessage(result) {
+      if (!result || typeof result !== "object") return null;
+      const text = result.content?.find(c => c.type === "text" && typeof c.text === "string");
+      if (result.isError && text?.text) return text.text;
+      return null;
+    }
+
+    function unwrapV2(data) {
+      // Unwrap v2 envelope: {kind, version, state, data: {...}, actions}
+      if (data && data.version && data.data && typeof data.data === "object") return data.data;
+      return data;
+    }
+
+    function taskDetailFromSignalData(data) {
+      const unwrapped = unwrapV2(data) || {};
+      const items = Array.isArray(unwrapped.items)
+        ? unwrapped.items
+        : Array.isArray(unwrapped.tasks) ? unwrapped.tasks : [];
+      const selectedId = data?.selected_task_id || unwrapped.selected_task_id || data?.task_id || unwrapped.task_id;
+      const selected = selectedId
+        ? items.find((task) => String(task?.id || task?.task_id || "") === String(selectedId))
+        : items.length === 1 ? items[0] : null;
+      if (!selected) return null;
+      // Older CLI task signals used a selected_task_id plus one item before
+      // they had an explicit kind/action. Keep that fallback, but never
+      // promote an explicit list response to detail mode.
+      // TODO: remove this fallback after all CLI agents emit kind/action.
+      const isDetailSignal = data?.kind === "task" || unwrapped.kind === "task" ||
+        data?.action === "get" || unwrapped.action === "get" ||
+        (Boolean(selectedId) && items.length === 1 && data?.action !== "list" && unwrapped.action !== "list");
+      return isDetailSignal ? selected : null;
+    }
+
+    function detailStateFromTask(task) {
+      if (!task) return {};
+      return task.task ? task : { task };
+    }
+
+    function taskCollectionFromSignalData(data) {
+      const unwrapped = unwrapV2(data) || {};
+      const items = Array.isArray(unwrapped.items)
+        ? unwrapped.items
+        : Array.isArray(unwrapped.tasks) ? unwrapped.tasks : [];
+      const isCollectionSignal = data?.kind === "tasks" || data?.kind === "task_collection" ||
+        (data?.action === "list" && Array.isArray(items));
+      if (!isCollectionSignal) return null;
+      return {
+        items,
+        total: data?.total || unwrapped.total || data?.count || unwrapped.count || items.length,
+      };
+    }
+
+    function applyResultData(data, view) {
+      const unwrapped = unwrapV2(data) || {};
+      const errorNotice = Array.isArray(data.errors) && data.errors.length > 0 ? data.errors[0] : null;
+      if (data.error || errorNotice || data.state === "error") {
+        const message = data.error || errorNotice?.message || "Task request failed.";
+        state.notice = { severity: "error", message };
+        if (!state.hydrated) {
+          state.bootstrapping = false;
+          state.bootstrapError = message;
+        }
+        return false;
+      }
+      state.notice = data.notice || null;
+      state.hydrated = true;
+      state.bootstrapping = false;
+      state.bootstrapError = null;
+      const signalDetail = taskDetailFromSignalData(data);
+      const signalCollection = taskCollectionFromSignalData(data);
+      if (data.kind === "task_detail") {
+        state.selected = detailStateFromTask(data.data || {});
+        state.view = "detail";
+        state.showCreate = false;
+        return true;
+      } else if (signalCollection) {
+        state.tasks = signalCollection.items;
+        state.total = signalCollection.total;
+        state.view = "list";
+        state.selected = null;
+      } else if (signalDetail) {
+        state.selected = detailStateFromTask(signalDetail);
+        state.tasks = [signalDetail];
+        state.total = data.total || unwrapped.total || data.count || unwrapped.count || 1;
+        state.view = "detail";
+        state.showCreate = false;
+      } else if (view === "detail" || (unwrapped.tasks && unwrapped.tasks.length === 1 && data.filter !== "list")) {
+        const selectedTask = (unwrapped.tasks || [])[0] || data;
+        state.selected = detailStateFromTask(selectedTask);
+        state.tasks = [selectedTask];
+        state.total = data.total || unwrapped.total || data.count || unwrapped.count || 1;
+        state.view = "detail";
+        state.showCreate = false;
+      } else {
+        state.tasks = unwrapped.tasks || [];
+        state.total = data.total || unwrapped.count || state.tasks.length;
+        state.view = "list";
+        state.selected = null;
+      }
+      return true;
+    }
+
+    function handleResult(res, view, options = {}) {
+      const data = extractData(res);
+      if (!data) {
+        const message = extractErrorMessage(res) || "Task request failed.";
+        showTaskError(message, { bootstrap: !state.hydrated });
+        return false;
+      }
+      const ok = applyResultData(data, view);
+      render();
+      if (ok && !options.preserveViewport) {
+        requestAnimationFrame(() => {
+          resetViewport();
+          notifyHostHeight();
+        });
+      } else {
+        notifyHostHeight();
+      }
+      return ok;
+    }
+
+    function renderBootstrapState(root) {
+      if (state.bootstrapError) {
+        const failure = el("div", { className: "empty-state", "data-testid": "tasks-load-error" });
+        failure.appendChild(el("div", null, "This widget could not load tasks."));
+        failure.appendChild(el("div", { className: "field-help" }, state.bootstrapError));
+        const actions = el("div", { className: "empty-actions" });
+        const retry = el("button", { className: "btn-primary", type: "button", "data-testid": "tasks-load-retry" }, "Retry");
+        retry.addEventListener("click", () => {
+          void bootstrapList();
+        });
+        actions.appendChild(retry);
+        failure.appendChild(actions);
+        root.appendChild(failure);
+        return;
+      }
+
+      root.appendChild(el("div", { className: "loading", "data-testid": "tasks-loading-state" }, "Loading tasks..."));
+    }
+
+    async function showTaskList() {
+      state.view = "list";
+      state.selected = null;
+      state.showCreate = false;
+      render();
+      resetViewport();
+      notifyHostHeight();
+      try {
+        const result = await host.callServerTool("tasks", { action: "list" });
+        handleResult(result, "list");
+      } catch (error) {
+        if (!state.tasks.length || state.total > state.tasks.length) {
+          showTaskError(errorMessageFromUnknown(error, "Failed to load tasks."));
+        }
+      }
+    }
+
+    async function bootstrapList() {
+      if (state.bootstrapping) return;
+      state.bootstrapping = true;
+      state.bootstrapError = null;
+      render();
+      notifyHostHeight();
+      try {
+        await fetchList();
+      } catch (error) {
+        showTaskError(errorMessageFromUnknown(error), { bootstrap: true });
+      }
+    }
+
+    function hasPartialTaskCollection() {
+      return state.hydrated && state.view === "list" && state.total > state.tasks.length;
+    }
+
+    host.setHostCommandHandler((command) => {
+      if (command === "tasks/all" || command === "tasks:return-to-list") {
+        void showTaskList();
+      }
+    });
+
+    host.setToolResultHandler((result) => {
+      const data = extractData(result);
+      if (!data) {
+        const message = extractErrorMessage(result);
+        if (!message) return;
+        showTaskError(message, { bootstrap: !state.hydrated });
+        return;
+      }
+      const ok = applyResultData(data);
+      render();
+      if (ok) {
+        requestAnimationFrame(() => {
+          resetViewport();
+          notifyHostHeight();
+        });
+      } else {
+        notifyHostHeight();
+      }
+    });
+
+    await host.connect();
+    if (!state.hydrated) {
+      await bootstrapList();
+    } else {
+      notifyHostHeight();
+      if (hasPartialTaskCollection()) {
+        void fetchList().catch((error) => {
+          showTaskError(errorMessageFromUnknown(error));
+        });
+      }
+    }
+  </script>
+</body>
+</html>

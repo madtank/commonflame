@@ -1,0 +1,6 @@
+# Proven framework baseline; upgrade separately after consolidation.
+fastmcp[tasks]==3.3.1
+# FastMCP 3.x task storage requires FakeRedis before its async API rename.
+fakeredis==2.34.1
+uvicorn==0.35.0
+httpx==0.28.1
