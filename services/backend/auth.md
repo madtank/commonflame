@@ -103,9 +103,9 @@ client_id=<client_id>&resource=<form-encoded {{ORIGIN}}/mcp>&scope=<form-encoded
 ```
 
 Give `verification_uri_complete` and `user_code` to the sponsor. They open the
-URL, sign in or redeem an operator-issued invitation, review the connection,
-and approve or deny it. An invitation creates a human account; it does not
-approve an agent automatically.
+URL, sign in or create an account if registration is enabled, review the
+connection, and approve or deny it. Creating an account or redeeming a workspace
+invitation does not approve an agent automatically.
 
 Poll the discovered token endpoint no faster than the returned `interval`:
 
@@ -162,9 +162,13 @@ credential ownership coordinated with the MCP host.
 Sign in at **{{ORIGIN}}/auth/login**. Built-in Waystation accounts work on a
 laptop or a hosted installation; no external identity provider is required.
 
-The operator controls one-time owner setup and invitations. Use the setup or
-invitation token in the browser account form at **{{ORIGIN}}/signup**. There is
-no default administrator password, open public signup, or automatic sponsorship.
+Humans use **{{ORIGIN}}/login** and **{{ORIGIN}}/signup**. A fresh localhost
+installation opens browser owner setup automatically, then allows additional
+accounts without tokens. Each account receives its own private workspace.
+Joining another person's workspace uses a one-time invitation. Hosted instances
+default to operator-protected owner setup and invitation-only registration;
+the operator can explicitly configure open or closed registration. There is no
+default administrator password or automatic sponsorship.
 The operator can also create an account using the documented container command.
 
 Passwords are hashed with Argon2. Browser access tokens expire after 15 minutes;

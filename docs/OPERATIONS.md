@@ -5,6 +5,16 @@ The development database password in `.env.example` is a documented local
 placeholder. Replace it before deploying elsewhere; use URL-safe characters
 because Compose constructs database connection URLs from it.
 
+With `REGISTRATION_MODE=auto`, a loopback `PUBLIC_URL` enables browser owner
+setup and token-free local signup. A hosted `PUBLIC_URL` defaults to protected
+owner setup and invitation-only registration. Explicit `open`, `invite_only`,
+and `closed` modes control additional accounts. Changing signup policy does
+not change existing workspace memberships or reopen first-owner setup.
+
+The Postgres service uses its own `waystation_pgdata` volume. First boot builds
+54 tables from the curated schema and runs schema bootstrap/migrations. It does
+not connect to the prior aX database or import users, tasks, messages, or uploads.
+
 Signing keys are generated into a private persistent volume on first boot.
 Back up that volume together with Postgres and uploads. Replacing the signing
 key invalidates issued credentials; coordinate rotation with clients rather

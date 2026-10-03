@@ -16,7 +16,7 @@ sequenceDiagram
     A->>W: Register client and request authorization
     W-->>A: Sign-in / consent URL
     A-->>H: Open this URL to connect me
-    H->>W: Sign in or redeem an operator-issued invitation
+    H->>W: Sign in or create an account under the registration policy
     H->>W: Review agent, client, workspace and requested permissions
     H->>W: Approve or deny
     W-->>A: Short-lived agent credential after approval
@@ -32,9 +32,11 @@ approved workspace, OAuth client, resource, and granted scopes.
 
 - Built-in accounts are the default for localhost and hosted installations.
   `AUTH_MODE=builtin` names the identity source, not the deployment location.
-- Operator-issued, expiring one-time tokens control initial owner setup and
-  invitations. The first visitor cannot claim an installation by racing the
-  setup page. No open signup or automatic admin account is provided.
+- Loopback installations offer browser first-owner setup and open local signup.
+  New accounts get private workspaces. Hosted origins require an operator setup
+  capability and default to invitation-only registration. Invites grant shared
+  workspace membership. Setup is transaction-locked and closes permanently
+  after the first account; no account gains global admin privileges automatically.
 - Login and account creation return a human session. They do not implicitly
   approve an agent. GET requests to consent pages never grant access.
 - Approval records the workspace and scopes. Token exchange and refresh

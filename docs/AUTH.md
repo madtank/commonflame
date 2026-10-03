@@ -7,8 +7,30 @@ Protected Resource Metadata from the live instance.
 
 ## Human accounts
 
-The default is `AUTH_MODE=builtin`. AWS and an external identity provider are
-unnecessary. The operator issues an expiring owner capability with:
+The default is `AUTH_MODE=builtin`. Local username/password accounts require no
+AWS account, GitHub login, email server, or external identity provider.
+
+For a configured loopback `PUBLIC_URL` (localhost, 127.0.0.1, or ::1), a fresh
+installation opens first-owner setup in the browser. Choose a username and a
+passphrase of at least 15 characters. Setup closes once any built-in account
+exists, including a disabled account. A transaction lock serializes first-owner
+creation. The account administers its workspace; it does not gain unrestricted
+instance-wide administration.
+
+`REGISTRATION_MODE` controls additional accounts:
+
+| Mode | Behavior |
+| --- | --- |
+| `auto` (default) | Open at a loopback public origin; invitation-only at a hosted origin. |
+| `open` | Anyone can create their own private workspace after owner setup. |
+| `invite_only` | A workspace invitation is required. |
+| `closed` | New account registration is disabled. |
+
+Unknown values fail closed. Request Host/forwarded headers cannot turn a hosted
+instance into local setup. Keep the local Docker ports bound to loopback.
+
+At a hosted origin, first-owner setup remains operator-protected, even if
+additional registration is explicitly open. The operator issues a capability:
 
 ```sh
 docker compose exec backend python -m scripts.create_setup_token
@@ -16,27 +38,24 @@ docker compose exec backend python -m scripts.create_setup_token
 
 The capability is saved to `/run/keys/owner-setup.token`, mode 0600; the command
 does not print it. The operator reads the file privately and pastes it into
-`/signup` to create the first account. Setup is disabled once a built-in account
-exists, even if that account is later disabled. Issuance and redemption share
-a database transaction lock so a visitor cannot win a public first-owner race.
+`/setup`. Issuance and redemption share a database transaction lock.
+If an unused setup file already exists, issue a replacement using
+`--output /run/keys/owner-setup-new.token`. Rotation invalidates earlier tokens.
+The default expiry is one hour.
 
-If an unused setup file already exists, issue a fresh token using
-`--output /run/keys/owner-setup-new.token`. Issuing a replacement invalidates
-earlier outstanding setup tokens. The default expiry is one hour.
-
-Workspace admins issue one-time invitations from Settings → Profile. Invited
-humans create an account at `/signup` and join that workspace as members.
+Workspace admins issue optional one-time invitations from Settings → Profile.
+Invited humans create an account at `/signup` and join that workspace as members.
 The server rechecks the inviter's current activity and admin membership at
 redemption. Invitation secrets stay out of URLs, browser storage, and logs.
-There is no open signup or automatic agent sponsorship.
+Open signup creates a separate private workspace, never automatic membership
+in someone else's workspace. Account creation never approves an agent connection.
 
 Passwords use Argon2. Browser access tokens expire after 15 minutes and stay in
 tab session storage. Refresh tokens rotate in HttpOnly, host-only,
 SameSite=Strict cookies with a seven-day lifetime. HTTPS deployments use Secure
 cookies. Sign-out revokes the refresh session and clears browser queries.
-
 The interactive `scripts.create_local_user` command remains an operator-only
-maintenance/test helper; browser signup uses the token flow above.
+maintenance/test helper. Normal local onboarding takes place in the browser.
 
 ## Sponsored agents
 
@@ -72,10 +91,13 @@ origin. Previously issued access tokens need renewal; accounts, signing keys,
 and browser refresh sessions are retained. Changing `PUBLIC_URL` later likewise
 requires clients to obtain new tokens for the new issuer/resource.
 
-Built-in accounts currently have no password reset or MFA. Generic upstream
-OIDC can be an optional future sign-in method for organizations with an IdP;
-this build does not require or bundle a separate SSO service. Cognito-specific
-runtime routes and configuration are removed.
+Built-in accounts currently have no password reset or MFA. The recommended
+bring-your-own-provider interface is generic OpenID Connect: the operator
+configures an issuer/discovery URL, client ID, private client secret, and callback
+URL. Provider identities must bind to `(issuer, subject)`, with explicit account
+linking rather than automatic linking by email. Workspace membership and agent
+sponsorship stay in Waystation. This provider adapter is future work, not an
+implemented sign-in option. Cognito-specific routes/configuration are removed.
 
 Legacy PAT APIs remain for compatibility and are outside the recommended
 onboarding flow. The guide follows the discover-and-connect `auth.md` pattern;

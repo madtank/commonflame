@@ -17,10 +17,11 @@ export type LocalSession = {
 export type AccountStatus = {
   auth_mode: 'builtin';
   setup_required: boolean;
-  signup: 'invite_only';
+  setup_flow: 'browser' | 'token';
+  signup: 'open' | 'invite_only' | 'closed';
 };
 export type AccountDetails = {
-  token: string;
+  token?: string;
   username: string;
   password: string;
   full_name?: string;
@@ -30,7 +31,9 @@ export async function getAccountStatus(): Promise<AccountStatus> {
   const response = await fetch('/auth/local/status', { credentials: 'include', cache: 'no-store' });
   if (!response.ok) throw new Error('Could not check account setup. Please try again.');
   const data = await response.json();
-  if (data.auth_mode !== 'builtin' || typeof data.setup_required !== 'boolean' || data.signup !== 'invite_only') {
+  if (data.auth_mode !== 'builtin' || typeof data.setup_required !== 'boolean'
+      || !['browser', 'token'].includes(data.setup_flow)
+      || !['open', 'invite_only', 'closed'].includes(data.signup)) {
     throw new Error('Account setup is not available on this Waystation.');
   }
   return data;
@@ -47,13 +50,25 @@ function acceptSession(data: LocalSession): LocalSession {
   return data;
 }
 
-export async function createAccount(details: AccountDetails, kind: 'setup' | 'invite'): Promise<LocalSession> {
+function throttled(response: Response, action: string): Error {
+  const retryAfter = response.headers.get('Retry-After');
+  const seconds = retryAfter && Number.isFinite(Number(retryAfter))
+    ? Math.max(1, Math.ceil(Number(retryAfter)))
+    : retryAfter && Number.isFinite(Date.parse(retryAfter))
+      ? Math.max(1, Math.ceil((Date.parse(retryAfter) - Date.now()) / 1000))
+      : null;
+  const wait = seconds ? `${seconds} second${seconds === 1 ? '' : 's'}` : 'a minute';
+  return new Error(`Too many ${action} attempts. Wait ${wait} before trying again.`);
+}
+
+export async function createAccount(details: AccountDetails, kind: 'setup' | 'invite' | 'signup'): Promise<LocalSession> {
   const response = await fetch(kind === 'setup' ? '/auth/local/setup' : '/auth/local/signup', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     credentials: 'include', body: JSON.stringify(details),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not create your account. Check the token and try again.');
+  if (response.status === 429) throw throttled(response, 'account creation');
+  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not create your account. Check your details and try again.');
   return acceptSession(data);
 }
 
@@ -92,14 +107,7 @@ export async function loginLocal(username: string, password: string): Promise<Lo
   });
   const data = await response.json().catch(() => ({}));
   if (response.status === 429) {
-    const retryAfter = response.headers.get('Retry-After');
-    const seconds = retryAfter && Number.isFinite(Number(retryAfter))
-      ? Math.max(1, Math.ceil(Number(retryAfter)))
-      : retryAfter && Number.isFinite(Date.parse(retryAfter))
-        ? Math.max(1, Math.ceil((Date.parse(retryAfter) - Date.now()) / 1000))
-        : null;
-    const wait = seconds ? `${seconds} second${seconds === 1 ? '' : 's'}` : 'a minute';
-    throw new Error(`Too many sign-in attempts. Wait ${wait} before trying again.`);
+    throw throttled(response, 'sign-in');
   }
   if (!response.ok) {
     throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not sign in. Check your username and password.');

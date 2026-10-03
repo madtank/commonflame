@@ -17,7 +17,7 @@ describe('Waystation account entry', () => {
   beforeEach(() => {
     vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear();
     window.history.replaceState({}, '', '/login');
-    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: false, signup: 'invite_only' });
+    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: false, signup: 'invite_only', setup_flow: 'token' });
   });
   it('shows platform-neutral account fields and invite-based account creation', async () => {
     render(<UserLogin onLogin={vi.fn()} />);
@@ -63,18 +63,19 @@ describe('Waystation account entry', () => {
     expect(await screen.findByRole('link', { name: 'Create an account' })).toHaveAttribute('href', '/signup');
     expect(screen.queryByText(/You decide whether to approve it/)).not.toBeInTheDocument();
   });
-  it('offers owner setup only when the backend says setup is needed', async () => {
-    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: true, signup: 'invite_only' });
+  it('opens owner onboarding automatically when the backend says setup is needed', async () => {
+    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: true, signup: 'invite_only', setup_flow: 'token' });
     render(<UserLogin onLogin={vi.fn()} />);
-    expect(await screen.findByRole('link', { name: 'Set up Waystation' })).toHaveAttribute('href', '/signup');
+    expect(await screen.findByRole('heading', { name: 'Create the owner account' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set up Waystation' })).toBeInTheDocument();
   });
   it('consumes a pasted owner setup token and clears sensitive fields on success', async () => {
-    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: true, signup: 'invite_only' });
+    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: true, signup: 'invite_only', setup_flow: 'token' });
     createAccount.mockResolvedValue({ access_token: 'session', user: { username: 'new-owner' } });
     const onLogin = vi.fn(); render(<UserLogin initialMode="account" onLogin={onLogin} />);
     expect(await screen.findByRole('heading', { name: 'Create the owner account' })).toBeInTheDocument();
     enterAccount('Setup token');
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Set up Waystation' }));
     await waitFor(() => expect(onLogin).toHaveBeenCalledWith('session', 'new-owner'));
     expect(createAccount).toHaveBeenCalledWith({ token, username: 'new-owner', password }, 'setup');
     expect(screen.getByLabelText('Setup token')).toHaveValue('');
@@ -121,5 +122,48 @@ describe('Waystation account entry', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not check account setup');
     expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
     expect(createAccount).not.toHaveBeenCalled();
+  });
+  it('lets a localhost user create an account without a token', async () => {
+    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: false, setup_flow: 'browser', signup: 'open' });
+    createAccount.mockResolvedValue({ access_token: 'session', user: { username: 'another' } });
+    const onLogin = vi.fn();
+    render(<UserLogin initialMode="account" onLogin={onLogin} currentUsername="existing-user" />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled());
+    expect(screen.queryByLabelText('Invitation token')).not.toBeInTheDocument();
+    expect(screen.getByText(/Signed in as existing-user/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'another' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: password } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: password } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await waitFor(() => expect(onLogin).toHaveBeenCalledWith('session', 'another'));
+    expect(createAccount).toHaveBeenCalledWith({ username: 'another', password }, 'signup');
+  });
+  it('opens token-free first-run setup from the ordinary login page', async () => {
+    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: true, setup_flow: 'browser', signup: 'open' });
+    createAccount.mockResolvedValue({ access_token: 'session', user: { username: 'owner' } });
+    render(<UserLogin onLogin={vi.fn()} />);
+    expect(await screen.findByRole('heading', { name: 'Create the owner account' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Setup token')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'owner' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: password } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: password } });
+    fireEvent.click(screen.getByRole('button', { name: 'Set up Waystation' }));
+    await waitFor(() => expect(createAccount).toHaveBeenCalledWith({ username: 'owner', password }, 'setup'));
+  });
+  it('makes joining someone else’s workspace optional during open signup', async () => {
+    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: false, setup_flow: 'browser', signup: 'open' });
+    render(<UserLogin initialMode="account" onLogin={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Have an invitation to a shared workspace?' }));
+    expect(screen.getByLabelText('Invitation token')).toBeRequired();
+    fireEvent.change(screen.getByLabelText('Invitation token'), { target: { value: token } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create a private workspace instead' }));
+    expect(screen.queryByLabelText('Invitation token')).not.toBeInTheDocument();
+  });
+  it('explains closed registration without offering a working signup form', async () => {
+    getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: false, setup_flow: 'token', signup: 'closed' });
+    render(<UserLogin initialMode="account" onLogin={vi.fn()} />);
+    expect(await screen.findByText('New accounts are disabled on this installation.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create account' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
   });
 });

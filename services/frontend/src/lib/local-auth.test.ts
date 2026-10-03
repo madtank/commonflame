@@ -5,7 +5,7 @@ import { storage } from './storage';
 describe('Waystation account authentication client', () => {
   beforeEach(() => { storage.clearTokens(); vi.restoreAllMocks(); });
   it('checks invite-only setup status without caching it', async () => {
-    const status = { auth_mode: 'builtin', setup_required: true, signup: 'invite_only' };
+    const status = { auth_mode: 'builtin', setup_required: true, signup: 'invite_only', setup_flow: 'token' };
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(status)));
     await expect(getAccountStatus()).resolves.toEqual(status);
     expect(fetchMock).toHaveBeenCalledWith('/auth/local/status', { credentials: 'include', cache: 'no-store' });
@@ -29,6 +29,18 @@ describe('Waystation account authentication client', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ detail: 'Setup or invitation token is invalid or expired' }), { status: 400 }));
     await expect(createAccount({ token: 'expired-synthetic-token', username: 'owner', password: 'synthetic-password' }, 'invite')).rejects.toThrow('invalid or expired');
     expect(storage.getUserToken()).toBeNull();
+  });
+  it('creates a private account without requiring or inventing an invitation', async () => {
+    const details = { username: 'another', password: 'a-test-passphrase' };
+    const user = { id: 'user-2', username: 'another', email: 'another@waystation.local', role: 'user' };
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ access_token: 'session-token', user })));
+    await createAccount(details, 'signup');
+    expect(fetchMock.mock.calls[0][0]).toBe('/auth/local/signup');
+    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toEqual(details);
+  });
+  it('rejects an unknown registration policy instead of showing open signup', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ auth_mode: 'builtin', setup_required: false, signup: 'surprise', setup_flow: 'browser' })));
+    await expect(getAccountStatus()).rejects.toThrow('not available');
   });
   it('asks the backend for workspace invitation permission as the signed-in human', async () => {
     storage.setUserToken('session-token');
@@ -69,6 +81,11 @@ describe('Waystation account authentication client', () => {
   it('explains the server sign-in throttle using Retry-After', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 429, headers: { 'Retry-After': '20' } }));
     await expect(loginLocal('owner', 'incorrect')).rejects.toThrow('Too many sign-in attempts. Wait 20 seconds before trying again.');
+    expect(storage.getUserToken()).toBeNull();
+  });
+  it('explains signup throttling so a user can retry without changing their details', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 429, headers: { 'Retry-After': '10' } }));
+    await expect(createAccount({ username: 'another', password: 'a-test-passphrase' }, 'signup')).rejects.toThrow('Too many account creation attempts. Wait 10 seconds before trying again.');
     expect(storage.getUserToken()).toBeNull();
   });
   it('preserves the session when server logout fails so the user can retry', async () => {

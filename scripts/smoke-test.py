@@ -96,25 +96,26 @@ asyncio.run(create_user(data['username'],data['password']))
 print('Synthetic account created')
 """
     status, _ = request("/auth/local/status")
-    assert status["auth_mode"] == "builtin" and status["signup"] == "invite_only"
+    assert status["auth_mode"] == "builtin" and status["signup"] in {"open", "invite_only", "closed"}
     if status["setup_required"]:
         # Operator capability is captured directly into memory, never a URL,
         # shell argument, source file, or test log.
-        setup_file = "/run/keys/smoke-owner-" + secrets.token_hex(6) + ".token"
-        subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-m",
-                        "scripts.create_setup_token", "--output", setup_file],
-                       text=True, check=True, capture_output=True)
-        read_setup = "from pathlib import Path; import sys; p=Path(sys.argv[1]); assert p.stat().st_mode & 0o777 == 0o600; print(p.read_text().strip())"
-        owner_token = subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-c",
-                                      read_setup, setup_file], text=True, check=True, capture_output=True).stdout.strip()
-        owner_body = {"token": owner_token, "username": username, "password": password}
+        owner_body = {"username": username, "password": password}
+        if status["setup_flow"] == "token":
+            setup_file = "/run/keys/smoke-owner-" + secrets.token_hex(6) + ".token"
+            subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-m",
+                            "scripts.create_setup_token", "--output", setup_file],
+                           text=True, check=True, capture_output=True)
+            read_setup = "from pathlib import Path; import sys; p=Path(sys.argv[1]); assert p.stat().st_mode & 0o777 == 0o600; print(p.read_text().strip())"
+            owner_body["token"] = subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-c",
+                                          read_setup, setup_file], text=True, check=True, capture_output=True).stdout.strip()
         request("/auth/local/setup", {**owner_body, "token": secrets.token_urlsafe(32)}, expected=400)
         login, headers = request("/auth/local/setup", owner_body)
         time.sleep(5.1)  # Respect the setup endpoint's two-attempt burst window.
         request("/auth/local/setup", owner_body, expected=409)
         status, _ = request("/auth/local/status")
         assert not status["setup_required"], "Owner setup must stay closed"
-        print("PASS private one-time owner setup, invalid capability rejection, setup closure")
+        print("PASS first-owner setup, invalid capability rejection, permanent setup closure")
     else:
         subprocess.run(["docker", "compose", "exec", "-T", "backend", "python", "-c", create_script],
                        input=json.dumps({"username": username, "password": password}), text=True,
@@ -133,21 +134,45 @@ print('Synthetic account created')
     request("/auth/me", token=access)
     print("PASS built-in account, login, wrong-password rejection, authenticated API, refresh")
 
-    invite_cookies = http.cookiejar.CookieJar()
-    invite_client = build_opener(HTTPCookieProcessor(invite_cookies), HTTPSHandler(context=tls))
-    invite_body = {"username": "invited_" + secrets.token_hex(5), "password": secrets.token_urlsafe(32)}
-    request("/auth/local/invites", {}, expected=401)
-    request("/auth/local/signup", {**invite_body, "token": secrets.token_urlsafe(32)},
-            expected=400, opener=invite_client)
-    invitation, _ = request("/auth/local/invites", {}, token=access, expected=201)
-    invited, _ = request("/auth/local/signup", {**invite_body, "token": invitation["token"]}, opener=invite_client)
-    assert invited["space_id"] == space_id, "Invite must join only its sponsoring workspace"
-    time.sleep(5.1)  # Respect the signup endpoint's two-attempt burst window.
-    request("/auth/local/signup", {**invite_body, "token": invitation["token"]}, expected=400, opener=invite_client)
-    request("/auth/local/invites", {}, token=invited["access_token"], expected=403, opener=invite_client)
-    request("/auth/local/logout", {}, opener=invite_client)
-    request("/auth/local/refresh", {}, expected=401, opener=invite_client)
-    print("PASS one-time workspace invitation, invalid/replayed invite rejection, member cannot invite")
+    # Open signup gives a new human their own workspace, never the owner's data.
+    signup_cookies = http.cookiejar.CookieJar()
+    signup_client = build_opener(HTTPCookieProcessor(signup_cookies), HTTPSHandler(context=tls))
+    signup_body = {"username": "another_" + secrets.token_hex(5), "password": secrets.token_urlsafe(32)}
+    if status["signup"] == "open":
+        another, _ = request("/auth/local/signup", signup_body, opener=signup_client)
+        assert another["space_id"] != space_id and another["user"]["role"] == "user"
+        spaces, _ = request("/api/v1/spaces", token=another["access_token"], opener=signup_client)
+        space_rows = spaces if isinstance(spaces, list) else spaces.get("spaces", [])
+        assert space_id not in {str(space.get("id")) for space in space_rows}
+        request("/auth/local/logout", {}, opener=signup_client)
+        print("PASS token-free signup, separate private workspace, no instance admin privilege")
+        time.sleep(5.1)
+    else:
+        request("/auth/local/signup", signup_body, opener=signup_client, expected=403)
+        print("PASS hosted registration policy enforced without an invitation")
+        time.sleep(5.1)
+
+    if status["signup"] != "closed":
+        invite_cookies = http.cookiejar.CookieJar()
+        invite_client = build_opener(HTTPCookieProcessor(invite_cookies), HTTPSHandler(context=tls))
+        invite_body = {"username": "invited_" + secrets.token_hex(5), "password": secrets.token_urlsafe(32)}
+        request("/auth/local/invites", {}, expected=401)
+        request("/auth/local/signup", {**invite_body, "token": secrets.token_urlsafe(32)},
+                expected=400, opener=invite_client)
+        invitation, _ = request("/auth/local/invites", {}, token=access, expected=201)
+        invited, _ = request("/auth/local/signup", {**invite_body, "token": invitation["token"]}, opener=invite_client)
+        assert invited["space_id"] == space_id, "Invite must join only its sponsoring workspace"
+        time.sleep(5.1)  # Respect the signup endpoint's two-attempt burst window.
+        request("/auth/local/signup", {**invite_body, "token": invitation["token"]}, expected=400, opener=invite_client)
+        request("/auth/local/invites", {}, token=invited["access_token"], expected=403, opener=invite_client)
+        request("/auth/local/logout", {}, opener=invite_client)
+        request("/auth/local/refresh", {}, expected=401, opener=invite_client)
+        print("PASS one-time workspace invitation, invalid/replayed invite rejection, member cannot invite")
+    else:
+        request("/auth/local/invites", {}, token=access, expected=403)
+        permission, _ = request("/auth/local/invites", token=access)
+        assert not permission["can_invite"]
+        print("PASS closed registration disables invitation creation")
 
     scopes = "openid offline_access ax-api/mcp:read ax-api/mcp:write agents.read spaces.read tasks.read tasks.write messages.read messages.write"
     registration, _ = request("/oauth/register", {

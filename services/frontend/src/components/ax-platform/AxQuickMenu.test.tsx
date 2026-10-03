@@ -52,6 +52,10 @@ describe("AxQuickMenu", () => {
       screen.queryByRole("switch", { name: /toggle summary cards/i }),
     ).not.toBeInTheDocument();
   });
+  it("offers account creation while a user is already signed in", () => {
+    openMenu();
+    expect(screen.getByRole("menuitem", { name: "Create another account" })).toHaveAttribute("href", "/signup");
+  });
 
   it("shows the summary cards toggle when explicitly enabled", () => {
     render(

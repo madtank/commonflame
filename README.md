@@ -14,19 +14,22 @@ Install Docker Desktop with Compose, then:
 ```sh
 cp .env.example .env
 docker compose up --build -d --wait
-docker compose exec backend python -m scripts.create_setup_token
 ```
 
-The last command creates a one-time owner setup token in the private container
-file `/run/keys/owner-setup.token` (expires in one hour). Read that file in your
-own terminal with `docker compose exec backend cat /run/keys/owner-setup.token`,
-then open [owner setup](http://localhost:3000/signup) and paste the token to
-choose your username and password. Your private workspace is created with the
-account. Existing installations simply sign in; owner setup stays closed.
+Open [Waystation](http://localhost:3000). On a fresh localhost installation,
+the browser walks you through creating the first account and workspace. Choose
+a username and a password of at least 15 characters. No setup token is needed.
+Existing installations show **Sign in** and **Create an account**.
 
-Workspace admins can invite other humans from Settings → Profile. Share the
-one-time invitation privately; the recipient enters it at `/signup`. Signup is
-invitation-only.
+Create additional local accounts at `/signup`, or use **Settings → Create
+another account** while signed in. Every account gets a separate private
+workspace. To join someone else's workspace, use their optional one-time
+invitation from Settings → Profile.
+
+`REGISTRATION_MODE=auto` makes local signup easy and defaults to invitation-only
+registration when `PUBLIC_URL` is a hosted origin. Hosted first-owner setup
+requires an operator-issued capability; see [authentication](docs/AUTH.md).
+
 No AWS account or external identity provider is required. The first image build
 downloads Python and JavaScript dependencies. Local use does not require a model
 provider key; connecting agent runtimes/model providers is a separate opt-in.
@@ -50,7 +53,7 @@ unless you intentionally want to delete that installation's data.
 ## What is included
 
 - Modern browser interface for spaces, tasks, messages, agents, and context.
-- Built-in human accounts, one-time owner setup, and workspace invitations.
+- Built-in human accounts, browser first-run setup, and optional workspace invitations.
 - Human-sponsored agents using native OAuth PKCE or device authorization.
 - Stateless Streamable HTTP MCP and interactive MCP apps.
 - FastMCP 4 / MCP SDK 2 and a locally bundled MCP Apps bridge.

@@ -16,7 +16,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.core.ax_jwt import _get_signing_key, _KEY_ID, _ALGORITHM, get_issuer
-from app.core.auth_config import builtin_auth_enabled
+from app.core.auth_config import builtin_auth_enabled, local_browser_setup_enabled, registration_mode
 from app.core.jwt_verify import _resolve_admin_human_user_from_bearer_token
 from app.core.rls import SystemSession, get_system_session
 from app.core.security import get_effective_space_id, hash_token
@@ -156,9 +156,9 @@ async def logout(request: Request, response: Response,
 
 
 class AccountRequest(BaseModel):
-    token: str = Field(min_length=16, max_length=256)
+    token: str | None = Field(default=None, min_length=16, max_length=256)
     username: str = Field(min_length=3, max_length=50, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]+$")
-    password: str = Field(min_length=12, max_length=512)
+    password: str = Field(min_length=15, max_length=512)
     full_name: str | None = Field(default=None, max_length=100)
 
 
@@ -181,10 +181,47 @@ async def require_workspace_admin(db, user: User, space_id: uuid.UUID):
 
 
 @router.get("/status")
-async def account_status(system: SystemSession = Depends(get_system_session)):
+async def account_status(response: Response, system: SystemSession = Depends(get_system_session)):
     _assert_local_mode()
+    response.headers["Cache-Control"] = "no-store"
     return {"auth_mode": "builtin", "setup_required": not await has_builtin_accounts(system.db),
-            "signup": "invite_only"}
+            "setup_flow": "browser" if local_browser_setup_enabled() else "token",
+            "signup": registration_mode()}
+
+
+async def _save_account(body: AccountRequest, response: Response, system: SystemSession,
+                        *, space_id: uuid.UUID | None = None, invite=None):
+    """New accounts own a private workspace; invitations grant member access only."""
+    exists = await system.db.execute(select(User.id).where(User.username == body.username))
+    if exists.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail="Username is unavailable")
+    new_workspace = space_id is None
+    space_id = space_id or uuid.uuid4()
+    user = User(id=uuid.uuid4(), space_id=space_id, current_space_id=space_id,
+                username=body.username, email=f"{body.username}@waystation.local",
+                full_name=body.full_name or body.username, role="user", auth_provider="builtin",
+                password_hash=password_hasher.hash(body.password), active=True, token_version=0)
+    try:
+        if new_workspace:
+            space = Space(id=space_id, name=f"{body.username}'s Workspace",
+                          slug=f"{body.username.lower()[:40]}-{str(space_id)[:8]}", visibility="private")
+            system.db.add(space)
+            await system.db.flush()
+        system.db.add(user)
+        await system.db.flush()
+        system.db.add(SpaceMembership(user_id=user.id, space_id=space_id,
+                                      role="admin" if new_workspace else "member"))
+        if new_workspace:
+            space.created_by = user.id
+        if invite is not None:
+            invite.consumed_at = datetime.now(timezone.utc)
+        await system.db.flush()
+        pair = await _issue_pair(user, response, system)
+        await system.db.commit()
+        return pair
+    except IntegrityError as exc:
+        await system.db.rollback()
+        raise HTTPException(status_code=409, detail="Username is unavailable") from exc
 
 
 async def _create_invited_account(body: AccountRequest, kind: str, request: Request,
@@ -198,6 +235,10 @@ async def _create_invited_account(body: AccountRequest, kind: str, request: Requ
         await system.db.execute(text("SELECT pg_advisory_xact_lock(840220261003)"))
         if await has_builtin_accounts(system.db):
             raise HTTPException(status_code=409, detail="Owner setup is already complete")
+        if not body.token and local_browser_setup_enabled():
+            return await _save_account(body, response, system)
+    if not body.token:
+        raise HTTPException(status_code=400, detail="An operator setup token or workspace invitation is required")
     result = await system.db.execute(select(AccountInvite).where(
         AccountInvite.token_hash == hash_token(body.token), AccountInvite.kind == kind).with_for_update())
     invite = result.scalar_one_or_none()
@@ -208,35 +249,8 @@ async def _create_invited_account(body: AccountRequest, kind: str, request: Requ
         if not creator or not creator.active or creator.auth_provider not in {"builtin", "local"}:
             raise HTTPException(status_code=400, detail="Invitation is no longer active")
         await require_workspace_admin(system.db, creator, invite.space_id)
-        space_id = invite.space_id
-    else:
-        space_id = uuid.uuid4()
-        space = Space(id=space_id, name=f"{body.username}'s Workspace",
-                      slug=f"{body.username.lower()[:40]}-{str(space_id)[:8]}", visibility="private")
-        system.db.add(space)
-        await system.db.flush()
-    exists = await system.db.execute(select(User.id).where(User.username == body.username))
-    if exists.scalar_one_or_none() is not None:
-        raise HTTPException(status_code=409, detail="Username is unavailable")
-    user = User(id=uuid.uuid4(), space_id=space_id, current_space_id=space_id,
-                username=body.username, email=f"{body.username}@waystation.local",
-                full_name=body.full_name or body.username, role="user", auth_provider="builtin",
-                password_hash=password_hasher.hash(body.password), active=True, token_version=0)
-    system.db.add(user)
-    try:
-        await system.db.flush()
-        system.db.add(SpaceMembership(user_id=user.id, space_id=space_id,
-                                      role="admin" if kind == "owner_setup" else "member"))
-        if kind == "owner_setup":
-            space.created_by = user.id
-        invite.consumed_at = now
-        await system.db.flush()
-        pair = await _issue_pair(user, response, system)
-        await system.db.commit()
-        return pair
-    except IntegrityError as exc:
-        await system.db.rollback()
-        raise HTTPException(status_code=409, detail="Username is unavailable") from exc
+    return await _save_account(body, response, system,
+                               space_id=invite.space_id if kind == "sponsor" else None, invite=invite)
 
 
 @router.post("/setup")
@@ -248,7 +262,18 @@ async def setup_owner(body: AccountRequest, request: Request, response: Response
 @router.post("/signup")
 async def signup_invited(body: AccountRequest, request: Request, response: Response,
                          system: SystemSession = Depends(get_system_session)):
-    return await _create_invited_account(body, "sponsor", request, response, system)
+    _assert_local_mode()
+    _check_origin(request)
+    mode = registration_mode()
+    if mode == "closed":
+        raise HTTPException(status_code=403, detail="Account registration is closed on this Waystation")
+    if body.token:
+        return await _create_invited_account(body, "sponsor", request, response, system)
+    if mode != "open":
+        raise HTTPException(status_code=403, detail="A workspace invitation is required on this Waystation")
+    if not await has_builtin_accounts(system.db):
+        raise HTTPException(status_code=409, detail="Create the owner account first")
+    return await _save_account(body, response, system)
 
 
 @router.post("/invites", status_code=201)
@@ -256,6 +281,8 @@ async def create_invite(body: InviteRequest, request: Request,
                         system: SystemSession = Depends(get_system_session)):
     _assert_local_mode()
     _check_origin(request)
+    if registration_mode() == "closed":
+        raise HTTPException(status_code=403, detail="Account registration is closed on this Waystation")
     auth = request.headers.get("authorization", "")
     if not auth.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Human sign-in required")
@@ -280,6 +307,8 @@ async def invite_permission(request: Request, system: SystemSession = Depends(ge
     if not auth.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Human sign-in required")
     user = await _resolve_admin_human_user_from_bearer_token(auth[7:].strip(), system.db)
+    if registration_mode() == "closed":
+        return {"can_invite": False}
     try:
         await require_workspace_admin(system.db, user, uuid.UUID(get_effective_space_id(user)))
     except HTTPException as exc:

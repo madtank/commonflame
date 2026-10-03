@@ -180,6 +180,10 @@ export function AxQuickMenu({
 
           {/* Footer actions */}
           <div className="border-t border-slate-200 px-2 py-2 dark:border-white/10">
+            <a href="/signup" role="menuitem" className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-gray-100 dark:hover:bg-white/[0.06] dark:hover:text-white">
+              <Users className="h-3.5 w-3.5" />
+              Create another account
+            </a>
             <button
               type="button"
               role="menuitem"

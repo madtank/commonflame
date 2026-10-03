@@ -5,6 +5,7 @@ x-backend-env: &backend-env
   MCP_DATABASE_URL: postgresql://waystation:${POSTGRES_PASSWORD:-waystation-local-only}@postgres:5432/waystation
   REDIS_URL: redis://redis:6379/0
   AUTH_MODE: builtin
+  REGISTRATION_MODE: ${REGISTRATION_MODE:-auto}
   ENVIRONMENT: local
   USE_SECRET_MANAGER: "false"
   USE_CLOUD_TASKS: "false"

@@ -67,7 +67,7 @@ export default function App() {
   let page;
   if (auth.isLoading) page = <Loading />;
   else if (/^\/(auth|oauth)\/device\/verify/.test(path)) page = <DeviceVerify userToken={auth.token} username={auth.user?.username || null} />;
-  else if (!auth.isAuthenticated) page = <UserLogin onLogin={onLogin} initialMode={['/signup', '/setup'].includes(path) ? 'account' : 'login'} />;
+  else if (!auth.isAuthenticated || ['/login', '/auth/login', '/signup', '/setup'].includes(path)) page = <UserLogin onLogin={onLogin} currentUsername={auth.isAuthenticated ? auth.user?.username : undefined} initialMode={['/signup', '/setup'].includes(path) ? 'account' : 'login'} />;
   else if (path === '/admin') {
     const admin = ['admin', 'super_admin'].includes(auth.user?.attributes?.role);
     page = <Admin username={auth.user?.username} onLogout={onLogout} isAdminUser={admin} isAdminValidated={true} />;

@@ -23,8 +23,10 @@ operations through the API. MCP verifies backend-issued JWTs against the
 backend's JWKS rather than sharing signing keys. Device authorization records
 consent and scopes instead of asking people to copy a user PAT into an agent.
 
-Humans use built-in accounts: the operator authorizes first-owner setup, then
-workspace admins invite additional members. Agents use explicit human consent
+Humans use built-in accounts. Loopback installations provide browser owner
+setup and open local signup; hosted origins use operator-controlled setup and
+default to invitation-only signup. New local accounts get private workspaces;
+workspace admins can invite shared members. Agents use explicit human consent
 through PKCE or device authorization. Refresh credentials stay in HttpOnly
 cookies for humans and private client storage for agents. Cognito is removed.
 

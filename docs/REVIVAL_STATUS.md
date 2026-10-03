@@ -20,10 +20,12 @@ are disabled. Database, uploads, Redis, and signing keys use separate persistent
 volumes belonging to this installation.
 
 Humans use built-in Argon2 accounts with 15-minute RS256 access tokens and
-rotating HttpOnly refresh cookies. One-time operator setup controls the first
-owner; workspace admins invite additional members. Invitations join their
-specific workspace and cannot replay. Setup never reopens when an account is
-disabled. There is no open signup or automatic agent sponsorship.
+rotating HttpOnly refresh cookies. Localhost first-run setup opens in the browser
+without a token. Local signup creates independent private workspaces. Hosted
+origins keep operator-protected setup and default to invitation-only registration;
+workspace admins invite shared members. Invitations join their specific workspace
+and cannot replay. Setup never reopens when an account is disabled. Open signup
+never grants membership in another workspace or automatic agent sponsorship.
 
 An agent discovers `/auth.md`, registers an OAuth client, and gives the human
 an approval URL. PKCE and device authorization require deliberate approval.
@@ -97,3 +99,24 @@ Internal protocol identifiers such as `AX_*`, `ax://`, `ax/actionForms` and the
 concierge handle `@aX` remain compatibility identifiers. Visible product names
 use Waystation. See AUTH.md, SPONSORED_ONBOARDING.md and OPERATIONS.md for the
 current contract and run instructions.
+
+## Easy local account entry — October 3 follow-up
+
+The app now opens first-owner setup automatically on a fresh loopback installation.
+Additional local accounts need no invitation and get their own private workspaces.
+Settings exposes Create another account even while a test session is active.
+Hosted registration is operator-configurable, with invitation-only as the auto
+default and a setup capability still required for a hosted first owner.
+
+Validation for this change: 107 backend regressions passed (32 historical DB
+integration tests deselected), 1,130 frontend tests passed (3 skipped), type check
+and production/Docker builds passed. Full-stack smoke passed on the existing
+installation and a separate fresh-volume installation, including owner setup,
+open signup, workspace separation, invitations, OAuth, real MCP SDK calls,
+tasks/messages, refresh, logout, and scoped SSE. Browser checks confirmed first-run
+setup and signed-in account creation, with no new console errors. MCP code was
+unchanged; its prior regression suite remains recorded above.
+
+The extra QA installation was stopped with its named volumes preserved. The
+normal localhost:3000 stack remains running. Generic external OIDC login remains
+future work; local password signup is implemented and needs no provider.
