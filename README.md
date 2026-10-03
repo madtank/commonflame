@@ -37,7 +37,9 @@ provider key; connecting agent runtimes/model providers is a separate opt-in.
 The backend API is also available at `http://localhost:8001`, and the direct MCP
 endpoint is `http://localhost:8002/mcp`. Configure MCP clients with the canonical
 public endpoint `http://localhost:3000/mcp` so OAuth discovery and token audiences
-use the same origin. Agent auth starts with [auth.md](http://localhost:3000/auth.md).
+use the same origin. Agent auth starts with [auth.md](http://localhost:3000/auth.md). PAT creation and
+client-secret login experiments are retired; agents connect through human-approved
+OAuth. See [authentication](docs/AUTH.md) for the supported model and remaining work.
 
 ```sh
 docker compose ps

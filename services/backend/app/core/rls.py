@@ -43,7 +43,7 @@ from ..models.user import User
 logger = logging.getLogger(__name__)
 
 # OAuth2 scheme for token extraction
-_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/local/login")
 
 
 def _claim_values(value: Any) -> set[str]:
@@ -241,226 +241,23 @@ async def get_secure_session(
     Raises:
         HTTPException 401: If token is invalid or user not found
     """
-    from ..core.security import verify_token
-    from fastapi import HTTPException, status
+    from .jwt_verify import _resolve_user_from_bearer_token
 
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+    # One verifier for both dependency styles: never revive a legacy credential
+    # through the RLS path after the normal API dependency has rejected it.
+    user = await _resolve_user_from_bearer_token(
+        token, db, allow_agent_tokens=True, request=request,
     )
-
-    # AUTH-SPEC-001 §3.1: PATs accepted ONLY at /auth/exchange.
-    # Reject PATs on business routes — clients must exchange for JWT first.
-    if token.startswith("axp_"):
-        import os
-        if os.environ.get("AX_ENFORCE_EXCHANGE", "true").lower() == "true":
-            raise HTTPException(
-                status_code=401,
-                detail={
-                    "error": "pat_not_allowed",
-                    "message": "PATs cannot be used on business routes. Exchange for a JWT first via POST /auth/exchange.",
-                },
-            )
-        # Legacy fallback (AX_ENFORCE_EXCHANGE=false) — will be removed
-        from .credential_service import authenticate_credential
-        from .agent_context import resolve_agent_target, AgentTargetError
-
-        principal = await authenticate_credential(token, db)
-        effective_space_id = str(principal.space_id)
-
-        # Resolve optional agent targeting via X-Agent-Id or X-Agent-Name
-        agent_id_header = request.headers.get("x-agent-id")
-        agent_name_header = request.headers.get("x-agent-name")
-        agent_id = None
-        agent_name = None
-        try:
-            user_home_space_id = getattr(principal.user, "space_id", None) or principal.space_id
-            agent_target = await resolve_agent_target(
-                db=db,
-                agent_id_header=agent_id_header,
-                agent_name_header=agent_name_header,
-                user_id=principal.user.id,
-                space_id=principal.space_id,
-                user_home_space_id=user_home_space_id,
-                agent_scope=principal.agent_scope,
-                allowed_agent_ids=principal.allowed_agent_ids,
-                credential_id=principal.credential_id,
-            )
-            if agent_target:
-                agent_id, agent_name, target_space_id = agent_target
-                effective_space_id = str(target_space_id)
-                logger.info(
-                    "PAT_AGENT_TARGET principal=user/%s target_agent=%s/%s space=%s",
-                    principal.user.id, agent_id, agent_name, effective_space_id,
-                )
-        except AgentTargetError as e:
-            raise HTTPException(status_code=e.status_code, detail=e.detail)
-
-        await set_rls_context(
-            db,
-            user_id=str(principal.user.id),
-            space_id=effective_space_id,
-        )
-
-        return SecureSession(
-            db=db, user=principal.user, space_id=effective_space_id,
-            # Legacy PAT targeting can select an agent resource, but it must
-            # not change authorship identity. Business routes should normally
-            # never reach this path because PATs are exchange-only.
-            agent_id=None,
-            agent_name=None,
-            is_agent=False,
-            principal_type="user",
-            principal_id=str(principal.user.id),
-        )
-
-    # Backend-minted RS256 token path (aX agent auth)
-    try:
-        from jose import jwt as jose_jwt
-        unverified = jose_jwt.get_unverified_claims(token)
-        from app.core.ax_jwt import get_issuer
-        if unverified.get("iss") == get_issuer():
-            from app.core.jwt_verify import _resolve_ax_agent_user
-            from app.core.ax_jwt import get_jwks
-            jwks = get_jwks()
-            headers = jose_jwt.get_unverified_headers(token)
-            kid = headers.get("kid")
-            key = None
-            for k in jwks.get("keys", []):
-                if k.get("kid") == kid:
-                    key = k
-                    break
-            if key:
-                from app.core.jwt_verify import _decode_backend_token, _enforce_oauth_request_scope
-                claims = _decode_backend_token(token)
-                _enforce_oauth_request_scope(claims, request)
-                # Dev-login RS256 tokens carry user_id (not agent_id)
-                if claims.get("user_id") and not claims.get("agent_id"):
-                    from app.core.jwt_verify import _resolve_dev_rs256_user
-                    user = await _resolve_dev_rs256_user(claims, db)
-                    space_id = str(user.current_space_id or getattr(user, 'space_id', ''))
-                    await set_rls_context(db, user_id=str(user.id), space_id=space_id)
-                    logger.info("SecureSession (dev-rs256) initialized: user=%s space=%s", user.id, space_id)
-                    return SecureSession(
-                        db=db,
-                        user=user,
-                        space_id=space_id,
-                        principal_type="user",
-                        principal_id=str(user.id),
-                    )
-                # Exchange-issued JWTs carry src_credential_id + token_class (AUTH-SPEC-001)
-                if claims.get("src_credential_id") and claims.get("token_class") in ("user_access", "user_admin", "agent_access"):
-                    from app.core.jwt_verify import (
-                        _resolve_exchange_jwt_user,
-                    )
-                    user = await _resolve_exchange_jwt_user(claims, db)
-                    space_id = str(getattr(user, "_effective_space_id", None) or user.current_space_id or user.space_id)
-                    is_agent = claims.get("token_class") == "agent_access"
-                    agent_id = getattr(user, "_agent_id", None) if is_agent else None
-                    agent_name = getattr(user, "_agent_name", None) if is_agent else None
-                    await set_rls_context(db, user_id=str(user.id), space_id=space_id, agent_id=agent_id)
-                    logger.info(
-                        "SecureSession (exchange-jwt) initialized: user=%s token_class=%s space=%s agent=%s principal=%s",
-                        user.id,
-                        claims.get("token_class"),
-                        space_id,
-                        agent_id,
-                        "agent" if is_agent else "user",
-                    )
-                    return SecureSession(
-                        db=db, user=user, space_id=space_id,
-                        agent_id=agent_id, agent_name=agent_name,
-                        is_agent=is_agent,
-                        principal_type="agent" if is_agent else "user",
-                        principal_id=agent_id if is_agent else str(user.id),
-                    )
-                user = await _resolve_ax_agent_user(token, claims, db)
-                space_id = user._effective_space_id
-                await init_rls_for_agent(
-                    db,
-                    agent_id=str(user.id),
-                    space_id=space_id,
-                    actual_agent_id=getattr(user, "_agent_id", None),
-                )
-                logger.info("SecureSession (ax-backend) initialized: user=%s agent=%s space=%s", user.id, getattr(user, '_agent_name', None), space_id)
-                return SecureSession(
-                    db=db, user=user, space_id=space_id,
-                    agent_id=getattr(user, '_agent_id', None),
-                    agent_name=getattr(user, '_agent_name', None),
-                    is_agent=True,
-                    principal_type="agent",
-                    principal_id=getattr(user, "_agent_id", None) or str(user.id),
-                )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.debug("Backend JWT check in SecureSession failed: %s", e)
-
-    # Legacy token path
-    token_payload = verify_token(token)
-    if token_payload is None or token_payload.type not in ("access", "agent"):
-        raise credentials_exception
-
-    user_id = token_payload.sub
-
-    if token_payload.type == "agent" or getattr(token_payload, 'grant_type', None) == "client_credentials":
-        # Agent token (client_credentials grant) — skip token_version check
-        # sub was rewritten to user_id by verify_token
-        result = await db.execute(
-            select(User).where(User.id == user_id).where(User.active)
-        )
-        user = result.scalar_one_or_none()
-        if user is None:
-            raise credentials_exception
-
-        space_id = str(
-            token_payload.space_id
-            if token_payload.space_id != "00000000-0000-0000-0000-000000000000"
-            else (user.current_space_id or user.space_id)
-        )
-
-        # Use agent RLS context — extract real agent UUID first so it's available for RLS
-        agent_id = getattr(token_payload, 'agent_id', None)
-        agent_name = getattr(token_payload, 'agent_name', None)
-        await init_rls_for_agent(db, agent_id=user_id, space_id=space_id, actual_agent_id=agent_id)
-        logger.debug(f"SecureSession (agent) initialized: user={user.id}, agent={agent_name}, space={space_id}")
-        return SecureSession(
-            db=db, user=user, space_id=space_id,
-            agent_id=agent_id, agent_name=agent_name, is_agent=True,
-            principal_type="agent",
-            principal_id=str(agent_id or user.id),
-        )
-
-    # Standard user token path
-    result = await db.execute(
-        select(User)
-        .where(User.id == user_id)
-        .where(User.token_version == token_payload.token_version)
-        .where(User.active)
-    )
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        raise credentials_exception
-
-    # Determine effective space_id
-    space_id = str(
-        getattr(user, '_effective_space_id', None) or
-        user.current_space_id or
-        user.space_id
-    )
-
-    # Set RLS context
-    await set_rls_context(db, user_id=str(user.id), space_id=space_id)
-    logger.debug(f"SecureSession initialized: user={user.id}, space={space_id}")
-
+    is_agent = getattr(user, "_principal_type", "user") == "agent"
+    space_id = str(getattr(user, "_effective_space_id", None) or user.current_space_id or user.space_id)
+    agent_id = getattr(user, "_agent_id", None) if is_agent else None
+    agent_name = getattr(user, "_agent_name", None) if is_agent else None
+    await set_rls_context(db, user_id=str(user.id), space_id=space_id, agent_id=agent_id)
     return SecureSession(
-        db=db,
-        user=user,
-        space_id=space_id,
-        principal_type="user",
-        principal_id=str(user.id),
+        db=db, user=user, space_id=space_id,
+        agent_id=agent_id, agent_name=agent_name, is_agent=is_agent,
+        principal_type="agent" if is_agent else "user",
+        principal_id=agent_id if is_agent else str(user.id),
     )
 
 

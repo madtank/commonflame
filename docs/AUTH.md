@@ -1,5 +1,10 @@
 # Authentication
 
+Waystation has one human account/session model and one human-sponsored OAuth
+authorization model for agent hosts. Local and hosted instances use the same
+contract. Settings contains preferences and workspace invitations; connecting an
+agent starts at `/auth.md`, without generating or copying a PAT.
+
 The agent onboarding contract is served at `/auth.md`; its source is
 [`services/backend/auth.md`](../services/backend/auth.md). The backend renders
 the configured `PUBLIC_URL` into that guide. Clients discover OAuth and
@@ -99,8 +104,54 @@ linking rather than automatic linking by email. Workspace membership and agent
 sponsorship stay in Waystation. This provider adapter is future work, not an
 implemented sign-in option. Cognito-specific routes/configuration are removed.
 
-Legacy PAT APIs remain for compatibility and are outside the recommended
-onboarding flow. The guide follows the discover-and-connect `auth.md` pattern;
+## Retired experiments
+
+PAT creation, rotation, and exchange routes and agent client-secret management
+routes are no longer mounted in the Waystation API. The token endpoint rejects
+`client_credentials`, and discovery/registration no longer offer that grant.
+Legacy HMAC, cached MCP, PAT-derived JWT, standalone agent-key JWT, and developer
+impersonation tokens cannot enter through either API authentication dependency.
+The RLS session dependency uses the same verifier as the other API routes; old
+`AX_ENFORCE_EXCHANGE`, `ENABLE_LEGACY_JWT`, and `ENABLE_LOCAL_TESTING` flags do not
+restore these paths. Credential-bearing agent drafts return `410` before creating
+an agent or minting a secret, including already-saved drafts.
+
+The Credentials tab, PAT monitor cards, and experimental client-secret Agents
+settings tab are removed, including their queries and mutations. The normal agent
+roster, workspace invitations, widget controls, and security audit data remain.
+Historical credential tables/migrations and unmounted handler source remain for
+now. No credential/data migration or destructive table removal is performed.
+Existing PAT or client-secret integrations must reconnect through sponsored OAuth.
+
+Authorization code with PKCE and device authorization are two entry flows of the
+same authorization server, not separate user accounts or parallel credential
+products. A future CLI should use device login and a private host credential store
+with automatic refresh. The CLI is not bundled in this repository.
+
+Confidential OAuth clients may authenticate to the token endpoint using their
+registered client authentication method; that proves the client identity and
+never replaces a human authorization grant. Ordinary agent hosts use public
+clients with PKCE/device authorization and no shared client secret.
+
+## Bounded next steps
+
+Prioritize a Connections view showing sponsor, agent, client, workspace, scopes,
+and revoke/disconnect, plus human account recovery. Existing agent disable
+controls are still enforced during API access. A connection management UI is
+not implemented by this cleanup. Optional OIDC should enter the existing human
+session model, without creating a second agent authorization system.
+
+MCP authorization follows the standard OAuth discovery/PKCE direction. The
+current MCP specification favors Client ID Metadata Documents; this instance's
+Dynamic Client Registration remains its tested compatibility mechanism. CIMD
+support and complete external-host UAT are separate follow-ups; this change does
+not claim complete conformance to every current client registration mechanism.
+
+References: [MCP authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization),
+[OAuth security recommendations](https://www.rfc-editor.org/rfc/rfc9700), and
+[device authorization](https://www.rfc-editor.org/rfc/rfc8628).
+
+The guide follows the discover-and-connect `auth.md` pattern;
 it does not implement WorkOS's ID-JAG protocol. See
 [sponsored onboarding](SPONSORED_ONBOARDING.md) for the consent contract and
 required regression evidence.

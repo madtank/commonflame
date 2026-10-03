@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from api.main import app
 from app.api.v1 import oauth_as
 from app.core.database import AsyncSessionLocal, engine
-from app.core.security import get_password_hash, hash_token
+from app.core.security import hash_token
 from app.models.agent import Agent
 from app.models.oauth_as import OAuthClient, OAuthDeviceCode, OAuthRefreshToken
 from app.models.space import Space
@@ -218,7 +218,7 @@ def test_authorization_server_metadata_advertises_headless_ax_as_contract(monkey
         method.get("type") == "header" and method.get("header") == "X-Agent-Name"
         for method in data["mcp"]["agent_binding_methods"]
     )
-    assert "client_credentials" in data["grant_types_supported"]
+    assert "client_credentials" not in data["grant_types_supported"]
     assert oauth_as.DEVICE_CODE_GRANT in data["grant_types_supported"]
     assert data["code_challenge_methods_supported"] == ["S256"]
 
@@ -1099,56 +1099,14 @@ async def test_refresh_token_rejects_inactive_client():
     assert refresh_response.json()["error"] == "invalid_client"
 
 
-def test_client_credentials_token_mints_backend_agent_jwt():
-    class FakeAgent:
-        id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        name = "lantern"
-        space_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-
-    class FakeAgentKey:
-        agent_id = FakeAgent.id
-        client_secret_hash = get_password_hash("secret")
-        scopes = "messages.read messages.write"
-        is_active = True
-        agent = FakeAgent()
-        last_used_at = None
-
-    class FakeResult:
-        def scalar_one_or_none(self):
-            return FakeAgentKey()
-
-    class FakeSession:
-        async def execute(self, _stmt):
-            return FakeResult()
-
-        async def commit(self):
-            return None
-
+def test_client_credentials_grant_is_retired():
     async def fake_db_session():
-        return FakeSession()
+        return AsyncMock()
 
     app.dependency_overrides[oauth_as.get_db_session] = fake_db_session
     try:
-        response = client.post(
-            "/oauth/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": "ax_test",
-                "client_secret": "secret",
-                "scope": "messages.read messages.write",
-            },
-        )
+        response = client.post("/oauth/token", data={"grant_type": "client_credentials"})
     finally:
         app.dependency_overrides.pop(oauth_as.get_db_session, None)
-
-    assert response.status_code == 200
-    data = response.json()
-    claims = jose_jwt.get_unverified_claims(data["access_token"])
-
-    assert data["token_type"] == "Bearer"
-    assert data["scope"] == "messages.read messages.write"
-    assert claims["iss"] == "ax-backend"
-    assert claims["sub"] == "agent:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-    assert claims["agent_name"] == "lantern"
-    assert claims["space_id"] == "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-    assert claims["scope"] == "messages.read messages.write"
+    assert response.status_code == 400
+    assert response.json()["error"] == "unsupported_grant_type"

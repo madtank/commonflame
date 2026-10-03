@@ -35,7 +35,7 @@ scopes; refresh rechecks activity and membership. The canonical resource is
 configures token issuer and OAuth discovery to the same public origin.
 
 Cognito-specific backend routes/configuration and frontend coupling are removed.
-Legacy PAT APIs remain outside the recommended onboarding path. Built-in sign-in
+PAT and client-secret onboarding are retired from the running distribution; see AUTH.md. Built-in sign-in
 requires no separate SSO service; generic upstream OIDC remains optional future
 work.
 
@@ -120,3 +120,39 @@ unchanged; its prior regression suite remains recorded above.
 The extra QA installation was stopped with its named volumes preserved. The
 normal localhost:3000 stack remains running. Generic external OIDC login remains
 future work; local password signup is implemented and needs no provider.
+
+## Authentication consolidation — October 3 follow-up
+
+Settings no longer offers PAT issuance, PAT monitoring, or the experimental
+agent client-secret tab. Their queries, mutations, and credential reveal/copy
+code are removed. Profile/preferences, workspace invitations, widget controls,
+and credential security audit data remain.
+
+The Waystation entrypoint no longer mounts PAT or agent-key management routes
+or PAT exchange. OAuth discovery/registration and token issuance reject
+client_credentials. Credential-bearing governance drafts cannot create agents
+or mint PATs, including previously saved drafts. API and RLS dependencies now
+share one runtime verifier: built-in human sessions and sponsored OAuth agent
+tokens. Old compatibility/testing flags cannot restore the removed authentication
+paths. Historical credential tables/migrations and unmounted handler source are
+preserved; no database reset or destructive migration was performed.
+
+Validation: 128 backend tests passed, 32 historical integration tests deselected,
+with eight existing warnings; 1,130 frontend tests passed, three skipped. Type
+checking, production/Docker builds, source credential scanning and Gitleaks passed.
+The existing-volume stack passed full smoke: local login/signup/invitations,
+explicit PKCE/device approval and denial, refresh rotation/replay rejection, real
+MCP SDK2 tools/resources, tasks/messages, scoped SSE, and retired credential route
+rejection. The API returns 404 for unmounted routes; the public static UI rejects
+POST on the unproxied historical /credentials prefix with 405.
+
+In-app-browser verification retained the existing human session, showed the
+cleaned Settings tabs and PAT-free Monitor, and produced no browser console
+errors. MCP implementation code was unchanged; its earlier regression suite is
+recorded above, and actual SDK calls were rerun through the rebuilt API. Remote CI
+has not run. The localhost stack remains running, with synthetic smoke data
+retained for auditability.
+
+Next bounded auth work is a Connections/revoke view and human account recovery.
+Optional upstream OIDC, Client ID Metadata Documents, and complete external
+agent-host login remain future work. See AUTH.md for the consolidated contract.

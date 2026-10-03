@@ -54,10 +54,10 @@ async def validation_error_without_credentials(request, exc):
 # Imports intentionally fail startup instead of leaving a healthy-looking API
 # with missing routes. Route dependencies own authentication and authorization.
 for name in (
-    "jwks", "oauth_as", "auth", "local_auth", "credentials", "agent_management",
+    "jwks", "oauth_as", "auth", "local_auth", "agent_management",
     "agents", "tasks", "messages", "summaries", "message_summaries", "metrics",
     "search", "sse", "spaces", "notifications", "config", "agent_templates",
-    "agent_keys", "api_keys", "notification_preferences", "agents_unified",
+    "notification_preferences", "agents_unified",
     "agent_groups", "context", "interactive_context", "api_v1", "uploads",
     "feature_flags", "guest_space", "fleet_control",
 ):

@@ -31,6 +31,8 @@ redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6380/0")
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["authentication"])
+# Historical PAT exchange is retained as source only; Waystation never mounts it.
+legacy_router = APIRouter(prefix="/auth", tags=["legacy-pat"])
 
 
 # Pydantic models
@@ -103,7 +105,7 @@ class ExchangeResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.post("/exchange", response_model=ExchangeResponse)
+@legacy_router.post("/exchange", response_model=ExchangeResponse)
 async def exchange_token(
     body: ExchangeRequest,
     request: Request,

@@ -84,6 +84,19 @@ def main():
     bridge, _ = request("/mcp/assets/ext-apps-2.0.3.js")
     assert len(bridge) > 100000, "MCP Apps bridge must be available locally"
     print("PASS health, native OAuth discovery, JWKS, auth.md, unauthenticated MCP challenge")
+    metadata, _ = request("/.well-known/oauth-authorization-server")
+    assert "client_credentials" not in metadata["grant_types_supported"]
+    unsupported, _ = request("/oauth/token", {"grant_type": "client_credentials"}, form=True, expected=400)
+    assert unsupported.get("error") == "unsupported_grant_type"
+    for path in ("/auth/exchange", "/api/v1/keys",
+                 "/api/v1/agents/00000000-0000-0000-0000-000000000000/keys"):
+        request(path, {}, expected=404)
+    # The unproxied historical /credentials prefix hits the static UI and rejects
+    # POST with 405. The API route inventory independently asserts it is unmounted.
+    request("/credentials/agent-pat", {}, expected=405)
+    request("/auth/me", token="axp_u_retired.fixture", expected=401)
+    request("/api/v1/tasks", token="axp_u_retired.fixture", expected=401)
+    print("PASS retired PAT, client-secret, and alternate API authentication entry points")
     if args.health_only:
         return
 

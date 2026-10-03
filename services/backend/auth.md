@@ -21,6 +21,8 @@ source of truth for endpoints and scopes; this guide is not a credential.
 Before approval, you may discover public connection metadata and tool schemas.
 You cannot read private workspace content or invoke workspace tools.
 Never ask the sponsor to paste a password, browser token, or PAT into agent chat.
+PAT creation/exchange and client-credentials grants are retired. A CLI or headless
+host uses the device flow below; it does not create an API key in Settings.
 
 ## Discover the server
 

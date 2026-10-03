@@ -26,16 +26,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from ...core.ax_jwt import mint_ax_jwt, mint_exchange_jwt
+from ...core.ax_jwt import mint_exchange_jwt
 from ...core.agent_constraints import validate_agent_name
 from ...core.agent_space import grant_space_access
 from ...core.database import get_db_session
 from ...core.rls import get_secure_session
-from ...core.security import hash_token, verify_password
+from ...core.security import hash_token
 from ...models.agent import Agent
-from ...models.agent_key import AgentKey
 from ...models.oauth_as import (
     OAuthAuthorizationCode,
     OAuthClient,
@@ -54,7 +52,6 @@ GRANT_TYPES_SUPPORTED = {
     "authorization_code",
     "refresh_token",
     DEVICE_CODE_GRANT,
-    "client_credentials",
 }
 TOKEN_AUTH_METHODS_SUPPORTED = {
     "none",
@@ -1276,64 +1273,6 @@ async def approve_device_code(
     return {"status": "approved", "client_id": record.client_id}
 
 
-def _client_credentials_error(
-    error: str, description: str, status_code: int = 400
-) -> JSONResponse:
-    return JSONResponse(
-        {"error": error, "error_description": description},
-        status_code=status_code,
-    )
-
-
-async def _handle_client_credentials(params: dict[str, str], db: AsyncSession):
-    client_id = params.get("client_id")
-    client_secret = params.get("client_secret")
-    if not client_id or not client_secret:
-        return _client_credentials_error(
-            "invalid_request",
-            "client_id and client_secret are required",
-        )
-
-    result = await db.execute(
-        select(AgentKey)
-        .options(selectinload(AgentKey.agent))
-        .where(AgentKey.client_id == client_id, AgentKey.is_active.is_(True))
-    )
-    key = result.scalar_one_or_none()
-    if key is None or not verify_password(client_secret, key.client_secret_hash):
-        return _client_credentials_error(
-            "invalid_client", "client credentials are invalid", 401
-        )
-
-    agent = key.agent
-    if agent is None:
-        return _client_credentials_error(
-            "invalid_client",
-            "agent key is not bound to an agent",
-            401,
-        )
-
-    requested_scope = (
-        params.get("scope") or key.scopes or "messages.read messages.write"
-    )
-    token = mint_ax_jwt(
-        agent_id=str(key.agent_id),
-        agent_name=agent.name,
-        space_id=str(agent.space_id),
-        tools_allowed=DEFAULT_AGENT_TOOLS,
-        extra_claims={"scope": requested_scope},
-    )
-    key.last_used_at = datetime.now(timezone.utc)
-    await db.commit()
-
-    return {
-        "access_token": token,
-        "token_type": "Bearer",
-        "expires_in": 900,
-        "scope": requested_scope,
-    }
-
-
 def _oauth_error(error: str, description: str, status_code: int = 400) -> JSONResponse:
     return JSONResponse(
         {"error": error, "error_description": description},
@@ -1517,9 +1456,6 @@ async def token_endpoint(request: Request, db: AsyncSession = Depends(get_db_ses
         )
         await db.commit()
         return response
-
-    if grant_type == "client_credentials":
-        return await _handle_client_credentials(params, db)
 
     return JSONResponse(
         {"error": "unsupported_grant_type"},

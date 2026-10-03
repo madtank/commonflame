@@ -20,6 +20,7 @@ vi.mock("@/lib/api-clean", () => ({
     rotateAgentKey: vi.fn(),
     revokeAgentKey: vi.fn(),
   },
+  apiClient: { get: vi.fn(async () => ({ data: [] })) },
   createPersonalAccessKey: vi.fn(),
   listPatScopeAgents: vi.fn(async () => []),
   listPersonalAccessKeys: vi.fn(async () => []),

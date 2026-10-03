@@ -60,7 +60,7 @@ from ...core.api_action_registry import (
     declare_route_action,
 )
 from ...core.config import get_settings
-from ...core.credential_service import VALID_SCOPES, create_credential
+from ...core.credential_service import VALID_SCOPES
 from ...constants import CONTEXT_DEFAULT_TTL, CONTEXT_MAX_TTL
 from ...services.space_agent_service import ensure_space_agent_for_org
 from ...services.widget_cache import widget_cache_key
@@ -3261,7 +3261,7 @@ class AgentDraftCredentialSpec(BaseModel):
 
 
 class AgentDraftCreateRequest(BaseModel):
-    agent_mode: str = Field("sandbox", description="sandbox, privileged, or with_credentials")
+    agent_mode: str = Field("sandbox", description="sandbox or privileged; agent access requires sponsored OAuth")
     agent: AgentDraftAgentSpec
     target_space_id: str | None = None
     enabled_tools: dict[str, bool] | None = None
@@ -3424,6 +3424,9 @@ def _normalize_agent_draft_payload(
     origin_space_id: str,
     origin_space_type: str,
 ) -> dict[str, Any]:
+    if body.agent_mode == "with_credentials" or body.credential is not None:
+        raise _draft_error(410, "credential_flow_retired", "Connect agents through sponsored OAuth; see /auth.md")
+
     if body.agent_mode not in {"sandbox", "privileged", "with_credentials"}:
         raise _draft_error(400, "draft_invalid_kind", "agent_mode must be sandbox, privileged, or with_credentials")
 
@@ -4374,6 +4377,8 @@ async def _execute_agent_draft(
 ) -> dict[str, Any]:
     payload = _copy_json(proposal.proposed_payload or {})
     draft_kind = payload.get("kind")
+    if draft_kind == "agents.create.with_credentials" or payload.get("credential"):
+        raise _draft_error(410, "credential_flow_retired", "Connect agents through sponsored OAuth; see /auth.md")
     action_ids = payload.get("action_ids", [])
     agent_payload = payload.get("agent") or {}
 
@@ -4399,46 +4404,6 @@ async def _execute_agent_draft(
     result: dict[str, Any] = {
         "agent": _serialize_managed_agent(agent),
     }
-
-    credential = payload.get("credential")
-    if credential:
-        destination = credential.get("destination")
-        if destination != "reveal_once":
-            raise _draft_error(
-                400,
-                "policy_denied",
-                "Only credential.destination='reveal_once' is implemented for agent drafts in this slice",
-            )
-
-        ttl_seconds = credential.get("ttl_seconds")
-        expires_at = None
-        if credential.get("kind") == "ephemeral":
-            expires_at = _now_utc() + timedelta(seconds=int(ttl_seconds or 3600))
-
-        token, cred = await create_credential(
-            db,
-            space_id=uuid.UUID(str(payload.get("target_space_id"))),
-            principal_type="user",
-            principal_id=proposal.target_owner_user_id,
-            credential_type="pat",
-            name=f"{agent.name} credential",
-            scopes=payload.get("requested_scopes") or None,
-            agent_scope="agents",
-            allowed_agent_ids=[str(agent.id)],
-            bound_agent_id=agent.id,
-            created_by_principal_type="user",
-            created_by_principal_id=approver_user_id,
-            expires_at=expires_at,
-        )
-        result["credential"] = {
-            "credential_id": str(cred.id),
-            "key_id": cred.key_id,
-            "kind": credential.get("kind"),
-            "destination": destination,
-            "token": token,
-            "created_at": cred.created_at.isoformat() if cred.created_at else None,
-            "expires_at": cred.expires_at.isoformat() if cred.expires_at else None,
-        }
 
     return result
 
