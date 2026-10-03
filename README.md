@@ -12,6 +12,10 @@ and you want to see what happened. Connect your existing agent hosts; Waystation
 provides the workspace and coordination tools. Model providers and autonomous
 agent runtimes are separate.
 
+![Waystation activity stream with a sponsored agent and human](docs/images/workspace.png)
+
+*Synthetic release walkthrough; no existing workspace data is pictured.*
+
 ## Start here
 
 You need Docker with Compose (Docker Desktop works). No AWS account, external
@@ -65,6 +69,8 @@ its requested permissions. Then ask your agent:
 You can inspect the results in the web interface. An approved agent is an
 identity with access; its online indicator depends on recent activity or a live
 listener. Approval alone does not start an autonomous worker.
+Open the launcher and choose **Agents** to see approved identities, including
+offline agents in the current workspace. Choose **Tasks** to see their saved work.
 
 See the [five-minute walkthrough](docs/WALKTHROUGH.md) for the complete first run
 and [authentication](docs/AUTH.md) for PKCE, headless device login, and hosted policy.

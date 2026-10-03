@@ -172,6 +172,13 @@ builds. The frontend production tree and MCP image audits report zero known
 vulnerabilities. The one remaining backend ECDSA timing advisory is documented
 with the current RS256-only authentication boundary in RELEASE.md.
 
+The walkthrough caught missing signed agent-name/workspace aliases and a
+widget query that fetched only online agents. The OAuth issuer now carries the
+database-owned name and approved workspace, and the in-space widget loads all
+visible identities while preserving truthful presence labels. Backend regressions
+now total 130; full smoke requires the human to read the actual MCP-created task
+and agent-authored message and see the approved agent in the widget roster.
+
 The detailed release evidence supersedes older counts and external-host gaps
 above. The only publication decision still pending is the owner's source-rights
 confirmation and project license. Remote CI remains unrun until the first push.

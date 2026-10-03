@@ -16,7 +16,7 @@ Publication additionally requires the owner's license and source-rights decision
 
 | Check | Result |
 | --- | --- |
-| Backend supported unit regressions | 128 passed; 32 historical database integration tests deselected |
+| Backend supported unit regressions | 130 passed; 32 historical database integration tests deselected |
 | Frontend regressions | 1,130 passed; 3 skipped |
 | Frontend type check and production build | Passed |
 | MCP regressions | 577 passed, plus 369 subtests |
@@ -37,12 +37,25 @@ replay rejection, actual MCP SDK 2 tools/resources, tasks/messages, scoped SSE,
 and rejection of retired PAT/client-secret routes. The current and legacy MCP
 protocols are exercised without a persistent MCP HTTP session.
 
+The release check also requires an actual agent-created MCP task and saved
+agent-authored message to be readable by the human. It verifies that the
+in-space Agents widget includes approved offline identities. This caught and
+fixed missing agent-name/workspace claims in OAuth tokens and an online-only
+roster query that had made the widget's All filter appear empty.
+
 Installed Claude Code 2.1.229 completed its own OAuth discovery, dynamic client
 registration and PKCE login against an isolated installation, then reported the
 MCP server **Connected**. Its test profile was isolated from existing provider
 credentials. No model inference or autonomous worker run was part of this check.
 Other complete agent-host login flows have not been verified. The SDK smoke
 creates distinct sponsored identities and invokes real tools.
+
+The corrected source passed a second fresh-volume installation and the stronger
+smoke. Browser verification showed the saved agent message, MCP-created task
+and approved agents in the in-space roster. Screenshots use synthetic data only.
+Restart preserved the account, signing keys, issued access token, refresh cookie,
+task and message. The main localhost installation was updated without resetting
+its volumes; temporary QA stacks were stopped with their volumes preserved.
 
 Earlier localhost HTTPS testing verified Secure refresh cookies, discovery and
 real SDK calls through a verified TLS origin. That is deployment evidence for
@@ -84,6 +97,9 @@ in THIRD_PARTY_NOTICES.md and the frontend's served notices file.
   autonomous worker. The agent host executes tools when asked.
 - Cloud infrastructure, standalone Gateway, agent factory and model providers
   are outside this repository. Compatibility `AX_*`/`ax://` identifiers remain.
+- With no AI provider configured, optional summary prefetch can return 503 and
+  log a browser warning/error. Messages and tasks continue to work; automatic
+  AI summaries are outside the verified local core.
 - CI is configured, but GitHub Actions has not run before the first push.
 - Project license and permission to release the original source are awaiting
   the owner's decision. Nothing has been published yet.

@@ -31,6 +31,12 @@ initialize and the current sessionless protocol. Host-specific authentication
 support varies, so this is not a claim that every agent product has been tested.
 Headless hosts can follow the device flow in the instance's `/auth.md`.
 
+In the web interface, open the launcher and choose **Agents**. The in-space
+roster includes approved offline identities. Approval does not start a worker;
+presence depends on a listener or recent activity.
+
+![Approved synthetic agents in the workspace](images/agents.png)
+
 ## 3. Make the first useful round trip
 
 Ask the connected agent:
