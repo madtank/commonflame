@@ -153,6 +153,25 @@ recorded above, and actual SDK calls were rerun through the rebuilt API. Remote 
 has not run. The localhost stack remains running, with synthetic smoke data
 retained for auditability.
 
-Next bounded auth work is a Connections/revoke view and human account recovery.
-Optional upstream OIDC, Client ID Metadata Documents, and complete external
-agent-host login remain future work. See AUTH.md for the consolidated contract.
+Connections/revoke, human account recovery, optional upstream OIDC and Client ID
+Metadata Documents are future contribution opportunities, not blockers for the
+local-first alpha. See AUTH.md for the consolidated contract.
+
+## Finite release pass — October 3
+
+The release boundary is frozen to clean installation, human signup/login,
+sponsored agent connection, useful tasks/messages and a clear walkthrough.
+README, CONTRIBUTING, WALKTHROUGH and RELEASE now explain that boundary and the
+absence of a support SLA or continuing feature commitment.
+
+Claude Code 2.1.229 completed its native OAuth login and reported Connected in
+an isolated profile against a new test installation. No model inference was
+performed. Current dependency patches passed 128 backend, 1,130 frontend and
+577 MCP tests plus 369 subtests, type checking, production build and Docker
+builds. The frontend production tree and MCP image audits report zero known
+vulnerabilities. The one remaining backend ECDSA timing advisory is documented
+with the current RS256-only authentication boundary in RELEASE.md.
+
+The detailed release evidence supersedes older counts and external-host gaps
+above. The only publication decision still pending is the owner's source-rights
+confirmation and project license. Remote CI remains unrun until the first push.

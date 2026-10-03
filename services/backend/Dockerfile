@@ -4,7 +4,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PORT=8080
 RUN groupadd --gid 10001 waystation && useradd --uid 10001 --gid waystation --create-home waystation \
     && mkdir -p /run/keys /app/uploads && chown -R waystation:waystation /run/keys /app/uploads
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir --upgrade pip==26.2.1 setuptools==84.0.0 \
+    && python -m pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY api ./api
 COPY alembic ./alembic

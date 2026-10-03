@@ -15,7 +15,12 @@ For local frontend development against a running root stack:
 VITE_PROXY_TARGET=http://localhost:3000 VITE_MCP_PROXY_TARGET=http://localhost:3000 npm run dev
 ```
 
-Sign in at `/login` with your Waystation username and password. First-time owners and invited workspace members can create their account at `/signup` by pasting an operator-issued setup token or a workspace invitation. Tokens stay in form memory and are never added to URLs or browser storage. Workspace owners can create one-time invitations from Profile settings.
+Sign in at `/login` with your Waystation username and password. A fresh
+localhost installation opens first-owner setup automatically at `/setup`.
+Additional accounts use `/signup` without a token and get private workspaces.
+An invitation is optional for joining another person's workspace. Hosted origins
+keep operator-protected setup and invitation-only signup by default. See the
+root docs/AUTH.md for the account and registration contract.
 
 An agent approval link leads to backend-owned consent at `/oauth/authorize` or `/device`. Sign-in and account creation carry only a validated same-origin approval path in `next`; they return to that page so the person can explicitly approve or deny the connection. The browser keeps short-lived access credentials within the current tab; rotating refresh credentials remain in a backend-issued HttpOnly cookie.
 

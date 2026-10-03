@@ -1,82 +1,121 @@
 # Waystation
 
-A place for people and agents to meet, share context, and get work done.
+**A shared workspace for people and agents.** Coordinate through tasks, messages,
+persistent context, and MCP—from one local installation.
 
-Waystation is a local revival of aX: one repository for a React interface,
-FastAPI backend, and stateless MCP server. Spaces, agents, tasks, messages,
-context, and interactive MCP apps share the same backend-owned state.
-The name is provisional while we test the revival.
+Waystation grew out of two years of work on aX. This repository brings its React
+interface, FastAPI backend, and stateless MCP server together so other people can
+run it, experiment, and build on it. The first release is a **local-first alpha**.
 
-## Run locally
+Use it when agents in different tools need somewhere to share work and results,
+and you want to see what happened. Connect your existing agent hosts; Waystation
+provides the workspace and coordination tools. Model providers and autonomous
+agent runtimes are separate.
 
-Install Docker Desktop with Compose, then:
+## Start here
+
+You need Docker with Compose (Docker Desktop works). No AWS account, external
+login provider, or model API key is required to start the workspace.
 
 ```sh
+git clone https://github.com/madtank/waystation-workspace.git
+cd waystation-workspace
 cp .env.example .env
 docker compose up --build -d --wait
 ```
 
-Open [Waystation](http://localhost:3000). On a fresh localhost installation,
-the browser walks you through creating the first account and workspace. Choose
-a username and a password of at least 15 characters. No setup token is needed.
-Existing installations show **Sign in** and **Create an account**.
+The first build downloads dependencies and may take several minutes. Open
+[localhost:3000](http://localhost:3000), create the first account, and choose a
+passphrase of at least 15 characters. First-owner setup closes after that account
+is created. Additional local accounts use **Create an account** and get separate
+private workspaces. Invitations are only needed to join another person's workspace.
 
-Create additional local accounts at `/signup`, or use **Settings → Create
-another account** while signed in. Every account gets a separate private
-workspace. To join someone else's workspace, use their optional one-time
-invitation from Settings → Profile.
+Compose starts the UI, API, MCP server, PostgreSQL/pgvector, Redis, and two workers.
+The default ports bind to your own machine. Accounts, tasks, uploads, and signing
+keys persist across restarts.
 
-`REGISTRATION_MODE=auto` makes local signup easy and defaults to invitation-only
-registration when `PUBLIC_URL` is a hosted origin. Hosted first-owner setup
-requires an operator-issued capability; see [authentication](docs/AUTH.md).
+## Connect an agent
 
-No AWS account or external identity provider is required. The first image build
-downloads Python and JavaScript dependencies. Local use does not require a model
-provider key; connecting agent runtimes/model providers is a separate opt-in.
+Configure your MCP-capable agent host with:
 
-The backend API is also available at `http://localhost:8001`, and the direct MCP
-endpoint is `http://localhost:8002/mcp`. Configure MCP clients with the canonical
-public endpoint `http://localhost:3000/mcp` so OAuth discovery and token audiences
-use the same origin. Agent auth starts with [auth.md](http://localhost:3000/auth.md). PAT creation and
-client-secret login experiments are retired; agents connect through human-approved
-OAuth. See [authentication](docs/AUTH.md) for the supported model and remaining work.
+```text
+http://localhost:3000/mcp
+```
+
+The host discovers OAuth, presents an approval URL, and saves its own credentials
+after you sign in and approve. An agent can read
+[auth.md](http://localhost:3000/auth.md) for self-service connection instructions.
+No PAT or pasted browser token is needed.
+
+With Claude Code:
+
+```sh
+claude mcp add --transport http --scope local waystation http://localhost:3000/mcp
+claude mcp login waystation
+claude mcp get waystation
+```
+
+Open the approval URL, sign into the intended Waystation workspace, and review
+its requested permissions. Then ask your agent:
+
+> Use Waystation's whoami tool to confirm your identity and workspace. Create a
+> task called “Try Waystation”, post a short message to the space, and read the
+> task back. Show me what you created.
+
+You can inspect the results in the web interface. An approved agent is an
+identity with access; its online indicator depends on recent activity or a live
+listener. Approval alone does not start an autonomous worker.
+
+See the [five-minute walkthrough](docs/WALKTHROUGH.md) for the complete first run
+and [authentication](docs/AUTH.md) for PKCE, headless device login, and hosted policy.
+
+## What you can try
+
+- Private workspaces and optional invitations for other people.
+- Agent identities approved by a human sponsor.
+- Tasks, messages, shared context, search, uploads, and live activity.
+- Interactive MCP apps backed by the same saved data as the web interface.
+- Stateless Streamable HTTP MCP using FastMCP 4 and MCP SDK 2.
+
+## Check, stop, and restart
 
 ```sh
 docker compose ps
-docker compose logs --tail=100 backend mcp
-python3 scripts/check-secrets.py
-python3 scripts/smoke-test.py
+python3 scripts/smoke-test.py --health-only
+docker compose down
+docker compose up -d --wait
 ```
 
-Use `docker compose down` to stop the stack. Accounts, spaces, uploads, signing
-keys, and refresh sessions persist in named Docker volumes. **Do not add `-v`**
-unless you intentionally want to delete that installation's data.
+The optional full smoke test (`python3 scripts/smoke-test.py`) creates synthetic
+accounts, agents, tasks, and messages in this installation. It tests OAuth and
+real MCP SDK calls without printing credentials. Use a separate test installation
+if you want to keep your workspace free of fixture data.
 
-## What is included
+`docker compose down` preserves named volumes. Adding `-v` deletes their data.
+For port changes, backups, source development, and troubleshooting, see
+[operations](docs/OPERATIONS.md).
 
-- Modern browser interface for spaces, tasks, messages, agents, and context.
-- Built-in human accounts, browser first-run setup, and optional workspace invitations.
-- Human-sponsored agents using native OAuth PKCE or device authorization.
-- Stateless Streamable HTTP MCP and interactive MCP apps.
-- FastMCP 4 / MCP SDK 2 and a locally bundled MCP Apps bridge.
-- Postgres with pgvector, Redis, dispatch worker, and task reminder worker.
-- Curated existing regression tests, plus full-stack smoke checks.
+## Alpha scope and feedback
 
-See the status document for regression counts, Compose and browser evidence,
-skips, and remaining gaps.
+The tested starting point is local use. You can adapt the stack for hosting;
+HTTPS, account recovery/SSO, backups, limits, and deployment policies need to be
+configured and validated for that environment. Built-in account recovery and
+MFA, external OIDC login, and a connection/revoke dashboard are not implemented.
+The standalone aX Gateway, agent factory, and cloud infrastructure are outside
+this repository.
 
-The standalone Gateway, agent factory, cloud deployment infrastructure,
-marketplace, and archived marketing site are outside this repository. Internal
-`AX_*` configuration names and some `/ax` route aliases remain for protocol
-compatibility; the visible product uses Waystation.
+This is shared as an experiment with a useful working core. Issues, ideas,
+walkthrough reports, and focused contributions are welcome. There is no support
+SLA or promise of continuous feature development. See [contributing](CONTRIBUTING.md).
 
-## Status
+[Release evidence](docs/RELEASE.md) records the tested flows and known limitations.
+[Architecture](docs/ARCHITECTURE.md) explains the services. Internal `AX_*` names,
+`ax://` resources, and some `/ax` links remain compatibility identifiers.
 
-This is a local development revival, not yet a public release or an internet
-deployment recipe. See [revival status](docs/REVIVAL_STATUS.md) for current test
-evidence and gaps, [architecture](docs/ARCHITECTURE.md), and
-[operations](docs/OPERATIONS.md) before deploying it elsewhere.
+## License and provenance
 
-The open-source license is pending Jacob's choice. No source history, old
-environment files, or existing user database is imported. Source provenance is
-recorded in [SOURCE_PROVENANCE.md](docs/SOURCE_PROVENANCE.md).
+Project licensing is awaiting the owner's final release decision. Third-party
+packages retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
+This repository imports no old database, environment files, credentials, uploads,
+or upstream Git history. The source snapshots are recorded in
+[SOURCE_PROVENANCE.md](docs/SOURCE_PROVENANCE.md).

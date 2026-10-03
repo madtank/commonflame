@@ -35,16 +35,9 @@ docker compose up -d --force-recreate --wait
 This also avoids stale running containers on Compose versions that build an
 updated image without replacing a dependent service. Named volumes persist.
 
-Before a public release:
-
-1. Confirm the project name and license.
-2. Run credential scanning, dependency audit, retained regressions, and the
-   Compose smoke check from a clean checkout with empty, isolated volumes.
-3. Review old source credentials for revocation at the services that issued
-   them. Excluding them from this tree does not revoke their prior exposure.
-4. Review outbound webhook/provider integrations, upload limits, auth controls,
-   and the static frontend/MCP-app content policy.
-5. Obtain Jacob's explicit authorization before pushing or publishing.
+The finite source-release checks and remaining publication decision are recorded
+in [RELEASE.md](RELEASE.md). Sharing the local-first alpha does not require
+implementing the optional hosting features.
 
 Before network deployment, add HTTPS, deployment-specific secrets, host and
 redirect allowlists, backup/restore checks, access controls, observability,

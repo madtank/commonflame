@@ -5,13 +5,11 @@ Run it through the root Docker Compose project; PostgreSQL and Redis are
 required. The container initializes a blank schema and persistent signing keys
 before it accepts requests. Repeated starts migrate the existing database.
 
-Create the first owner through the browser using an operator-issued, one-time setup capability:
-
-```sh
-docker compose exec backend python -m scripts.create_setup_token
-```
-
-The capability is written privately to `/run/keys/owner-setup.token`, expires after one hour, and is consumed at `/signup`. No setup token is created automatically. Workspace admins may issue one-time invitations; account creation remains invite-only. The terminal account helper is retained for operator automation.
+On a fresh loopback installation, the browser opens first-owner setup at
+`/setup`, with no capability token. Additional local accounts use `/signup`
+and get separate private workspaces. Optional workspace invitations join an
+existing workspace. Hosted origins require an operator-issued setup capability
+and default to invitation-only signup; see the root docs/AUTH.md for that flow.
 
 Built-in passwords use Argon2. Browser access tokens expire after 15 minutes;
 refresh cookies rotate and expire after 7 days. The API exposes native OAuth

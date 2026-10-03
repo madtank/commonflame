@@ -13,7 +13,8 @@ from app.core import jwt_verify
 
 
 def test_running_distribution_does_not_mount_pat_or_agent_key_routers():
-    paths = {route.path for route in app.routes}
+    # OpenAPI represents the mounted HTTP surface across FastAPI router implementations.
+    paths = set(app.openapi()["paths"])
     assert "/auth/local/login" in paths and "/oauth/token" in paths
     assert "/api/v1/credentials/violations" in paths  # audit data is preserved
     assert "/auth/exchange" not in paths
