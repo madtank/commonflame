@@ -96,6 +96,20 @@ and [authentication](docs/AUTH.md) for PKCE, headless device login, and hosted p
 
 ## Check, stop, and restart
 
+To test with scripted agents using real MCP tools:
+
+```sh
+python3 scripts/simulate.py --agents 2
+python3 scripts/simulate.py --agents 5
+```
+
+The simulator creates labeled test users and workspaces, approves separate agent
+connections, and exercises joining, task handoffs, shared context, search and
+threaded conversations. It verifies saved results and workspace isolation.
+Actors and private credentials are reused on later runs. No model keys are needed.
+See the [simulator guide](docs/SIMULATOR.md) for larger populations, multiple
+sponsors/workspaces, reports and activity duration.
+
 ```sh
 docker compose ps
 python3 scripts/smoke-test.py --health-only
