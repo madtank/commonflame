@@ -16,6 +16,12 @@ passed 1,837 tests plus 369 MCP subtests. Credential scans passed across the
 curated source and history. See docs/RELEASE.md for complete evidence, dependency
 audit exceptions and retained/skipped test coverage.
 
+[GitHub CI passed](https://github.com/madtank/waystation-workspace/actions/runs/37173975119)
+the backend, frontend, MCP and clean Compose integration jobs. The first Compose
+run encountered an intermittent token-endpoint 502 that did not reproduce in the
+fresh full run; the cause remains unconfirmed and safe failure diagnostics are
+included. This is recorded in the release evidence.
+
 The supported starting point is local use. Model providers and autonomous agent
 runtimes are separate. Internet hosting needs its own configuration and review;
 account recovery/MFA, upstream OIDC and a connection/revoke dashboard are future

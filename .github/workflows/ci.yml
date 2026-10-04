@@ -101,6 +101,9 @@ jobs:
       - name: Service status
         if: always()
         run: docker compose ps
+      - name: Safe failure diagnostics
+        if: failure()
+        run: python3 scripts/ci-diagnostics.py
       - name: Stop test stack
         if: always()
         run: docker compose down
