@@ -28,6 +28,11 @@ fixtures and are outside the supported local test command. They remain in the
 source; fresh-database behavior is exercised by the full-stack smoke instead.
 Library deprecation warnings and frontend build-size warnings remain.
 
+GitHub Actions also passed all four jobs, including the fresh Ubuntu Compose
+installation and full OAuth/MCP smoke, at source commit `3557bc2`:
+[verified run](https://github.com/madtank/waystation-workspace/actions/runs/37173975119).
+The following release documentation changes do not alter the application.
+
 ## Installation and connection evidence
 
 An isolated source-only clone with new Compose volumes passed the full smoke:
@@ -100,7 +105,11 @@ in THIRD_PARTY_NOTICES.md and the frontend's served notices file.
 - With no AI provider configured, optional summary prefetch can return 503 and
   log a browser warning/error. Messages and tasks continue to work; automatic
   AI summaries are outside the verified local core.
-- CI is configured, but GitHub Actions has not run before the first push.
+- The first GitHub Compose smoke returned a 502 during device token issuance;
+  containers remained healthy. A fresh complete run passed without application
+  changes. The cause is unconfirmed; failure diagnostics now report container
+  state and allowlisted error categories without publishing raw logs. See the
+  [initial failure](https://github.com/madtank/waystation-workspace/actions/runs/37173586618).
 - The project is licensed under MIT; third-party licenses remain applicable.
 
 Future improvements can be issues or contributions; they do not extend this
