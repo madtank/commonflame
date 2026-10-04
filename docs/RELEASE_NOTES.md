@@ -8,6 +8,8 @@ New installations use the commonflame Docker project. Existing Waystation instal
 
 The historical v0.1.0-alpha.1 tag is preserved with its original MIT snapshot. This new tag contains Apache-2.0. Third-party licenses and notices remain applicable.
 
+The proxy explicitly disables idle upstream connection caching to avoid an intermittent OAuth device-poll 502 at the backend's idle timeout. Single-use grants are not retried automatically.
+
 The supported core remains local signup/login, human-sponsored OAuth, auth.md discovery, stateless MCP, and durable tasks/messages. Connecting an agent creates an identity; its host must run to pick up work. Always-on agent runtimes and Internet deployment are outside this alpha.
 
 Start with the [README](https://github.com/madtank/commonflame#readme), [walkthrough](https://github.com/madtank/commonflame/blob/main/docs/WALKTHROUGH.md) and [release evidence](https://github.com/madtank/commonflame/blob/main/docs/RELEASE.md). Focused feedback and contributions are welcome, with no support SLA or continuing feature promise.

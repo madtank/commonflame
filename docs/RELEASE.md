@@ -39,10 +39,9 @@ fixtures and are outside the supported local test command. They remain in the
 source; fresh-database behavior is exercised by the full-stack smoke instead.
 Library deprecation warnings and frontend build-size warnings remain.
 
-Before the rename, GitHub Actions passed all four jobs, including the fresh Ubuntu Compose
-installation and full OAuth/MCP smoke, at source commit `3557bc2`:
-[verified run](https://github.com/madtank/commonflame/actions/runs/37173975119).
-The rename pull request runs these same regression and fresh-install checks.
+The Commonflame rename passed all four GitHub Actions jobs, including the fresh
+Ubuntu Compose installation and full OAuth/MCP smoke, at source commit `d771d70`:
+[verified run](https://github.com/madtank/commonflame/actions/runs/37178432996).
 
 ## Installation and connection evidence
 
@@ -116,11 +115,17 @@ in THIRD_PARTY_NOTICES.md and the frontend's served notices file.
 - With no AI provider configured, optional summary prefetch can return 503 and
   log a browser warning/error. Messages and tasks continue to work; automatic
   AI summaries are outside the verified local core.
-- The first GitHub Compose smoke returned a 502 during device token issuance;
-  containers remained healthy. A fresh complete run passed without application
-  changes. The cause is unconfirmed; failure diagnostics now report container
-  state and allowlisted error categories without publishing raw logs. See the
-  [initial failure](https://github.com/madtank/commonflame/actions/runs/37173586618).
+- Intermittent GitHub Compose smoke failures returned 502 during device token
+  issuance while all containers remained healthy. Safe diagnostics identified
+  an upstream connection reset, consistent with an idle close/reuse race.
+  Nginx 1.29.7+ enables upstream keepalive caching
+  by default; Uvicorn's five-second idle timeout coincides with the device poll
+  delay. This release disables idle upstream caching to avoid that close/reuse
+  race, without retrying single-use grants. A twelve-cycle local probe did not
+  reproduce the original reset; this is a targeted mitigation based on CI
+  diagnostics. Streaming requests remain open for
+  their normal lifetime. See the [nginx defaults](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#keepalive)
+  and [recorded failure](https://github.com/madtank/commonflame/actions/runs/37178553592).
 - The project is licensed under the Apache License 2.0; third-party licenses remain applicable.
 
 Future improvements can be issues or contributions; they do not extend this
