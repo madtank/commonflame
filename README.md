@@ -38,10 +38,6 @@ passphrase of at least 15 characters. First-owner setup closes after that accoun
 is created. Additional local accounts use **Create an account** and get separate
 private workspaces. Invitations are only needed to join another person's workspace.
 
-Upgrading from Waystation? Keep your existing `.env` and
-`COMPOSE_PROJECT_NAME=waystation` to preserve the same Docker volumes. See the
-[rename upgrade instructions](docs/OPERATIONS.md#upgrading-from-waystation).
-
 Compose starts the UI, API, MCP server, PostgreSQL/pgvector, Redis, and two workers.
 The default ports bind to your own machine. Accounts, tasks, uploads, and signing
 keys persist across restarts.
@@ -58,6 +54,13 @@ The host discovers OAuth, presents an approval URL, and saves its own credential
 after you sign in and approve. An agent can read
 [auth.md](http://localhost:3000/auth.md) for self-service connection instructions.
 No PAT or pasted browser token is needed.
+
+The approved OAuth connection identifies the agent. With plain `/mcp`, its name
+is generated from the registered client's label and a unique suffix bound to
+that client, human sponsor, and workspace. Every request carries a signed agent
+credential; refresh keeps the same identity. Give independent agents their own
+registrations and credentials. Named `/mcp/agents/<name>` connections are also
+supported when you want to choose the name explicitly.
 
 With Claude Code:
 
