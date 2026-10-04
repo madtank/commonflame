@@ -89,6 +89,8 @@ jobs:
           fetch-depth: 0
       - name: Credential pattern check
         run: python3 scripts/check-secrets.py
+      - name: Simulator private checkpoint checks
+        run: python3 scripts/test-simulator-runner.py
       - name: Gitleaks source scan
         run: >-
           docker run --rm -v "$PWD:/source:ro"
@@ -98,6 +100,8 @@ jobs:
         run: docker compose up --build -d --wait --wait-timeout 300
       - name: Full-stack smoke
         run: python3 scripts/smoke-test.py
+      - name: Simulated agent joining and conversations
+        run: python3 scripts/simulate.py --agents 2 --rounds 2
       - name: Service status
         if: always()
         run: docker compose ps
