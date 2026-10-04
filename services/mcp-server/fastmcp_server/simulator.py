@@ -545,6 +545,11 @@ class Simulator:
             )
             task = task.get("task", task)
             require(task["status"] == "completed", "task_completion_persisted")
+            require(
+                str(task.get("assignee_id") or task.get("assigned_agent_id"))
+                == str(reviewer["id"]),
+                "task_assignment_persisted",
+            )
             reply = await self.api(
                 "/api/messages/" + reply_id, token=self.tokens[reviewer["index"]]
             )

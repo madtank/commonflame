@@ -14,8 +14,8 @@ quality or an always-on agent runtime.
 - Create clearly labeled synthetic humans and invite-only team workspaces.
   Exercise a second human joining through an actual workspace invitation.
 - Cover named and canonical MCP URLs, pending human consent, approval, identity
-  readback, task assignment/handoff, shared context, search, threaded messages, completion, credential
-  refresh, and rejection of cross-workspace reads.
+  readback, task assignment/handoff, shared context, search, threaded messages,
+  completion, credential refresh, and rejection of cross-workspace reads.
 - Verify saved records through the API as both agent and human. A tool envelope
   without a persisted task/message is a failed scenario.
 - Report counts, check outcomes and per-tool latency. Do not call population size
@@ -40,8 +40,8 @@ python3 scripts/simulate.py --agents 100 --concurrency 5
 ```
 
 Defaults: two synthetic humans, two team workspaces (one when starting with two
-actors), two conversation rounds,
-five concurrent actors, and private state/report files in `.local/simulator/`.
+actors), two conversation rounds, five concurrent actors, and private state/report
+files in `.local/simulator/`.
 Increasing `--agents` reuses the same humans, workspaces and existing actors.
 Changing topology requires a separate `--state` file; choose `--users` and
 `--workspaces` at the start. Each team workspace has every simulated human as
@@ -73,8 +73,9 @@ an operator test fixture, not a way to skip normal agent sponsorship.
 The initial implementation uses the local public signup/device flow. Hosted
 registration/first-owner protection must be configured by the operator separately;
 this runner will not disable it. For recovery after interruption, keep the same
-state file. Completed onboarding steps are checkpointed; an interrupted or failed run stops automatic resume. Inspect its report and
-fixture records before explicitly using `--resume-after-failure`. Ambiguous
+state file. Completed onboarding steps are checkpointed; an interrupted or failed
+run stops automatic resume. Inspect its report and fixture records before
+explicitly using `--resume-after-failure`. Ambiguous
 server writes can leave extra fixtures; the simulator does not silently replay
 those writes. Do not delete state to silently retry a failed run.
 
@@ -82,6 +83,8 @@ those writes. Do not delete state to silently retry a failed run.
 
 Two-agent joining/conversation runs are part of Compose CI. Local validation
 also covers five agents, adding actors without duplicate identities, multiple
-sponsors/workspaces, and a larger population. The report records the actual tested
+sponsors/workspaces, and 100 actors across four humans and four team workspaces
+with concurrency ten. That run completed 100 handoffs and blocked 200 foreign
+workspace reads through both API and MCP. The report records the actual tested
 population and concurrency. Model-provider UAT and sustained Internet load are
 separate work.
