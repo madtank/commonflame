@@ -10,7 +10,7 @@ The release is complete when a clean source checkout starts with an empty
 database, a person can create an account, an existing agent host can connect
 through sponsored OAuth, and tasks/messages can be created and read through MCP
 and the interface. The README and walkthrough must describe that actual flow.
-The owner confirmed retained source rights and authorized publication under MIT.
+The owner confirmed retained source rights and authorized publication under the Apache License 2.0.
 
 ## Regression results
 
@@ -110,7 +110,7 @@ in THIRD_PARTY_NOTICES.md and the frontend's served notices file.
   changes. The cause is unconfirmed; failure diagnostics now report container
   state and allowlisted error categories without publishing raw logs. See the
   [initial failure](https://github.com/madtank/waystation-workspace/actions/runs/37173586618).
-- The project is licensed under MIT; third-party licenses remain applicable.
+- The project is licensed under the Apache License 2.0; third-party licenses remain applicable.
 
 Future improvements can be issues or contributions; they do not extend this
 release's acceptance boundary.

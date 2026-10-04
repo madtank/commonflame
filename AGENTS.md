@@ -1,6 +1,6 @@
 # Waystation local revival
 
-Waystation is a personal MIT-licensed monorepo curated from three aX source
+Waystation is a personal Apache-2.0-licensed monorepo curated from three aX source
 snapshots. Jacob authorized the initial public alpha release on October 3, 2026.
 Keep its scope bounded by docs/RELEASE.md; optional hosting/features are not
 requirements for the initial release. This repository is separate from the

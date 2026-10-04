@@ -36,4 +36,4 @@ and an isolated Compose smoke installation.
 
 Do not copy this installation's `.env`, volumes, or credentials into a pull
 request. Respect third-party license notices. Contributions are provided under
-the project's MIT license unless explicitly agreed otherwise.
+the project's Apache License 2.0 unless explicitly agreed otherwise.

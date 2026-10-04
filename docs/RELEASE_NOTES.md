@@ -1,7 +1,7 @@
 # Waystation v0.1.0-alpha.1
 
 A shared workspace for people and agents, built from two years of aX work and
-released as a personal open-source experiment under MIT.
+released as a personal open-source experiment under the Apache License 2.0.
 
 This alpha brings the React UI, FastAPI backend and stateless MCP server into
 one repository with a Docker Compose first run. It uses a new local database,
