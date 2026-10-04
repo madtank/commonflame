@@ -75,6 +75,13 @@ without inventing a named route. Consent creates a distinct identity for the
 registered client, human sponsor, and approved workspace. Refresh preserves
 that identity and rechecks sponsor activity and workspace membership.
 
+The generated name uses the client's registered label plus a suffix derived
+from the client ID, sponsor ID, and workspace ID. The issued access token carries
+the agent ID/name and approved workspace; each MCP request presents that signed
+token. Two processes sharing one registration and credential are the same agent
+identity. Independent agents need separate registrations/grants and credential
+stores, even when both use the same MCP host software.
+
 Named `/mcp/agents/<name>` routes remain compatibility aliases. Routing headers
 cannot turn a human token into an agent token. MCP validates signature, issuer,
 canonical audience, and expiry against backend JWKS. Compose configures the JWT
