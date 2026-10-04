@@ -57,7 +57,7 @@ export interface AgentAvailabilityInput {
   last_heartbeat?: string | null;
   last_heartbeat_at?: string | null;
   last_seen?: string | null;
-  /** Agent origin (e.g. "space_agent"). Space agents like Waystation are built into
+  /** Agent origin (e.g. "space_agent"). Space agents like Commonflame are built into
    *  the platform and are always-on unless explicitly disabled. */
   origin?: string | null;
 }
@@ -97,7 +97,7 @@ export function deriveAvailabilityKey(
     return "disabled";
   }
 
-  // Space agents (e.g. Waystation) are built into the platform and always available
+  // Space agents (e.g. Commonflame) are built into the platform and always available
   // unless disabled — they don't rely on a heartbeat to be "on".
   if (String(input.origin || "").toLowerCase() === "space_agent") {
     return "online";

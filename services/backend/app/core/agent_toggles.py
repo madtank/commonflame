@@ -102,7 +102,7 @@ AGENT_TOGGLES: list[ToggleDefinition] = [
     ToggleDefinition(
         tool_key="ax_mcp",
         default=True,
-        description="Enable aX Platform MCP tools (messages, tasks, context)",
+        description="Enable Commonflame MCP tools (messages, tasks, context)",
         legacy_field="ax_mcp_enabled",
         legacy_alias="axMcpEnabled",
     ),

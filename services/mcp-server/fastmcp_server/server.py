@@ -1,4 +1,4 @@
-"""Waystation MCP resource server.
+"""Commonflame MCP resource server.
 
 Backend-issued JWTs are validated through JWKS. The backend owns OAuth
 authorization and every data mutation; MCP provides stateless Streamable HTTP.
@@ -155,7 +155,7 @@ def normalize_authorize_resource_query(query_string: bytes, base_url: str) -> by
 def create_auth() -> RemoteAuthProvider:
     """Trust the backend authorization server; configuration errors fail closed."""
     if AX_AUTH_MODE != "remote":
-        raise RuntimeError("Waystation requires AX_AUTH_MODE=remote")
+        raise RuntimeError("Commonflame requires AX_AUTH_MODE=remote")
     for name, value in (
         ("AX_AUTH_SERVER_URL", AX_AUTH_SERVER_URL),
         ("BACKEND_JWKS_URI", BACKEND_JWKS_URI),
@@ -258,7 +258,7 @@ def create_app():
 
     async def health(request: Request):
         """Health check for Docker/load balancer."""
-        return JSONResponse({"status": "ok", "server": "Waystation MCP", "stateless": MCP_STATELESS_HTTP})
+        return JSONResponse({"status": "ok", "server": "Commonflame MCP", "stateless": MCP_STATELESS_HTTP})
 
     async def auth_diagnostics(request: Request):
         """Expose a lightweight auth/session probe without invoking a tool call."""

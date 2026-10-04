@@ -74,7 +74,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_normalizes_temporary_break_from_backend_state(self):
         items = [{
             "id": "agent-1",
-            "name": "Waystation",
+            "name": "Commonflame",
             "control_state": {
                 "kind": "temporary_break",
                 "reason": "cooldown",
@@ -91,7 +91,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_normalizes_frontend_popover_control_shape(self):
         items = [{
             "id": "agent-1",
-            "name": "Waystation",
+            "name": "Commonflame",
             "control": {
                 "is_disabled": True,
                 "disabled_reason": "Temporarily disabled by owner",
@@ -109,7 +109,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_user_control_surface_can_disable_current_space_agent(self):
         items = [{
             "id": "space-agent-1",
-            "name": "Waystation",
+            "name": "Commonflame",
             "agent_type": "space_agent",
             "origin": "space_agent",
             "space_id": "team-space",
@@ -140,7 +140,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_user_control_surface_overrides_stale_denial_for_current_space_agent(self):
         items = [{
             "id": "space-agent-1",
-            "name": "Waystation",
+            "name": "Commonflame",
             "agent_type": "space_agent",
             "origin": "space_agent",
             "space_id": "team-space",
@@ -175,7 +175,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_user_control_surface_denies_current_space_agent_without_permission(self):
         items = [{
             "id": "space-agent-1",
-            "name": "Waystation",
+            "name": "Commonflame",
             "agent_type": "space_agent",
             "origin": "space_agent",
             "space_id": "team-space",
@@ -203,7 +203,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_user_control_surface_denies_other_space_agent_even_with_permission(self):
         items = [{
             "id": "space-agent-2",
-            "name": "Waystation",
+            "name": "Commonflame",
             "agent_type": "space_agent",
             "origin": "space_agent",
             "space_id": "other-space",
@@ -259,7 +259,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_normalizes_no_reply_control_shape_from_message_disable(self):
         items = [{
             "id": "agent-2",
-            "name": "Waystation",
+            "name": "Commonflame",
             "control": {
                 "no_reply": True,
                 "no_reply_reason": "Paused from message thread",
@@ -277,7 +277,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_normalizes_indefinite_no_reply_as_disabled(self):
         items = [{
             "id": "agent-3",
-            "name": "Waystation",
+            "name": "Commonflame",
             "control_state": {
                 "kind": "no_reply",
                 "no_reply": True,
@@ -294,7 +294,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_normalizes_timed_no_reply_as_break(self):
         items = [{
             "id": "agent-4",
-            "name": "Waystation",
+            "name": "Commonflame",
             "control_state": {
                 "kind": "no_reply",
                 "no_reply": True,
@@ -313,7 +313,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_normalizes_legacy_timed_no_reply_fallback_as_break(self):
         items = [{
             "id": "agent-5",
-            "name": "Waystation",
+            "name": "Commonflame",
             "control_state": {
                 "status": "legacy_no_reply_mode",
                 "no_reply": True,
@@ -332,7 +332,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_normalizes_legacy_timed_disabled_fallback_as_break(self):
         items = [{
             "id": "agent-6",
-            "name": "Waystation",
+            "name": "Commonflame",
             "control_state": {
                 "status": "legacy_disabled_mode",
                 "is_disabled": True,
@@ -351,7 +351,7 @@ class TestEnrichWithAvailability(unittest.TestCase):
     def test_normalizes_top_level_no_reply_as_disabled(self):
         items = [{
             "id": "agent-7",
-            "name": "Waystation",
+            "name": "Commonflame",
             "state": "unknown_state",
             "no_reply": True,
             "no_reply_reason": "Owner paused replies",
@@ -919,7 +919,7 @@ class AgentsToolEnvelopeTests(unittest.IsolatedAsyncioTestCase):
             "scope": "control_applied",
             "agent": {
                 "id": "agent-1",
-                "name": "Waystation",
+                "name": "Commonflame",
                 "control": {
                     "is_disabled": True,
                     "disabled_reason": "Temporarily disabled by owner",
@@ -993,7 +993,7 @@ class AgentsToolEnvelopeTests(unittest.IsolatedAsyncioTestCase):
             "scope": "control_applied",
             "agent": {
                 "id": "agent-1",
-                "name": "Waystation",
+                "name": "Commonflame",
                 "control": {"is_disabled": False, "disabled_by": []},
             },
         }
@@ -1017,7 +1017,7 @@ class AgentsToolEnvelopeTests(unittest.IsolatedAsyncioTestCase):
             "scope": "control_applied",
             "agent": {
                 "id": "agent-1",
-                "name": "Waystation",
+                "name": "Commonflame",
                 "control": {"is_disabled": True, "disabled_by": ["agent"]},
             },
         }
@@ -1060,14 +1060,14 @@ class AgentsToolEnvelopeTests(unittest.IsolatedAsyncioTestCase):
         placement_response = {
             "status": "ok",
             "agent_id": "agent-1",
-            "agent_name": "Waystation",
+            "agent_name": "Commonflame",
             "space_id": "space-2",
             "pinned": True,
         }
         detail_response = {
             "agent": {
                 "id": "agent-1",
-                "name": "Waystation",
+                "name": "Commonflame",
                 "space_id": "space-2",
                 "space_name": "Team Hub",
                 "space_locked": True,

@@ -18,13 +18,13 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
         """Token claims agent_name wins over X-Agent-Name header."""
         token = SimpleNamespace(
             token="agent-jwt",
-            claims={"agent_name": "Waystation", "agent_id": "5e33fedf", "space_id": "space-1"},
+            claims={"agent_name": "Commonflame", "agent_id": "5e33fedf", "space_id": "space-1"},
         )
         request = SimpleNamespace(headers={"x-agent-name": "wrong_agent"})
 
         ctx = extract_agent_context(token, request)
 
-        self.assertEqual(ctx["agent_name"], "Waystation")
+        self.assertEqual(ctx["agent_name"], "Commonflame")
 
     def test_agent_id_extracted_from_claims(self):
         """agent_id from token claims must be available in context."""
@@ -32,7 +32,7 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
             token="agent-jwt",
             claims={
                 "agent_id": "5e33fedf-659f-4762-acb0-4166c2ac4c12",
-                "agent_name": "Waystation",
+                "agent_name": "Commonflame",
                 "space_id": "space-1",
             },
         )
@@ -46,7 +46,7 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
         """Agent claim space_id wins over X-Space-Id header."""
         token = SimpleNamespace(
             token="agent-jwt",
-            claims={"agent_name": "Waystation", "space_id": "claims-space", "agent_id": "agent-test"},
+            claims={"agent_name": "Commonflame", "space_id": "claims-space", "agent_id": "agent-test"},
         )
         request = SimpleNamespace(headers={"x-space-id": "header-space"})
 
@@ -58,7 +58,7 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
         """When agent claims and header space_id differ, log a warning."""
         token = SimpleNamespace(
             token="agent-jwt",
-            claims={"agent_name": "Waystation", "space_id": "claims-space", "agent_id": "agent-test"},
+            claims={"agent_name": "Commonflame", "space_id": "claims-space", "agent_id": "agent-test"},
         )
         request = SimpleNamespace(headers={"x-space-id": "different-space"})
 
@@ -86,7 +86,7 @@ class AgentIdentityFromClaimsTests(unittest.TestCase):
         )
         request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-ui-space",
             }
         )

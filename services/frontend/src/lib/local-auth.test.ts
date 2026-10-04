@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { canInviteToWorkspace, createAccount, createWorkspaceInvitation, getAccountStatus, loginLocal, logoutLocal } from './local-auth';
 import { storage } from './storage';
 
-describe('Waystation account authentication client', () => {
+describe('Commonflame account authentication client', () => {
   beforeEach(() => { storage.clearTokens(); vi.restoreAllMocks(); });
   it('checks invite-only setup status without caching it', async () => {
     const status = { auth_mode: 'builtin', setup_required: true, signup: 'invite_only', setup_flow: 'token' };

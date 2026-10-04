@@ -91,7 +91,7 @@ class WhoamiFallbackTests(unittest.IsolatedAsyncioTestCase):
             "custom": {
                 "mcp_identity": {
                     "profile": {
-                        "bio": "Building Waystation.",
+                        "bio": "Building Commonflame.",
                         "preferences": "Direct, concise communication.",
                         "projects": "MCP apps, widget validation",
                         "specialization": "Platform engineering",
@@ -179,7 +179,7 @@ class WhoamiFallbackTests(unittest.IsolatedAsyncioTestCase):
             "handle": "madtank",
             "email": "jacob@example.com",
             "avatar_url": "https://cdn.example.com/jacob.png",
-            "bio": "Building Waystation.",
+            "bio": "Building Commonflame.",
             "preferences": "Direct communication.",
             "projects": "MCP widgets",
             "specialization": "Platform engineering",

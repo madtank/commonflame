@@ -1,4 +1,4 @@
-# Waystation API
+# Commonflame API
 
 FastAPI owns users, workspaces, agents, messages, tasks and OAuth authorization.
 Run it through the root Docker Compose project; PostgreSQL and Redis are

@@ -977,10 +977,10 @@ def register_whoami_tool(mcp: FastMCP):
         token: AccessToken = CurrentAccessToken(),
         request: Request = CurrentRequest(),
     ) -> ToolResult:
-        """Manage the caller's Waystation identity, memory, and relationships.
+        """Manage the caller's Commonflame identity, memory, and relationships.
 
         Use `get` first for a read-only identity card. Write actions are
-        bounded to authenticated Waystation identity state and remain permission-gated:
+        bounded to authenticated Commonflame identity state and remain permission-gated:
         `update` uses profile fields including caller avatar_url/avatar_emoji,
         `remember` requires `key` and `value`, `recall` requires `key`, and
         `follow`/`unfollow` require `target_agent`.

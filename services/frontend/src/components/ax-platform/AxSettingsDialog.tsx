@@ -462,7 +462,7 @@ export function AxSettingsDialog({
                         Auto summarize
                       </div>
                       <p className="text-sm text-gray-600 dark:text-muted-foreground">
-                        Let Waystation generate automatic summaries where the backend
+                        Let Commonflame generate automatic summaries where the backend
                         supports it.
                       </p>
                     </div>

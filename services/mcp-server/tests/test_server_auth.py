@@ -238,7 +238,7 @@ class CreateAuthTests(unittest.TestCase):
         "BACKEND_ISSUER": "http://localhost:3000",
     })
     def test_remote_auth_requires_backend_jwks_uri(self):
-        """Remote mode must know where to verify Waystation-issued access tokens."""
+        """Remote mode must know where to verify Commonflame-issued access tokens."""
         server_mod = _import_server_module()
 
         with patch.object(server_mod, "BACKEND_JWKS_URI", ""):

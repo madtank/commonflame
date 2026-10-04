@@ -357,7 +357,7 @@ async def wait_for_reply(
     """Poll for a reply to a sent message. Returns the reply or timeout.
 
     Used by messages send flows, including messages(action="ask_ax"), to wait
-    for Waystation's response. Default 90s accommodates larger models (~24s turn latency).
+    for Commonflame's response. Default 90s accommodates larger models (~24s turn latency).
 
     When progress is provided (MCP Tasks), emits periodic status updates
     so clients can show meaningful progress without polling messages themselves.

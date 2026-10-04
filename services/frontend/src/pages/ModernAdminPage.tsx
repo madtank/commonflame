@@ -41,7 +41,7 @@ export default function ModernAdminPage({
                   </h1>
                   <p className="mt-1 text-sm text-slate-300">
                     Review accounts, promote members to Plus, and keep admin
-                    work in the modern Waystation Platform surface.
+                    work in the modern Commonflame Platform surface.
                   </p>
                 </div>
               </div>

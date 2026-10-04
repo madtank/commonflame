@@ -1499,7 +1499,7 @@ export function AxMcpAppWidget({
             result: {
               protocolVersion: "2026-01-26",
               hostInfo: {
-                name: "Waystation",
+                name: "Commonflame",
                 version: "1.0.0",
               },
               hostCapabilities: {
@@ -1543,7 +1543,7 @@ export function AxMcpAppWidget({
                     },
                   },
                 },
-                userAgent: "Waystation widget host",
+                userAgent: "Commonflame widget host",
               },
             },
           });
@@ -2132,7 +2132,7 @@ export function AxMcpAppWidget({
               <>
                 <span>{title}</span>
                 <span className="text-[11px] text-white/25">
-                  Waystation tool call
+                  Commonflame tool call
                   {widget.tool_name && (
                     <>
                       <span className="text-white/15"> / </span>

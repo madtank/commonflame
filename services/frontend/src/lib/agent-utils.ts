@@ -217,7 +217,7 @@ export function getAgentRuntimeDisplay(
     if (rawRuntime.includes("cli")) {
       return {
         label: "CLI",
-        title: "CLI agent - runs through the Waystation CLI",
+        title: "CLI agent - runs through the Commonflame CLI",
       };
     }
 

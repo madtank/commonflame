@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agent Dashboard - Waystation</title>
+  <title>Agent Dashboard - Commonflame</title>
   <style>
     :root {
       --ax-bg: var(--color-background-primary, #0a0f1a);
@@ -223,7 +223,7 @@
 <body>
   <div class="shell" id="app"><div class="loading">Loading agents...</div></div>
   <script type="module">
-    import { App } from "__WAYSTATION_MCP_APPS_BRIDGE_URL__";
+    import { App } from "__COMMONFLAME_MCP_APPS_BRIDGE_URL__";
     const app = new App({ name: "Agent Dashboard", version: "1.0.0" });
     const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
     let hostRequestSeq = 0;
@@ -436,7 +436,7 @@
     function quickActionAgentEmoji(handle, displayName) {
       const key = [handle, displayName].filter(Boolean).join(" ").toLowerCase();
       if (!key) return "🤖";
-      if (key === "waystation" || /(^|\s)waystation(\s|$)/.test(key) || key === "ax" || key === "a_x" || /(^|\s)(ax|a_x)(\s|$)/.test(key) || key.includes("space agent")) return "✨";
+      if (/^(commonflame|waystation)$/.test(key) || /(^|\s)(commonflame|waystation)(\s|$)/.test(key) || key === "ax" || key === "a_x" || /(^|\s)(ax|a_x)(\s|$)/.test(key) || key.includes("space agent")) return "✨";
       if (key.includes("claude")) return "🖥️";
       if (key.includes("atlas")) return "🗺️";
       if (key.includes("daimon")) return "🛰️";
@@ -542,6 +542,7 @@
     const ACRONYMS = new Set(["mcp", "cli", "api", "llm", "ai", "sse", "rls", "jwt", "aws", "gcp"]);
     function humanizeLabel(value) {
       if (!value) return "";
+      if (value === "ax_mcp") return "Commonflame MCP";
       return String(value)
         .replace(/[_-]+/g, " ")
         .toLowerCase()
@@ -1057,7 +1058,7 @@
       if (["owned", "owner", "self", "mine", "owned_by_viewer"].includes(normalized)) return "Owned by you";
       if (["other_user", "member", "external_user"].includes(normalized)) return "Other user";
       if (["space_agent", "space"].includes(normalized)) return "Space agent";
-      if (["ax_moderated", "moderated", "moderator"].includes(normalized)) return "Waystation moderated";
+      if (["ax_moderated", "moderated", "moderator"].includes(normalized)) return "Commonflame moderated";
       return value ? humanizeLabel(value) : "";
     }
 

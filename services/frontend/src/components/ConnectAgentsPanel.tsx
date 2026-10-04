@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /** Agent onboarding uses the current installation. */
 const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
 export const AGENT_AUTH_URL = `${origin}/auth.md`;
-export const MCP_ADD_COMMAND = `claude mcp add --transport http waystation ${origin}/mcp`;
+export const MCP_ADD_COMMAND = `claude mcp add --transport http commonflame ${origin}/mcp`;
 
 const STEPS = [
   "1. Sign in to your installation",

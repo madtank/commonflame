@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Message Timeline - Waystation</title>
+  <title>Message Timeline - Commonflame</title>
   <style>
     :root {
       --ax-bg: var(--color-background-primary, #0a0f1a);
@@ -82,7 +82,7 @@
 <body>
   <div class="shell" id="app"><div class="loading">Loading messages...</div></div>
   <script type="module">
-    import { App } from "__WAYSTATION_MCP_APPS_BRIDGE_URL__";
+    import { App } from "__COMMONFLAME_MCP_APPS_BRIDGE_URL__";
     const app = new App({ name: "Message Timeline", version: "1.0.0" });
     const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
 
@@ -332,7 +332,7 @@
       }
 
       const metaBits = [];
-      if (action === "send" && data.concierge?.routed) metaBits.push("via Waystation");
+      if (action === "send" && data.concierge?.routed) metaBits.push("via Commonflame");
       if (typeof data.ack_ms === "number") metaBits.push("ack " + data.ack_ms + "ms");
       if (typeof data.reply_ms === "number") metaBits.push("reply " + data.reply_ms + "ms");
       if (action === "delete" && mutation?.delete_mode) metaBits.push(mutation.delete_mode + " delete");
@@ -441,12 +441,12 @@
       if (state.briefing) {
         const briefingCard = h("div", { className: "briefing-card" });
         const top = h("div", { className: "briefing-top" });
-        top.appendChild(h("div", { className: "briefing-label" }, "Waystation Check-In"));
+        top.appendChild(h("div", { className: "briefing-label" }, "Commonflame Check-In"));
         top.appendChild(h("div", { className: "briefing-status" }, String(state.briefing.status || "pending").replaceAll("_", " ")));
         briefingCard.appendChild(top);
         const bodyText = state.briefing.content
-          || (state.briefing.status === "timeout" ? "Waystation did not answer in time. The raw inbox is still below." : null)
-          || (state.briefing.error ? "Unable to load the Waystation inbox briefing right now." : null);
+          || (state.briefing.status === "timeout" ? "Commonflame did not answer in time. The raw inbox is still below." : null)
+          || (state.briefing.error ? "Unable to load the Commonflame inbox briefing right now." : null);
         if (bodyText) briefingCard.appendChild(h("div", { className: "briefing-body" }, bodyText));
         const metaText = state.briefing.reply_ms
           ? `Reply in ${Math.round(state.briefing.reply_ms / 1000)}s`

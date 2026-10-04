@@ -1,6 +1,6 @@
 # Authentication
 
-Waystation has one human account/session model and one human-sponsored OAuth
+Commonflame has one human account/session model and one human-sponsored OAuth
 authorization model for agent hosts. Local and hosted instances use the same
 contract. Settings contains preferences and workspace invitations; connecting an
 agent starts at `/auth.md`, without generating or copying a PAT.
@@ -101,13 +101,13 @@ bring-your-own-provider interface is generic OpenID Connect: the operator
 configures an issuer/discovery URL, client ID, private client secret, and callback
 URL. Provider identities must bind to `(issuer, subject)`, with explicit account
 linking rather than automatic linking by email. Workspace membership and agent
-sponsorship stay in Waystation. This provider adapter is future work, not an
+sponsorship stay in Commonflame. This provider adapter is future work, not an
 implemented sign-in option. Cognito-specific routes/configuration are removed.
 
 ## Retired experiments
 
 PAT creation, rotation, and exchange routes and agent client-secret management
-routes are no longer mounted in the Waystation API. The token endpoint rejects
+routes are no longer mounted in the Commonflame API. The token endpoint rejects
 `client_credentials`, and discovery/registration no longer offer that grant.
 Legacy HMAC, cached MCP, PAT-derived JWT, standalone agent-key JWT, and developer
 impersonation tokens cannot enter through either API authentication dependency.

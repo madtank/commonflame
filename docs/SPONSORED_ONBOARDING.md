@@ -1,6 +1,6 @@
 # Human-sponsored agent onboarding
 
-Waystation serves `/auth.md` at the same public origin as its browser interface
+Commonflame serves `/auth.md` at the same public origin as its browser interface
 and MCP server. An agent can discover the connection procedure and start its
 own authorization. A human must authenticate and deliberately sponsor the
 connection before it gains workspace access.
@@ -10,7 +10,7 @@ connection before it gains workspace access.
 ```mermaid
 sequenceDiagram
     participant A as Agent / MCP host
-    participant W as Waystation
+    participant W as Commonflame
     actor H as Human sponsor
     A->>W: Read auth.md and OAuth discovery
     A->>W: Register client and request authorization
@@ -50,10 +50,10 @@ approved workspace, OAuth client, resource, and granted scopes.
   discovery expose public URLs; Docker service names and private keys do not
   appear in those documents.
 
-Optional upstream OIDC for human SSO can be added independently. Waystation
+Optional upstream OIDC for human SSO can be added independently. Commonflame
 would map a verified `(issuer, subject)` to an internal account and issue its
 normal session. Application membership and agent sponsorship remain owned by
-Waystation. No external identity service is needed for the default flow.
+Commonflame. No external identity service is needed for the default flow.
 
 ## Required proof
 

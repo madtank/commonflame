@@ -1890,7 +1890,7 @@ ${uploadedFileMarkdown}`
                     {quickActionRowAgents.map((agent) => {
                       const isCurrentRoute = Boolean(agent.isCurrentRoute);
                       const buttonTitle = agent.isConcierge
-                        ? "Messages route to @Waystation concierge"
+                        ? "Messages route to @Commonflame concierge"
                         : isCurrentRoute
                           ? `Messages route to @${agent.username}`
                           : `Set @${agent.username} as default agent`;
@@ -1919,7 +1919,7 @@ ${uploadedFileMarkdown}`
                           >
                             {agent.isConcierge ? (
                               <div className="w-4 h-4 rounded-full bg-gray-900 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 dark:bg-gray-200 dark:text-gray-900">
-                                Waystation
+                                Commonflame
                               </div>
                             ) : (
                               <div
@@ -1977,10 +1977,10 @@ ${uploadedFileMarkdown}`
                                 readOnly
                                 checked={isRoutingToConcierge}
                                 className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
-                                aria-label="Route messages to Waystation concierge"
+                                aria-label="Route messages to Commonflame concierge"
                               />
                               <div className="w-4 h-4 rounded-full bg-gray-900 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 dark:bg-gray-200 dark:text-gray-900">
-                                Waystation
+                                Commonflame
                               </div>
                               <span className="flex-1 text-gray-700 dark:text-gray-300">
                                 @{CONCIERGE_HANDLE}
@@ -2125,10 +2125,10 @@ ${uploadedFileMarkdown}`
                             readOnly
                             checked={isRoutingToConcierge}
                             className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
-                            aria-label="Select Waystation concierge as default routing"
+                            aria-label="Select Commonflame concierge as default routing"
                           />
                           <div className="w-4 h-4 rounded-full bg-gray-900 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 dark:bg-gray-200 dark:text-gray-900">
-                            Waystation
+                            Commonflame
                           </div>
                           <span className="text-gray-700 dark:text-gray-300">
                             @{CONCIERGE_HANDLE}

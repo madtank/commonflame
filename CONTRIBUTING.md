@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for trying Waystation. The aim of this release is to make the existing
+Thanks for trying Commonflame. The aim of this release is to make the existing
 work useful and easy to explore. Feedback and focused contributions are welcome;
 there is no commitment to a release schedule, support SLA, or feature roadmap.
 

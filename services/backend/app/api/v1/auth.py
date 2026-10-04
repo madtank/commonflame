@@ -1,4 +1,4 @@
-"""Waystation identity, scoped credential exchange, and authenticated messages."""
+"""Commonflame identity, scoped credential exchange, and authenticated messages."""
 import logging
 import os
 import re
@@ -31,7 +31,7 @@ redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6380/0")
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["authentication"])
-# Historical PAT exchange is retained as source only; Waystation never mounts it.
+# Historical PAT exchange is retained as source only; Commonflame never mounts it.
 legacy_router = APIRouter(prefix="/auth", tags=["legacy-pat"])
 
 

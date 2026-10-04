@@ -13,7 +13,7 @@ function enterAccount(tokenLabel: string) {
   fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: password } });
 }
 
-describe('Waystation account entry', () => {
+describe('Commonflame account entry', () => {
   beforeEach(() => {
     vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear();
     window.history.replaceState({}, '', '/login');
@@ -21,7 +21,7 @@ describe('Waystation account entry', () => {
   });
   it('shows platform-neutral account fields and invite-based account creation', async () => {
     render(<UserLogin onLogin={vi.fn()} />);
-    expect(screen.getByRole('heading', { name: 'Welcome to your Waystation' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Welcome to your Commonflame' })).toBeInTheDocument();
     expect(screen.getByLabelText('Username')).toHaveAttribute('autoComplete', 'username');
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
     expect(screen.getByRole('link', { name: /connect an agent/i })).toHaveAttribute('href', '/auth.md');
@@ -67,7 +67,7 @@ describe('Waystation account entry', () => {
     getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: true, signup: 'invite_only', setup_flow: 'token' });
     render(<UserLogin onLogin={vi.fn()} />);
     expect(await screen.findByRole('heading', { name: 'Create the owner account' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Set up Waystation' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set up Commonflame' })).toBeInTheDocument();
   });
   it('consumes a pasted owner setup token and clears sensitive fields on success', async () => {
     getAccountStatus.mockResolvedValue({ auth_mode: 'builtin', setup_required: true, signup: 'invite_only', setup_flow: 'token' });
@@ -75,7 +75,7 @@ describe('Waystation account entry', () => {
     const onLogin = vi.fn(); render(<UserLogin initialMode="account" onLogin={onLogin} />);
     expect(await screen.findByRole('heading', { name: 'Create the owner account' })).toBeInTheDocument();
     enterAccount('Setup token');
-    fireEvent.click(screen.getByRole('button', { name: 'Set up Waystation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Set up Commonflame' }));
     await waitFor(() => expect(onLogin).toHaveBeenCalledWith('session', 'new-owner'));
     expect(createAccount).toHaveBeenCalledWith({ token, username: 'new-owner', password }, 'setup');
     expect(screen.getByLabelText('Setup token')).toHaveValue('');
@@ -147,7 +147,7 @@ describe('Waystation account entry', () => {
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'owner' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: password } });
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: password } });
-    fireEvent.click(screen.getByRole('button', { name: 'Set up Waystation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Set up Commonflame' }));
     await waitFor(() => expect(createAccount).toHaveBeenCalledWith({ username: 'owner', password }, 'setup'));
   });
   it('makes joining someone else’s workspace optional during open signup', async () => {

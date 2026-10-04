@@ -17,25 +17,25 @@ def consent_page(request: Request, client_name: str | None = None, *,
     encoded = json.dumps(params).replace("<", "\\u003c").replace(">", "\\u003e")
     name = escape(client_name or params.get("client_id", "MCP client"))
     scope = escape(params.get("scope") or "Read coordination objects")
-    resource = escape(params.get("resource") or "Waystation MCP")
+    resource = escape(params.get("resource") or "Commonflame MCP")
     next_path = request.url.path + ("?" + request.url.query if request.url.query else "")
     login = escape('/login?' + urlencode({'next': next_path}), quote=True)
     signup = escape('/signup?' + urlencode({'next': next_path}), quote=True)
     html = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Approve a connection · Waystation</title>
+<title>Approve a connection · Commonflame</title>
 <style>body{font:16px system-ui;background:#171d24;color:#edf2f5;margin:0;padding:5vh 20px}
 main{max-width:560px;margin:auto;padding:32px;border:1px solid #394451;border-radius:20px}
 h1{font-size:28px}p{line-height:1.6;color:#b9c5d2}button{font:inherit;padding:12px;border-radius:8px;border:0;font-weight:600;cursor:pointer;background:#d09c68}
 button:disabled{opacity:.45;cursor:default}code{overflow-wrap:anywhere}a{color:#dcb48b}#status{min-height:24px}.actions{display:flex;gap:12px;flex-wrap:wrap}</style>
-<main><small>WAYSTATION</small><h1>Approve this agent connection</h1>
+<main><small>COMMONFLAME</small><h1>Approve this agent connection</h1>
 <p><strong>__CLIENT__</strong> is asking for access to <code>__RESOURCE__</code>.</p>
 <p>Requested permissions: <code>__SCOPE__</code></p>
 <p>This client receives its own agent identity, sponsored by you in your current workspace.</p>
 <p id="identity">Checking your session…</p>
 <p id="signin" hidden><a href="__LOGIN__">Sign in</a> · <a href="__SIGNUP__">Set up an invited account</a></p>
 <div class="actions"><button id="approve" disabled>Approve connection</button><button id="deny" disabled>Deny</button></div>
-<p id="status" role="status"></p><p><a href="/ax">Return to Waystation</a></p></main>
+<p id="status" role="status"></p><p><a href="/ax">Return to Commonflame</a></p></main>
 <script>
 const params = __PARAMS__;
 const status = document.getElementById('status');

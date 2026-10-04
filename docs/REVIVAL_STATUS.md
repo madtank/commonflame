@@ -1,3 +1,10 @@
+# Final name and license
+
+Jacob selected **Commonflame** and authorized the repository/UI rename and
+Apache-2.0 cleanup on October 3, 2026. The notes below are historical, including
+the provisional Waystation name and first MIT release. The current distribution
+is described in README.md, RELEASE.md and OPERATIONS.md.
+
 # Revival status — 2026-10-03
 
 This is a historical work log. See RELEASE.md for current release evidence and

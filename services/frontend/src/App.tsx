@@ -14,7 +14,7 @@ const Workspace = lazy(() => import('@/pages/AxPlatformPage'));
 const DeviceVerify = lazy(() => import('@/pages/DeviceVerifyPage'));
 const Admin = lazy(() => import('@/pages/ModernAdminPage'));
 function Loading() {
-  return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground" role="status">Opening Waystation…</div>;
+  return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground" role="status">Opening Commonflame…</div>;
 }
 
 export default function App() {

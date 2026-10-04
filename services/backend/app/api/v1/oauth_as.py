@@ -326,7 +326,7 @@ def _validated_resource_url(resource: str | None) -> str:
     if (parsed.scheme != base.scheme or parsed.netloc != base.netloc
             or parsed.query or parsed.fragment or not parsed.path.startswith(prefix)):
         raise HTTPException(status_code=400, detail={"error": "invalid_target",
-                            "error_description": "resource must identify this Waystation MCP server"})
+                            "error_description": "resource must identify this Commonflame MCP server"})
     suffix = parsed.path[len(prefix):]
     if "/" in suffix or not suffix:
         raise HTTPException(status_code=400, detail={"error": "invalid_target"})
@@ -834,7 +834,7 @@ async def protected_resource_metadata(request: Request, resource: str | None = N
         _validated_resource_url(resource)
     return {
         "resource": resource_url,
-        "resource_name": "Waystation MCP",
+        "resource_name": "Commonflame MCP",
         "authorization_servers": [auth_base],
         "scopes_supported": SCOPES_SUPPORTED,
         "bearer_methods_supported": ["header"],
@@ -1168,13 +1168,13 @@ async def device_approval_page(user_code: str | None = None):
     login = escape("/login?" + urlencode({"next": next_path}), quote=True)
     signup = escape("/signup?" + urlencode({"next": next_path}), quote=True)
     html = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Approve an agent · Waystation</title><style>body{font:16px system-ui;background:#171d24;color:#edf2f5;margin:0;padding:5vh 20px}main{max-width:560px;margin:auto;padding:32px;border:1px solid #394451;border-radius:20px}p{color:#b9c5d2;line-height:1.6}button,input{font:inherit;padding:12px;border-radius:8px}button{background:#d09c68;border:0;font-weight:600;cursor:pointer}button:disabled{opacity:.45}input{width:90%;background:#222c38;color:white;border:1px solid #536274}a{color:#dcb48b}code{overflow-wrap:anywhere}.actions{display:flex;gap:12px;flex-wrap:wrap}</style>
-<main><small>WAYSTATION</small><h1>Approve an agent connection</h1>
+<title>Approve an agent · Commonflame</title><style>body{font:16px system-ui;background:#171d24;color:#edf2f5;margin:0;padding:5vh 20px}main{max-width:560px;margin:auto;padding:32px;border:1px solid #394451;border-radius:20px}p{color:#b9c5d2;line-height:1.6}button,input{font:inherit;padding:12px;border-radius:8px}button{background:#d09c68;border:0;font-weight:600;cursor:pointer}button:disabled{opacity:.45}input{width:90%;background:#222c38;color:white;border:1px solid #536274}a{color:#dcb48b}code{overflow-wrap:anywhere}.actions{display:flex;gap:12px;flex-wrap:wrap}</style>
+<main><small>COMMONFLAME</small><h1>Approve an agent connection</h1>
 <label>Device code<input id="code" value="__CODE__" autocomplete="off"></label>
-<p id="identity">Checking your session…</p><p id="signin" hidden><a href="__LOGIN__">Sign in</a> · <a href="__SIGNUP__">Set up an invited account</a></p>
+<p id="identity">Checking your session…</p><p id="signin" hidden><a href="__LOGIN__">Sign in</a> · <a href="__SIGNUP__">Create an account</a></p>
 <p>Client: <strong id="client"></strong></p><p>Agent: <span id="agent"></span></p><p>Resource: <code id="resource"></code></p><p>Requested permissions: <code id="scope"></code></p>
 <p>This client receives its own agent identity in your current workspace.</p>
-<div class="actions"><button id="approve" disabled>Approve connection</button><button id="deny" disabled>Deny</button><button id="reload">Refresh details</button></div><p id="status" role="status"></p><p><a href="/ax">Return to Waystation</a></p></main>
+<div class="actions"><button id="approve" disabled>Approve connection</button><button id="deny" disabled>Deny</button><button id="reload">Refresh details</button></div><p id="status" role="status"></p><p><a href="/ax">Return to Commonflame</a></p></main>
 <script>
 let token='',pending=false;const approve=document.getElementById('approve'),deny=document.getElementById('deny'),status=document.getElementById('status'),code=document.getElementById('code');
 function enable(){approve.disabled=deny.disabled=!(token&&pending);}

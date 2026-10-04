@@ -1891,9 +1891,9 @@ def register_context_tool(mcp: FastMCP):
         token: AccessToken = CurrentAccessToken(),
         request: Request = CurrentRequest(),
     ) -> ToolResult | dict:
-        """Bounded, permission-gated shared context store for authenticated Waystation workspace state.
+        """Bounded, permission-gated shared context store for authenticated Commonflame workspace state.
 
-        The tool reads and writes only first-party Waystation context/catalog state. It
+        The tool reads and writes only first-party Commonflame context/catalog state. It
         does not call external systems, deploy, rotate credentials, or perform
         open-world destructive operations. delete/decline/terminate remove only
         ephemeral TTL-bound working copies and are gated behind a can_delete

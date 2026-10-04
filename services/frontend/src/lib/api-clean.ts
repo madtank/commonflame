@@ -1732,7 +1732,7 @@ export const api = {
       cloud_function_url?: string;
       // Web browsing capability for cloud agents (Brave search)
       webBrowsingEnabled?: boolean;
-      // Waystation MCP tools capability for cloud agents
+      // Commonflame MCP tools capability for cloud agents
       axMcpEnabled?: boolean;
       // Image generation capability for cloud agents
       imageGenEnabled?: boolean;

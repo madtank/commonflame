@@ -1,4 +1,4 @@
-"""Waystation JWT verification and authenticated principal dependencies."""
+"""Commonflame JWT verification and authenticated principal dependencies."""
 import logging
 import os
 import uuid
@@ -355,7 +355,7 @@ async def get_current_user_from_token(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
-    """Get current user from Waystation access token."""
+    """Get current user from Commonflame access token."""
     return await _resolve_user_from_bearer_token(
         token,
         db,
@@ -379,7 +379,7 @@ async def get_user_from_jwt_or_mcp(
     token: str | None = Depends(oauth2_scheme_optional),
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
-    """Get user from Waystation JWT or explicitly enabled legacy token."""
+    """Get user from Commonflame JWT or explicitly enabled legacy token."""
     return await _resolve_user_from_bearer_token(
         token,
         db,

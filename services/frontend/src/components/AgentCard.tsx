@@ -1580,9 +1580,9 @@ export function GamifiedAgentCard({
                 true && (
                 <div
                   className="rounded-full p-1.5 bg-gradient-to-r from-purple-500 to-violet-500 shadow-md"
-                  title="Waystation MCP Enabled - Agent can use platform tools"
+                  title="Commonflame MCP Enabled - Agent can use platform tools"
                   role="img"
-                  aria-label="Waystation MCP Enabled"
+                  aria-label="Commonflame MCP Enabled"
                 >
                   <Boxes className="w-3 h-3 text-white" />
                 </div>

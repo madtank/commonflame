@@ -34,7 +34,7 @@ export async function getAccountStatus(): Promise<AccountStatus> {
   if (data.auth_mode !== 'builtin' || typeof data.setup_required !== 'boolean'
       || !['browser', 'token'].includes(data.setup_flow)
       || !['open', 'invite_only', 'closed'].includes(data.signup)) {
-    throw new Error('Account setup is not available on this Waystation.');
+    throw new Error('Account setup is not available on this Commonflame.');
   }
   return data;
 }

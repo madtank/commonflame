@@ -1,4 +1,4 @@
-# Waystation MCP resource server
+# Commonflame MCP resource server
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
@@ -13,6 +13,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip==26.2.1 setuptools==84.0.
 
 # Copy application code
 COPY fastmcp_server/ ./fastmcp_server/
+COPY LICENSE NOTICE ./
 
 USER app
 EXPOSE 8080

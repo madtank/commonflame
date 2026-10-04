@@ -14,7 +14,7 @@ export default function AxPlatformPage({
     <TooltipProvider delayDuration={300}>
       <AxPlatformShell
         spaceName={spaceName}
-        agentName="Waystation"
+        agentName="Commonflame"
         username={username}
         onLogout={onLogout}
       />

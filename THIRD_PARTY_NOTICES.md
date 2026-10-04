@@ -1,6 +1,6 @@
 # Third-party notices
 
-Waystation's project license does not replace the licenses of its dependencies.
+Commonflame's project license does not replace the licenses of its dependencies.
 
 The frontend includes React, React Router, TanStack Query, Radix UI, Lucide,
 Axios, DOMPurify, markdown/rendering utilities, and their dependencies. Their

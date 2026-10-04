@@ -33,7 +33,7 @@ class ExtractAgentContextTests(unittest.TestCase):
         token = SimpleNamespace(
             token=agent_jwt,
             claims={
-                "agent_name": "Waystation",
+                "agent_name": "Commonflame",
                 "agent_id": "5e33fedf-659f-4762-acb0-4166c2ac4c12",
                 "space_id": "a632f74e-6c61-4222-821f-06ad3b02de34",
                 "iss": "ax-backend",
@@ -44,7 +44,7 @@ class ExtractAgentContextTests(unittest.TestCase):
         ctx = extract_agent_context(token, request)
 
         self.assertEqual(ctx["jwt"], agent_jwt)
-        self.assertEqual(ctx["agent_name"], "Waystation")
+        self.assertEqual(ctx["agent_name"], "Commonflame")
         self.assertEqual(ctx["space_id"], "a632f74e-6c61-4222-821f-06ad3b02de34")
 
     def test_local_browser_token_remains_user_on_named_agent_route(self):
@@ -323,7 +323,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
         )
         request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-panel-space",
             }
         )
@@ -338,7 +338,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
         """Agent identity in token claims beats X-Agent-Name header."""
         token = SimpleNamespace(
             token="agent-jwt",
-            claims={"agent_name": "Waystation", "space_id": "space-from-claims", "agent_id": "agent-test"},
+            claims={"agent_name": "Commonflame", "space_id": "space-from-claims", "agent_id": "agent-test"},
         )
         request = SimpleNamespace(
             headers={"x-agent-name": "wrong_agent", "x-space-id": "space-from-header"}
@@ -346,7 +346,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
 
         ctx = extract_agent_context(token, request)
 
-        self.assertEqual(ctx["agent_name"], "Waystation")
+        self.assertEqual(ctx["agent_name"], "Commonflame")
         self.assertEqual(ctx["principal_type"], "agent")
         self.assertEqual(ctx["space_id"], "space-from-claims")
 
@@ -355,7 +355,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
         token = SimpleNamespace(
             token="agent-jwt",
             claims={
-                "agent_name": "Waystation",
+                "agent_name": "Commonflame",
                 "agent_id": "5e33fedf-659f-4762-acb0-4166c2ac4c12",
                 "space_id": "space-1",
                 "delegation_mode": "home_space",
@@ -374,7 +374,7 @@ class WaitForReplyProgressTests(unittest.IsolatedAsyncioTestCase):
         token = SimpleNamespace(
             token="agent-jwt",
             claims={
-                "agent_name": "Waystation",
+                "agent_name": "Commonflame",
                 "agent_id": "5e33fedf-659f-4762-acb0-4166c2ac4c12",
                 "space_id": "team-space",
             },
@@ -444,13 +444,13 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
             return response
 
         with patch("httpx.AsyncClient.request", new=capture_request):
-            await api_request("GET", "/api/v1/agents/me", agent_jwt, agent_name="Waystation")
+            await api_request("GET", "/api/v1/agents/me", agent_jwt, agent_name="Commonflame")
 
         self.assertEqual(
             captured_headers.get("Authorization"),
             f"Bearer {agent_jwt}",
         )
-        self.assertEqual(captured_headers.get("X-Agent-Name"), "Waystation")
+        self.assertEqual(captured_headers.get("X-Agent-Name"), "Commonflame")
 
     async def test_does_not_leak_cognito_token_for_agent_calls(self):
         """When agent_name is set, the forwarded token must NOT be a different token.
@@ -472,7 +472,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
             return response
 
         with patch("httpx.AsyncClient.request", new=capture_request):
-            await api_request("GET", "/api/v1/messages", agent_jwt, agent_name="Waystation")
+            await api_request("GET", "/api/v1/messages", agent_jwt, agent_name="Commonflame")
 
         auth_header = captured_headers.get("Authorization", "")
         self.assertIn(agent_jwt, auth_header)
@@ -496,7 +496,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "GET",
                 "/api/v1/spaces",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for=["space-2", "space-3"],
@@ -524,7 +524,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "POST",
                 "/api/v1/drafts/agents",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for="user-123",
@@ -536,7 +536,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(captured_headers.get("X-On-Behalf-Of"), "user-123")
 
     async def test_concierge_delegation_forwards_on_behalf_of(self):
-        """Team-space Waystation drafts also need X-On-Behalf-Of, not full manage rights."""
+        """Team-space Commonflame drafts also need X-On-Behalf-Of, not full manage rights."""
         captured_headers = {}
 
         async def capture_request(self, method, url, **kwargs):
@@ -553,7 +553,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "POST",
                 "/api/v1/drafts/agents",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="team-space",
                 delegation_mode="concierge_delegated",
                 delegated_for="user-123",
@@ -582,7 +582,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "POST",
                 "/api/v1/drafts/spaces",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for={"user_id": "user-456", "space_id": "space-1"},
@@ -592,7 +592,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(captured_headers.get("X-On-Behalf-Of"), "user-456")
 
     async def test_home_space_agent_management_forwards_on_behalf_of(self):
-        """Private-space Waystation management writes must carry the human owner."""
+        """Private-space Commonflame management writes must carry the human owner."""
         captured_headers = {}
 
         async def capture_request(self, method, url, **kwargs):
@@ -609,11 +609,11 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "PATCH",
                 "/api/v1/agents/agent-123",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for="user-123",
-                json_data={"description": "Updated by Waystation for review"},
+                json_data={"description": "Updated by Commonflame for review"},
             )
 
         self.assertEqual(captured_headers.get("X-On-Behalf-Of"), "user-123")
@@ -636,7 +636,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "PATCH",
                 "/auth/agents/agent-123/control",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for="user-123",
@@ -663,7 +663,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "POST",
                 "/api/v1/tasks",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for={"user_id": "user-123", "space_id": "space-home"},
@@ -690,7 +690,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "PUT",
                 "/api/v1/tasks/task-abc",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for={"user_id": "user-123", "space_id": "space-home"},
@@ -717,7 +717,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "POST",
                 "/api/v1/tasks/task-abc/nudge",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for={"user_id": "user-123", "space_id": "space-home"},
@@ -743,7 +743,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "PUT",
                 "/api/v1/tasks/reminders/pause",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for={"user_id": "user-123", "space_id": "space-home"},
@@ -770,7 +770,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "PUT",
                 "/api/v1/tasks/task-abc/status",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for={"user_id": "user-123", "space_id": "space-home"},
@@ -797,7 +797,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "POST",
                 "/api/tasks",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for={"user_id": "user-123", "space_id": "space-home"},
@@ -824,7 +824,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "PUT",
                 "/api/v1/agents/agent-123",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for="user-123",
@@ -851,7 +851,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "DELETE",
                 "/api/v1/agents/agent-123",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for="user-123",
@@ -877,7 +877,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
                 "GET",
                 "/api/v1/agents",
                 "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="space-1",
                 delegation_mode="home_space",
                 delegated_for="user-123",
@@ -901,7 +901,7 @@ class ApiRequestTokenForwardingTests(unittest.IsolatedAsyncioTestCase):
         with patch("httpx.AsyncClient.request", new=capture_request):
             await api_request(
                 "POST", "/api/v1/messages", "jwt",
-                agent_name="Waystation",
+                agent_name="Commonflame",
                 space_id="a632f74e-6c61-4222-821f-06ad3b02de34",
             )
 
@@ -924,7 +924,7 @@ class EndToEndTokenFlowTests(unittest.IsolatedAsyncioTestCase):
         token = SimpleNamespace(
             token=agent_jwt,
             claims={
-                "agent_name": "Waystation",
+                "agent_name": "Commonflame",
                 "agent_id": "5e33fedf-659f-4762-acb0-4166c2ac4c12",
                 "space_id": "a632f74e-6c61-4222-821f-06ad3b02de34",
                 "iss": "ax-backend",
@@ -957,7 +957,7 @@ class EndToEndTokenFlowTests(unittest.IsolatedAsyncioTestCase):
             f"Bearer {agent_jwt}",
             "Agent JWT must be forwarded to backend — not Cognito passthrough",
         )
-        self.assertEqual(captured_headers["X-Agent-Name"], "Waystation")
+        self.assertEqual(captured_headers["X-Agent-Name"], "Commonflame")
         self.assertEqual(
             captured_headers["X-Space-Id"],
             "a632f74e-6c61-4222-821f-06ad3b02de34",
@@ -968,7 +968,7 @@ class EndToEndTokenFlowTests(unittest.IsolatedAsyncioTestCase):
         token = SimpleNamespace(
             token="delegated-jwt",
             claims={
-                "agent_name": "Waystation",
+                "agent_name": "Commonflame",
                 "agent_id": "5e33fedf-659f-4762-acb0-4166c2ac4c12",
                 "space_id": "space-home",
                 "delegation_mode": "home_space",

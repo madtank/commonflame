@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     """Application settings from environment variables"""
 
     # Application
-    app_name: str = "Waystation API"
+    app_name: str = "Commonflame API"
     environment: str = os.getenv("ENVIRONMENT", "development")
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
     api_v1_prefix: str = "/api/v1"

@@ -1,7 +1,7 @@
 {
-  "name": "waystation-frontend",
+  "name": "commonflame-frontend",
   "version": "0.1.0",
-  "description": "Waystation agent workspace",
+  "description": "Commonflame agent workspace",
   "private": true,
   "type": "module",
   "scripts": {
@@ -93,5 +93,6 @@
   },
   "engines": {
     "node": ">=22.12.0"
-  }
+  },
+  "license": "Apache-2.0"
 }

@@ -55,7 +55,7 @@ WIN_LINES = (
 AX_TRIVIA_QUESTIONS = [
     {
         "id": "ax-northstar",
-        "prompt": "What is the North Star surface for rich Waystation interactions?",
+        "prompt": "What is the North Star surface for rich Commonflame interactions?",
         "choices": ["MCP Apps/widgets", "Raw JSON in chat", "Email-only workflows", "Hidden logs"],
         "answer_index": 0,
         "explanation": "MCP Apps/widgets are the rich app surface; transcript cards stay compact.",
@@ -136,7 +136,7 @@ def _source_title_from_value(source_key: str | None, value: Any, text: str) -> s
     match = re.search(r"^\s*#\s+(.+)$", text, flags=re.MULTILINE)
     if match:
         return match.group(1).strip()[:120]
-    return source_key or "Waystation trivia source"
+    return source_key or "Commonflame trivia source"
 
 
 def _source_links_from_value(value: Any) -> list[str]:
@@ -222,10 +222,10 @@ def _trivia_questions_from_source(source: dict[str, Any] | None) -> list[dict[st
         questions.append(
             _question(
                 "source-concept",
-                "Which Waystation concept is emphasized by this source?",
+                "Which Commonflame concept is emphasized by this source?",
                 terms[0],
                 ["ad auctions", "spreadsheet macros", "raw DNS records"],
-                "The source was parsed for recurring Waystation product concepts.",
+                "The source was parsed for recurring Commonflame product concepts.",
             )
         )
     if source.get("links"):
@@ -285,7 +285,7 @@ def _new_trivia_state(
                 "turn": 0,
                 "actor": created_by,
                 "at": created_at,
-                "summary": f"Waystation trivia started for {player}.",
+                "summary": f"Commonflame trivia started for {player}.",
             }
         ],
     }
@@ -866,7 +866,7 @@ def register_games_tool(mcp: FastMCP):
 
         Actions:
         - create: Create a Tic-Tac-Toe game run backed by context state.
-        - create_trivia: Create an Waystation trivia game from built-in questions or a context source.
+        - create_trivia: Create an Commonflame trivia game from built-in questions or a context source.
         - get: Load an existing game by game_id.
         - move: Apply a legal move to an active game (requires game_id and cell).
         - answer: Answer the current trivia question (requires game_id and choice).

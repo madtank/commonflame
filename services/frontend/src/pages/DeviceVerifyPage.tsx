@@ -375,7 +375,7 @@ export default function DeviceVerifyPage({
                 onClick={handleLogin}
                 className="mt-4 w-full bg-white text-slate-900 hover:bg-slate-100"
               >
-                Sign in to Waystation
+                Sign in to Commonflame
               </Button>
             </div>
           )}

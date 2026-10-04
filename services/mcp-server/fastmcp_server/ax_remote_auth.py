@@ -1,7 +1,7 @@
-"""Remote OAuth auth provider for Waystation-issued MCP tokens.
+"""Remote OAuth auth provider for Commonflame-issued MCP tokens.
 
 In this mode the MCP server is only a resource server. It validates
-backend-issued Waystation JWTs and advertises the backend as the Authorization Server.
+backend-issued Commonflame JWTs and advertises the backend as the Authorization Server.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ SCOPES_SUPPORTED = [
 
 
 class AxRemoteAuthProvider(RemoteAuthProvider):
-    """FastMCP RemoteAuthProvider configured for Waystation as the AS."""
+    """FastMCP RemoteAuthProvider configured for Commonflame as the AS."""
 
     def __init__(
         self,
@@ -70,8 +70,8 @@ class AxRemoteAuthProvider(RemoteAuthProvider):
             authorization_servers=[AnyHttpUrl(self.auth_server_url)],
             base_url=AnyHttpUrl(mcp_base_url),
             scopes_supported=SCOPES_SUPPORTED,
-            resource_name="Waystation MCP",
-            # The Waystation backend AS serves /auth.md as the agent-readable integration doc.
+            resource_name="Commonflame MCP",
+            # The Commonflame backend AS serves /auth.md as the agent-readable integration doc.
             resource_documentation=AnyHttpUrl(f"{self.auth_server_url}/auth.md"),
         )
 
@@ -90,7 +90,7 @@ class AxRemoteAuthProvider(RemoteAuthProvider):
                         metadata = response.json()
                     except ValueError:
                         logger.warning(
-                            "Waystation AS metadata returned non-JSON body from %s",
+                            "Commonflame AS metadata returned non-JSON body from %s",
                             self.auth_server_internal_url,
                         )
                         return JSONResponse(
@@ -100,7 +100,7 @@ class AxRemoteAuthProvider(RemoteAuthProvider):
                     return JSONResponse(metadata)
                 except httpx.HTTPStatusError as exc:
                     logger.warning(
-                        "Waystation AS metadata returned upstream status %s from %s",
+                        "Commonflame AS metadata returned upstream status %s from %s",
                         exc.response.status_code,
                         self.auth_server_internal_url,
                     )
@@ -110,7 +110,7 @@ class AxRemoteAuthProvider(RemoteAuthProvider):
                     )
                 except httpx.HTTPError:
                     logger.warning(
-                        "Waystation AS metadata request failed for %s",
+                        "Commonflame AS metadata request failed for %s",
                         self.auth_server_internal_url,
                         exc_info=True,
                     )

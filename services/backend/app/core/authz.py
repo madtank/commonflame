@@ -1,4 +1,4 @@
-"""Provider-independent audience guards for Waystation-signed tokens."""
+"""Provider-independent audience guards for Commonflame-signed tokens."""
 import os
 from fastapi import Depends, HTTPException, Request
 from .jwt_verify import _claim_values, _decode_backend_token, oauth2_scheme

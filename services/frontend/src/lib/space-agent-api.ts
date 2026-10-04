@@ -1173,7 +1173,7 @@ async function initializeMcpDirectSession(
     {
       protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: {},
-      clientInfo: { name: "Waystation Portal MCP Apps", version: "1.0.0" },
+      clientInfo: { name: "Commonflame Portal MCP Apps", version: "1.0.0" },
     },
     { authenticated: true, spaceId: options?.spaceId },
     MCP_DIRECT_SESSION_TIMEOUT_MS,
