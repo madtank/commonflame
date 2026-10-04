@@ -120,7 +120,7 @@ SLA or promise of continuous feature development. See [contributing](CONTRIBUTIN
 
 ## License and provenance
 
-Project licensing is awaiting the owner's final release decision. Third-party
+Released under the [MIT license](LICENSE), copyright Jacob Taunton. Third-party
 packages retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
 This repository imports no old database, environment files, credentials, uploads,
 or upstream Git history. The source snapshots are recorded in

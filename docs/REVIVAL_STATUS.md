@@ -1,5 +1,8 @@
 # Revival status — 2026-10-03
 
+This is a historical work log. See RELEASE.md for current release evidence and
+README.md for the supported first-run instructions.
+
 ## Baseline and source preservation
 
 All three upstream main branches were fetched. Backend and MCP main last
@@ -180,6 +183,6 @@ now total 130; full smoke requires the human to read the actual MCP-created task
 and agent-authored message and see the approved agent in the widget roster.
 
 The detailed release evidence supersedes older counts and external-host gaps
-above. The owner has confirmed retained rights to the original source. The
-project-license decision remains pending. Remote CI remains unrun until the
-first push.
+above. The owner confirmed retained rights to the original source and authorized
+the personal GitHub release under MIT on October 3. Remote CI remains unrun until
+the first push; its final result is recorded in RELEASE.md.

@@ -1,7 +1,16 @@
 name: Local stack
 on:
   push:
+    branches: ['**']
+    paths-ignore:
+      - README.md
+      - CONTRIBUTING.md
+      - docs/**
   pull_request:
+    paths-ignore:
+      - README.md
+      - CONTRIBUTING.md
+      - docs/**
 
 permissions:
   contents: read

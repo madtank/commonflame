@@ -35,5 +35,5 @@ see services/mcp-server/README.md. GitHub Actions defines the full check command
 and an isolated Compose smoke installation.
 
 Do not copy this installation's `.env`, volumes, or credentials into a pull
-request. Respect third-party license notices. Project licensing must be settled
-before external code contributions are accepted.
+request. Respect third-party license notices. Contributions are provided under
+the project's MIT license unless explicitly agreed otherwise.
