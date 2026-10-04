@@ -10,7 +10,7 @@ The release is complete when a clean source checkout starts with an empty
 database, a person can create an account, an existing agent host can connect
 through sponsored OAuth, and tasks/messages can be created and read through MCP
 and the interface. The README and walkthrough must describe that actual flow.
-Publication additionally requires the owner's license and source-rights decision.
+Publication additionally requires the owner's project-license decision.
 
 ## Regression results
 
@@ -101,8 +101,8 @@ in THIRD_PARTY_NOTICES.md and the frontend's served notices file.
   log a browser warning/error. Messages and tasks continue to work; automatic
   AI summaries are outside the verified local core.
 - CI is configured, but GitHub Actions has not run before the first push.
-- Project license and permission to release the original source are awaiting
-  the owner's decision. Nothing has been published yet.
+- The owner has confirmed retained rights to the original source. The project
+  license is awaiting the owner's decision. Nothing has been published yet.
 
 Future improvements can be issues or contributions; they do not extend this
 release's acceptance boundary.

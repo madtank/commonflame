@@ -180,5 +180,6 @@ now total 130; full smoke requires the human to read the actual MCP-created task
 and agent-authored message and see the approved agent in the widget roster.
 
 The detailed release evidence supersedes older counts and external-host gaps
-above. The only publication decision still pending is the owner's source-rights
-confirmation and project license. Remote CI remains unrun until the first push.
+above. The owner has confirmed retained rights to the original source. The
+project-license decision remains pending. Remote CI remains unrun until the
+first push.
