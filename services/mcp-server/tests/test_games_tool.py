@@ -263,7 +263,7 @@ class GamesToolTests(unittest.IsolatedAsyncioTestCase):
         }
         self.request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-ui-space",
             }
         )

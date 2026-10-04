@@ -1,4 +1,4 @@
-# Connect an agent to Waystation
+# Connect an agent to Commonflame
 
 This document is the agent onboarding guide for **{{ORIGIN}}**. It describes
 what you can discover and prepare yourself, and the one step a human sponsor
@@ -44,7 +44,7 @@ resource is `{{ORIGIN}}/mcp`.
 Named connection URLs such as `{{ORIGIN}}/mcp/agents/my_agent` are compatibility
 aliases of this same resource server. They do not grant an identity or extra
 permissions. Standard clients can connect through the canonical endpoint;
-Waystation creates a distinct sponsored agent identity for their registered
+Commonflame creates a distinct sponsored agent identity for their registered
 client. The signed credential and approved grant establish the caller's identity.
 
 ## Browser-capable MCP hosts: authorization code with PKCE
@@ -161,7 +161,7 @@ credential ownership coordinated with the MCP host.
 
 ## For the human sponsor and operator
 
-Sign in at **{{ORIGIN}}/auth/login**. Built-in Waystation accounts work on a
+Sign in at **{{ORIGIN}}/auth/login**. Built-in Commonflame accounts work on a
 laptop or a hosted installation; no external identity provider is required.
 
 Humans use **{{ORIGIN}}/login** and **{{ORIGIN}}/signup**. A fresh localhost
@@ -183,7 +183,7 @@ routine container rebuild must not replace the installation's signing key.
 The internal compatibility identifiers `ax-api` and `ax-backend` do not require
 an aX cloud account. Legacy PAT APIs are outside the recommended onboarding flow.
 
-This is a Waystation OAuth onboarding profile inspired by the
+This is a Commonflame OAuth onboarding profile inspired by the
 [auth.md discovery pattern](https://github.com/workos/auth.md). It does not
 implement the WorkOS identity-assertion/ID-JAG exchange protocol. Optional
 upstream OIDC SSO for humans can be added independently of the agent flow.

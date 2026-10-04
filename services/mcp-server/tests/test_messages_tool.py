@@ -47,7 +47,7 @@ class MessagesToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.tool.task_config.poll_interval, timedelta(seconds=2))
 
     async def test_send_payload_contains_raw_content(self) -> None:
-        """Backend router handles Waystation routing — MCP sends raw content."""
+        """Backend router handles Commonflame routing — MCP sends raw content."""
         with patch(
             "fastmcp_server.tools.messages.api_request",
             new=AsyncMock(

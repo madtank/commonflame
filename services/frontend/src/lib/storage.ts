@@ -22,7 +22,8 @@ export interface StoredSpace {
 // Legacy type alias for backward compatibility
 export type StoredOrganization = StoredSpace;
 
-// Prefix all storage keys with environment
+// Keep the original namespace so the Commonflame rename preserves sessions.
+// Prefix all storage keys with environment.
 const getStorageKey = (key: string): string => {
   return `waystation_${config.environment}_${key}`;
 };

@@ -29,6 +29,7 @@ from app.models.space_membership import SpaceMembership
 router = APIRouter(prefix="/auth/local", tags=["local authentication"])
 password_hasher = PasswordHasher()
 _DUMMY_HASH = password_hasher.hash(secrets.token_urlsafe(24))
+# Stable wire identifier: keep existing browser sessions across the rename.
 COOKIE_NAME = "waystation_refresh"
 ACCESS_TTL = 900
 REFRESH_TTL_DAYS = 7
@@ -266,11 +267,11 @@ async def signup_invited(body: AccountRequest, request: Request, response: Respo
     _check_origin(request)
     mode = registration_mode()
     if mode == "closed":
-        raise HTTPException(status_code=403, detail="Account registration is closed on this Waystation")
+        raise HTTPException(status_code=403, detail="Account registration is closed on this Commonflame")
     if body.token:
         return await _create_invited_account(body, "sponsor", request, response, system)
     if mode != "open":
-        raise HTTPException(status_code=403, detail="A workspace invitation is required on this Waystation")
+        raise HTTPException(status_code=403, detail="A workspace invitation is required on this Commonflame")
     if not await has_builtin_accounts(system.db):
         raise HTTPException(status_code=409, detail="Create the owner account first")
     return await _save_account(body, response, system)
@@ -282,7 +283,7 @@ async def create_invite(body: InviteRequest, request: Request,
     _assert_local_mode()
     _check_origin(request)
     if registration_mode() == "closed":
-        raise HTTPException(status_code=403, detail="Account registration is closed on this Waystation")
+        raise HTTPException(status_code=403, detail="Account registration is closed on this Commonflame")
     auth = request.headers.get("authorization", "")
     if not auth.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Human sign-in required")

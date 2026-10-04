@@ -279,7 +279,7 @@ export function UserSettingsMenu({
           <div className="flex flex-col">
             <span className="text-sm">Switch to new UI</span>
             <span className="text-xs text-muted-foreground">
-              Try the new Waystation experience
+              Try the new Commonflame experience
             </span>
           </div>
         </DropdownMenuItem>

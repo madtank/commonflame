@@ -65,8 +65,8 @@ describe("humanizeHandle", () => {
   });
 
   it("handles aX special case", () => {
-    expect(humanizeHandle("ax")).toBe("Waystation");
-    expect(humanizeHandle("@ax")).toBe("Waystation");
+    expect(humanizeHandle("ax")).toBe("Commonflame");
+    expect(humanizeHandle("@ax")).toBe("Commonflame");
   });
 
   it("strips @ prefix", () => {

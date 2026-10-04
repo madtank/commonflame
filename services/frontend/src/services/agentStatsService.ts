@@ -1,6 +1,6 @@
 /**
  * Agent Statistics Service
- * Fetches agent activity data from the Waystation Marketplace API
+ * Fetches agent activity data from the Commonflame Marketplace API
  */
 import { config } from "../config/environment";
 import { TASK_ROUTES } from "../lib/api-routes";

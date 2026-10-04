@@ -530,7 +530,7 @@ class WidgetCallContractTests(unittest.TestCase):
 
         self.assertIn("function gameTitle()", content)
         self.assertIn('if (gameKey === "tic_tac_toe") return "Tic-Tac-Toe";', content)
-        self.assertIn('if (gameKey === "ax_trivia") return "Waystation Trivia";', content)
+        self.assertIn('if (gameKey === "ax_trivia") return "Commonflame Trivia";', content)
         self.assertIn("function safeSourceHref(value)", content)
         self.assertIn('url.protocol === "http:" || url.protocol === "https:" ? url.href : null', content)
         self.assertIn('host.callServerTool("games"', content)

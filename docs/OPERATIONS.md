@@ -11,7 +11,8 @@ owner setup and invitation-only registration. Explicit `open`, `invite_only`,
 and `closed` modes control additional accounts. Changing signup policy does
 not change existing workspace memberships or reopen first-owner setup.
 
-The Postgres service uses its own `waystation_pgdata` volume. First boot builds
+The Postgres service uses its own `commonflame_pgdata` volume on a new default
+installation (`waystation_pgdata` for an existing Waystation project). First boot builds
 54 tables from the curated schema and runs schema bootstrap/migrations. It does
 not connect to the prior aX database or import users, tasks, messages, or uploads.
 
@@ -24,6 +25,62 @@ To stop while preserving data, use `docker compose down`. Named volumes are
 retained. Changing `COMPOSE_PROJECT_NAME` creates a separate installation and
 does not migrate data. Keep `PUBLIC_URL` aligned with the URL used by browser and
 MCP clients; OAuth redirects, discovery, and token audiences depend on it.
+
+## Upgrading from Waystation
+
+The repository is now `madtank/commonflame`. GitHub redirects the old repository
+URL; update your checkout's remote with:
+
+```sh
+git remote set-url origin https://github.com/madtank/commonflame.git
+```
+
+Keep your existing `.env`, database password and public origin. Set
+`COMPOSE_PROJECT_NAME=waystation` in that file before rebuilding. If you previously
+ran without an env file, use `docker compose -p waystation` for every command.
+This reuses all four original volumes: `waystation_pgdata`,
+`waystation_redisdata`, `waystation_signing-keys` and `waystation_uploads`.
+Do not replace your env file with the new example or run `down -v`.
+
+The Commonflame UI and MCP metadata do not require renaming storage. The existing
+Postgres database/user, refresh-cookie name, browser storage namespace and auth
+locks remain stable compatibility identifiers. Stored task/message text and
+user-chosen names are not rewritten.
+
+If you want Commonflame container names while reusing the old data, first stop
+the old project (`docker compose -p waystation down`, without `-v`). Save this
+local override as `compose.legacy-volumes.yml`:
+
+```yaml
+volumes:
+  pgdata:
+    external: true
+    name: waystation_pgdata
+  redisdata:
+    external: true
+    name: waystation_redisdata
+  signing-keys:
+    external: true
+    name: waystation_signing-keys
+  uploads:
+    external: true
+    name: waystation_uploads
+```
+
+Then run:
+
+```sh
+docker compose -p commonflame -f docker-compose.yml \
+  -f compose.legacy-volumes.yml up -d --build --wait
+```
+
+Use the same project/files
+for later operations. Never run both projects against the same volumes at once.
+The override requires the old volumes to exist and does not copy or delete data.
+Back up before any optional storage migration; keep signing keys and uploads
+together with the database.
+
+## Rebuild and host
 
 After editing source, rebuild images and explicitly recreate the services:
 

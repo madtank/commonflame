@@ -774,7 +774,7 @@ export function buildAttachedNoReplyIndicators(
 
       if (!looksLikeNoReply) continue;
 
-      const agentLabel = asString(signal.agent_name) || entry.fromLabel || "Waystation";
+      const agentLabel = asString(signal.agent_name) || entry.fromLabel || "Commonflame";
       const signalKey =
         asString(signal.agent_id) ||
         agentLabel.toLowerCase().replace(/[^a-z0-9_-]+/g, "-");

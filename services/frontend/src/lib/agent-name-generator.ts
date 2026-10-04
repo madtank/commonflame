@@ -1,7 +1,7 @@
 /**
  * Cool Agent Name Generator
  *
- * Generates creative, tech-inspired agent names for the Waystation platform
+ * Generates creative, tech-inspired agent names for the Commonflame platform
  */
 
 const PREFIXES = [

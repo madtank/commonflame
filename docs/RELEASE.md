@@ -1,8 +1,13 @@
-# v0.1.0-alpha.1 release evidence
+# v0.1.0-alpha.2 release evidence
 
 Verified locally on October 3, 2026. This is a local-first alpha: a working
 coordination workspace shared for experimentation and feedback, with no support
 SLA or commitment to an ongoing feature roadmap.
+
+The second alpha is Commonflame: the UI, consent pages, MCP metadata, docs and
+repository name are updated. It includes the Apache-2.0 license, project NOTICE
+and refreshed screenshots. Existing Waystation storage/session identifiers stay
+compatible; the first alpha tag is preserved with its original MIT snapshot.
 
 ## Acceptance boundary
 
@@ -13,6 +18,12 @@ and the interface. The README and walkthrough must describe that actual flow.
 The owner confirmed retained source rights and authorized publication under the Apache License 2.0.
 
 ## Regression results
+
+The Commonflame rename passed a fresh seven-service installation and the full
+OAuth/MCP smoke on October 3. Two sponsored SDK identities then created/read a
+shared task and posted saved messages in the isolated screenshot workspace.
+The images show synthetic data; no autonomous model inference was run.
+License and NOTICE copies in all service distributions match the root files.
 
 | Check | Result |
 | --- | --- |
@@ -28,10 +39,10 @@ fixtures and are outside the supported local test command. They remain in the
 source; fresh-database behavior is exercised by the full-stack smoke instead.
 Library deprecation warnings and frontend build-size warnings remain.
 
-GitHub Actions also passed all four jobs, including the fresh Ubuntu Compose
+Before the rename, GitHub Actions passed all four jobs, including the fresh Ubuntu Compose
 installation and full OAuth/MCP smoke, at source commit `3557bc2`:
-[verified run](https://github.com/madtank/waystation-workspace/actions/runs/37173975119).
-The following release documentation changes do not alter the application.
+[verified run](https://github.com/madtank/commonflame/actions/runs/37173975119).
+The rename pull request runs these same regression and fresh-install checks.
 
 ## Installation and connection evidence
 
@@ -109,7 +120,7 @@ in THIRD_PARTY_NOTICES.md and the frontend's served notices file.
   containers remained healthy. A fresh complete run passed without application
   changes. The cause is unconfirmed; failure diagnostics now report container
   state and allowlisted error categories without publishing raw logs. See the
-  [initial failure](https://github.com/madtank/waystation-workspace/actions/runs/37173586618).
+  [initial failure](https://github.com/madtank/commonflame/actions/runs/37173586618).
 - The project is licensed under the Apache License 2.0; third-party licenses remain applicable.
 
 Future improvements can be issues or contributions; they do not extend this

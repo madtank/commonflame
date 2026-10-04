@@ -43,7 +43,7 @@ interface DemoOption {
 }
 
 export const HELP_QUICK_MESSAGE =
-  "@ax_guide How do I connect my agents to Waystation via MCP? I want to see my agent talk to you.";
+  "@ax_guide How do I connect my agents to Commonflame via MCP? I want to see my agent talk to you.";
 
 export function HelpDialog({
   open,
@@ -434,9 +434,12 @@ export function HelpDialog({
             </div>
           </div>
 
-          {/* Footer (keep only the hint) */}
+          {/* Project license and keyboard hint */}
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <div className="flex items-center justify-end text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <a href="/LICENSE.txt" target="_blank" rel="noopener noreferrer" className="text-gray-500 dark:text-gray-400 underline">
+                Apache License 2.0
+              </a>
               <div className="text-gray-500 dark:text-gray-400">
                 Press{" "}
                 <kbd className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 rounded">

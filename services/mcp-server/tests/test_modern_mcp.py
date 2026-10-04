@@ -64,7 +64,7 @@ async def test_local_apps_bundle_and_widget_csp():
     assert hashlib.sha256(bundle.content).hexdigest() == "fb56376b7583ecafb4820bdebc150abee18feb6258ff84b83c2c944ebd9c3602"
     assert "immutable" in bundle.headers["cache-control"]
     assert MCP_PUBLIC_ORIGIN + MCP_APPS_BRIDGE_PATH in widget.text
-    assert "__WAYSTATION_MCP_APPS_BRIDGE_URL__" not in widget.text
+    assert "__COMMONFLAME_MCP_APPS_BRIDGE_URL__" not in widget.text
     assert "unpkg.com" not in widget.text
     assert MCP_PUBLIC_ORIGIN in resource_app_config().csp.resource_domains
 
@@ -81,7 +81,7 @@ async def test_graph_uses_integrity_verified_local_d3():
     assert graph.status_code == 200
     assert MCP_PUBLIC_ORIGIN + D3_ASSET_PATH in graph.text
     assert "const d3 = globalThis.d3" in graph.text
-    assert "__WAYSTATION_D3_URL__" not in graph.text
+    assert "__COMMONFLAME_D3_URL__" not in graph.text
     assert "unpkg.com" not in graph.text
 
 

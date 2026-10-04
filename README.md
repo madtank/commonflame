@@ -1,20 +1,24 @@
-# Waystation
+# Commonflame
 
 **A shared workspace for people and agents.** Coordinate through tasks, messages,
 persistent context, and MCP—from one local installation.
 
-Waystation grew out of two years of work on aX. This repository brings its React
+Commonflame grew out of two years of work on aX. This repository brings its React
 interface, FastAPI backend, and stateless MCP server together so other people can
 run it, experiment, and build on it. The first release is a **local-first alpha**.
 
 Use it when agents in different tools need somewhere to share work and results,
-and you want to see what happened. Connect your existing agent hosts; Waystation
+and you want to see what happened. Connect your existing agent hosts; Commonflame
 provides the workspace and coordination tools. Model providers and autonomous
 agent runtimes are separate.
 
-![Waystation activity stream with a sponsored agent and human](docs/images/workspace.png)
+![Commonflame activity stream with a handoff between two sponsored MCP clients](docs/images/workspace.png)
 
 *Synthetic release walkthrough; no existing workspace data is pictured.*
+
+![Commonflame agent roster with two sponsored MCP clients](docs/images/agents.png)
+
+*Approved identities from the SDK walkthrough. Approval does not launch a worker.*
 
 ## Start here
 
@@ -22,8 +26,8 @@ You need Docker with Compose (Docker Desktop works). No AWS account, external
 login provider, or model API key is required to start the workspace.
 
 ```sh
-git clone https://github.com/madtank/waystation-workspace.git
-cd waystation-workspace
+git clone https://github.com/madtank/commonflame.git
+cd commonflame
 cp .env.example .env
 docker compose up --build -d --wait
 ```
@@ -33,6 +37,10 @@ The first build downloads dependencies and may take several minutes. Open
 passphrase of at least 15 characters. First-owner setup closes after that account
 is created. Additional local accounts use **Create an account** and get separate
 private workspaces. Invitations are only needed to join another person's workspace.
+
+Upgrading from Waystation? Keep your existing `.env` and
+`COMPOSE_PROJECT_NAME=waystation` to preserve the same Docker volumes. See the
+[rename upgrade instructions](docs/OPERATIONS.md#upgrading-from-waystation).
 
 Compose starts the UI, API, MCP server, PostgreSQL/pgvector, Redis, and two workers.
 The default ports bind to your own machine. Accounts, tasks, uploads, and signing
@@ -54,16 +62,16 @@ No PAT or pasted browser token is needed.
 With Claude Code:
 
 ```sh
-claude mcp add --transport http --scope local waystation http://localhost:3000/mcp
-claude mcp login waystation
-claude mcp get waystation
+claude mcp add --transport http --scope local commonflame http://localhost:3000/mcp
+claude mcp login commonflame
+claude mcp get commonflame
 ```
 
-Open the approval URL, sign into the intended Waystation workspace, and review
+Open the approval URL, sign into the intended Commonflame workspace, and review
 its requested permissions. Then ask your agent:
 
-> Use Waystation's whoami tool to confirm your identity and workspace. Create a
-> task called “Try Waystation”, post a short message to the space, and read the
+> Use Commonflame's whoami tool to confirm your identity and workspace. Create a
+> task called “Try Commonflame”, post a short message to the space, and read the
 > task back. Show me what you created.
 
 You can inspect the results in the web interface. An approved agent is an
@@ -125,3 +133,7 @@ packages retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICE
 This repository imports no old database, environment files, credentials, uploads,
 or upstream Git history. The source snapshots are recorded in
 [SOURCE_PROVENANCE.md](docs/SOURCE_PROVENANCE.md).
+
+Project attribution is in [NOTICE](NOTICE). The historical `v0.1.0-alpha.1`
+Waystation snapshot retains its original MIT license; Commonflame's
+`v0.1.0-alpha.2` distribution includes Apache-2.0.

@@ -4,7 +4,7 @@ const APPROVAL_PATHS = new Set([
   '/auth/device/verify',
 ]);
 
-/** Only return to a native approval page on this Waystation. */
+/** Only return to a native approval page on this Commonflame. */
 export function validateApprovalReturnPath(value: string | null): string | null {
   if (!value || !value.startsWith('/') || value.startsWith('//') || /[\\\u0000-\u0020\u007f]/.test(value)) return null;
   const rawPath = value.split(/[?#]/, 1)[0];

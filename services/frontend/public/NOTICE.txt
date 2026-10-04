@@ -1,0 +1,9 @@
+Commonflame
+Copyright 2026 Jacob Taunton
+
+Licensed under the Apache License, Version 2.0. See LICENSE.
+
+Commonflame was curated from Jacob Taunton's aX source snapshots.
+Source provenance is recorded in docs/SOURCE_PROVENANCE.md.
+Third-party software retains its own licenses and attribution notices;
+see THIRD_PARTY_NOTICES.md and services/frontend/public/third-party-notices.txt.

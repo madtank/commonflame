@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Search Results - Waystation</title>
+  <title>Search Results - Commonflame</title>
   <style>
     :root {
       --ax-bg: var(--color-background-primary, #0a0f1a);
@@ -59,7 +59,7 @@
 <body>
   <div class="shell" id="app"></div>
   <script type="module">
-    import { App } from "__WAYSTATION_MCP_APPS_BRIDGE_URL__";
+    import { App } from "__COMMONFLAME_MCP_APPS_BRIDGE_URL__";
     const app = new App({ name: "Search Results", version: "1.0.0" });
     const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
 
@@ -99,7 +99,7 @@
         this._toolResultHandler = handler;
         app.ontoolresult = handler;
         // Fallback: listen for raw postMessage from hosts that send
-        // ui/notifications/tool-result directly (e.g., Waystation frontend)
+        // ui/notifications/tool-result directly (e.g., Commonflame frontend)
         window.addEventListener("message", (event) => {
           let msg = event.data;
           if (!msg) return;

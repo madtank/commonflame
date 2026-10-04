@@ -23,7 +23,7 @@ from app.core.models_config import DEFAULT_MODEL, resolve_bedrock_model_id
 
 logger = logging.getLogger(__name__)
 
-SPACE_AGENT_NAME = "Waystation"
+SPACE_AGENT_NAME = "Commonflame"
 # Default Bedrock model for space agents — resolved from the catalog
 SPACE_AGENT_MODEL = resolve_bedrock_model_id(DEFAULT_MODEL)
 SYSTEM_SPACE_NAME = "__system__"
@@ -108,7 +108,7 @@ async def ensure_system_principals(db: AsyncSession) -> User:
 def apply_space_agent_defaults(agent: Agent, org: Space) -> None:
     """Normalize an agent record to the canonical Space Agent shape."""
     agent.user_id = agent.user_id or SYSTEM_USER_ID
-    agent.description = f"Waystation for {org.name}"
+    agent.description = f"Commonflame for {org.name}"
     agent.origin = "space_agent"
     agent.agent_type = "space_agent"
     agent.status = "active"
@@ -218,7 +218,7 @@ async def ensure_space_agent_for_org(
             user_id=SYSTEM_USER_ID,
             space_id=org.id,
             name=SPACE_AGENT_NAME,
-            description=f"Waystation for {org.name}",
+            description=f"Commonflame for {org.name}",
             origin="space_agent",
             agent_type="space_agent",
             status="active",

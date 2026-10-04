@@ -1,4 +1,4 @@
-"""Local and container configuration for the Waystation MCP resource server."""
+"""Local and container configuration for the Commonflame MCP resource server."""
 import os
 
 
@@ -9,7 +9,7 @@ def env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-MCP_SERVER_NAME = os.getenv("MCP_SERVER_NAME", "Waystation MCP")
+MCP_SERVER_NAME = os.getenv("MCP_SERVER_NAME", "Commonflame MCP")
 FASTMCP_PORT = int(os.getenv("FASTMCP_PORT", os.getenv("PORT", "8080")))
 API_BASE_URL = os.getenv("API_URL", "http://backend:8080")
 # Public origin (no /mcp suffix). All OAuth resource indicators use this origin.

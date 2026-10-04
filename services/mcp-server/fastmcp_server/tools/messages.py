@@ -6,7 +6,7 @@ Uses CurrentAccessToken() DI to forward backend-issued JWTs.
 
 Send returns immediately after delivery by default. Set wait=True to wait
 for a reply on the delivered message, no routing escape hatch required.
-Messages normally route through Waystation first so Waystation can answer directly or route
+Messages normally route through Commonflame first so Commonflame can answer directly or route
 the work. Use messages(check) to see later replies.
 
 MCP Tasks (MSG-ASYNC-001): messages(send, wait=true) supports optional
@@ -134,7 +134,7 @@ TOPIC_STOPWORDS = {
 
 
 def _normalize_send_action(action: str, content: str | None) -> tuple[str, str | None]:
-    """Collapse legacy Waystation ingress into the canonical messages(send) path."""
+    """Collapse legacy Commonflame ingress into the canonical messages(send) path."""
     if action != "ask_ax":
         return action, content
 
@@ -566,7 +566,7 @@ def _messages_summary(result: dict[str, Any], action: str) -> str:
         return f"Reply received from @{author}."
 
     if result.get("ax_response"):
-        return "Message sent. Waystation is still processing — check back shortly."
+        return "Message sent. Commonflame is still processing — check back shortly."
 
     if result.get("status") == "timed_out":
         waited = result.get("waited_seconds")
@@ -955,7 +955,7 @@ def _build_concierge_send_prompt(
     content: str,
     status: str | None = None,
 ) -> str:
-    """Wrap an outbound agent message so Waystation handles first-hop routing."""
+    """Wrap an outbound agent message so Commonflame handles first-hop routing."""
     agent_label = agent_name or "unknown"
     parts = [
         f"@aX Concierge routing request from @{agent_label}.",
@@ -975,7 +975,7 @@ def _build_ax_checkin_prompt(
     reason: str,
     status: str | None = None,
 ) -> str:
-    """Build the future private Waystation briefing prompt.
+    """Build the future private Commonflame briefing prompt.
 
     SECURITY: Do not POST this prompt to /api/v1/messages. Check-in is a read
     operation; sending this through the public message pipeline turns inbox
@@ -1297,7 +1297,7 @@ def register_messages_tool(mcp: FastMCP):
             Field(
                 description=(
                     "Message action. Hosts should render this as a dropdown. "
-                    "Use 'check' for Waystation check-ins, 'send' for concierge-routed "
+                    "Use 'check' for Commonflame check-ins, 'send' for concierge-routed "
                     "messages, 'ask_ax' as shorthand for sending to the concierge, "
                     "'draft' to prepare text, 'react' to add emoji, 'edit' to "
                     "modify a message, and 'delete' to remove one."
@@ -1421,7 +1421,7 @@ def register_messages_tool(mcp: FastMCP):
             Field(
                 default=False,
                 description=(
-                    "Advanced escape hatch. When true, skip Waystation first-hop "
+                    "Advanced escape hatch. When true, skip Commonflame first-hop "
                     "routing and deliver the original content directly. Not "
                     "required for waiting."
                 ),
@@ -1432,7 +1432,7 @@ def register_messages_tool(mcp: FastMCP):
             Field(
                 default=None,
                 description=(
-                    "Optional extra sender status for Waystation when checking in or "
+                    "Optional extra sender status for Commonflame when checking in or "
                     "routing through concierge."
                 ),
             ),
@@ -1445,13 +1445,13 @@ def register_messages_tool(mcp: FastMCP):
         """Send and check messages.
 
         Actions:
-        - check: Check in with Waystation and provide a required `reason` describing why
+        - check: Check in with Commonflame and provide a required `reason` describing why
           you're checking now: what you're working on, help needed, blockers,
           questions, support you can offer, assignments to surface, or whether
           you're looking for more work. Returns your raw inbox by default. Set
           curate=True to add a private briefing to the MCP tool response. The
           briefing must never create a message in the shared conversation.
-        - send: Post a message through Waystation by default so Waystation can respond or route
+        - send: Post a message through Commonflame by default so Commonflame can respond or route
           it. Returns instantly after delivery by default. Set wait=True to
           wait for a reply on the delivered message, up to max_wait seconds
           (default 60). Set bypass=True only when you explicitly want direct
@@ -1538,19 +1538,19 @@ def register_messages_tool(mcp: FastMCP):
             use_concierge = not bypass
             loop_guard_fired = False
 
-            # Loop guard: when the concierge (Waystation) itself sends a message,
+            # Loop guard: when the concierge (Commonflame) itself sends a message,
             # force bypass to prevent routing back through itself.
             sender_name = (ctx.get("agent_name") or "").lower().strip()
             if use_concierge and sender_name in {"ax", "ax-concierge"}:
                 logger.warning(
-                    "Loop guard: Waystation agent sent with bypass=false — auto-correcting to bypass=true"
+                    "Loop guard: Commonflame agent sent with bypass=false — auto-correcting to bypass=true"
                 )
                 use_concierge = False
                 bypass = True
                 loop_guard_fired = True
 
             # Always send the original content — the backend router handles
-            # Waystation routing for ALL messages. Wrapping content with @aX prompt
+            # Commonflame routing for ALL messages. Wrapping content with @aX prompt
             # triggers a backend code path that doesn't persist the message.
             payload = {"content": content}
             if reply_to:

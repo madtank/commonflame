@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Game Board - Waystation</title>
+  <title>Game Board - Commonflame</title>
   <style>
     :root {
       --bg: var(--color-background-primary, #080a0d);
@@ -230,7 +230,7 @@
     }, 2500);
   </script>
   <script type="module">
-    import { App } from "__WAYSTATION_MCP_APPS_BRIDGE_URL__";
+    import { App } from "__COMMONFLAME_MCP_APPS_BRIDGE_URL__";
     const app = new App({ name: "Game Board", version: "1.0.0" });
     const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
 
@@ -392,9 +392,9 @@
       const gameKey = state.game?.game;
       if (!gameKey) return "Game Board";
       if (gameKey === "tic_tac_toe") return "Tic-Tac-Toe";
-      if (gameKey === "ax_trivia") return "Waystation Trivia";
+      if (gameKey === "ax_trivia") return "Commonflame Trivia";
       return gameKey
-        .replace(/^ax_/, "Waystation ")
+        .replace(/^ax_/, "Commonflame ")
         .split(/[_-]+/)
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -525,12 +525,12 @@
       const body = h("div", { className: "panel-body meta-grid" });
       const rows = state.game?.game === "ax_trivia"
         ? [
-            ["Game", "Waystation trivia"],
+            ["Game", "Commonflame trivia"],
             ["Game ID", state.game?.game_id || ""],
             ["Player", state.game?.players?.[0]?.handle || ""],
             ["Score", String(state.game?.score || 0) + "/" + String(state.game?.questions?.length || 0)],
             ["Question", String(Math.min((state.game?.current_question_index || 0) + 1, state.game?.questions?.length || 1))],
-            ["Source", state.game?.source?.title || "Built-in Waystation trivia"],
+            ["Source", state.game?.source?.title || "Built-in Commonflame trivia"],
             ["Status", state.game?.status || "active"],
           ]
         : [

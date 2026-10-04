@@ -94,7 +94,7 @@ class TasksToolTests(unittest.IsolatedAsyncioTestCase):
         }
         self.request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-ui-space",
             }
         )
@@ -373,7 +373,7 @@ class TasksToolTests(unittest.IsolatedAsyncioTestCase):
         }
         self.request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-ui-space",
             }
         )
@@ -479,7 +479,7 @@ class TasksToolTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_create_forwards_delegation_context_via_helper(self) -> None:
         self.token.claims = {
-            "agent_name": "Waystation",
+            "agent_name": "Commonflame",
             "agent_id": "agent-1",
             "space_id": "space-home",
             "delegation_mode": "home_space",
@@ -505,7 +505,7 @@ class TasksToolTests(unittest.IsolatedAsyncioTestCase):
         }
         self.request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-ui-space",
             }
         )
@@ -534,7 +534,7 @@ class TasksToolTests(unittest.IsolatedAsyncioTestCase):
         }
         self.request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-ui-space",
             }
         )
@@ -567,7 +567,7 @@ class TasksToolTests(unittest.IsolatedAsyncioTestCase):
         }
         self.request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-ui-space",
             }
         )
@@ -730,7 +730,7 @@ class TasksToolTests(unittest.IsolatedAsyncioTestCase):
         }
         self.request = SimpleNamespace(
             headers={
-                "x-agent-name": "Waystation",
+                "x-agent-name": "Commonflame",
                 "x-space-id": "current-ui-space",
             }
         )

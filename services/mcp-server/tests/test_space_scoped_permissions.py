@@ -355,7 +355,7 @@ class SpaceScopedPermissionsTests(unittest.IsolatedAsyncioTestCase):
     async def test_signed_delegated_space_owner_claim_marks_personal_scope(self):
         ctx = {
             "jwt": "***",
-            "agent_name": "Waystation",
+            "agent_name": "Commonflame",
             "agent_id": "space-agent",
             "space_id": "personal-1",
             "delegation_mode": "home_space",

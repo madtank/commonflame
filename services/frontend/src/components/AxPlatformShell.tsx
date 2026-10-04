@@ -836,7 +836,7 @@ function AxHostedSearchPanel({
           >
             Unified search
           </p>
-          <h2 className="mt-1 text-2xl font-semibold">Search Waystation</h2>
+          <h2 className="mt-1 text-2xl font-semibold">Search Commonflame</h2>
           <p
             className={cn(
               "mt-1 text-sm",
@@ -865,7 +865,7 @@ function AxHostedSearchPanel({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search messages, tasks, agents…"
-              aria-label="Search Waystation"
+              aria-label="Search Commonflame"
               className={cn(
                 "min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-slate-400",
                 isDarkMode ? "text-white" : "text-slate-950",
@@ -1487,9 +1487,9 @@ function deriveConnectionLabel(
   presenceSource?: string | null,
 ): string {
   const kind = String(origin || "").toLowerCase();
-  // Space agents (Waystation) are built-in, not connected via a runtime — label first
+  // Space agents (Commonflame) are built-in, not connected via a runtime — label first
   // so the monitor heuristic below doesn't mislabel an always-on space agent.
-  if (kind === "space_agent") return "Waystation";
+  if (kind === "space_agent") return "Commonflame";
   const source = String(presenceSource || "").toLowerCase();
   if (source.includes("monitor") || source.includes("host")) return "Monitor";
   if (availability === "online") return "Monitor";
@@ -1517,7 +1517,7 @@ function mapMemberToAgentProfile(member: SpaceAgentMember): AgentProfile {
     member.display_name ||
     member.handle?.replace(/^@/, "") ||
     mentionHandle ||
-    "Waystation";
+    "Commonflame";
   // Real availability from the canonical roster fields (not the static
   // `member.active` enrollment flag, which made every row read "ACTIVE").
   const availability = deriveAvailabilityKey({
@@ -1590,11 +1590,11 @@ function buildFallbackAgentProfile(
   const normalizedHandle = normalizeMentionHandle(handle) || handle;
   const resolvedName =
     options?.name ||
-    (normalizedHandle === AX_CONCIERGE_HANDLE ? "Waystation" : humanizeHandle(handle));
+    (normalizedHandle === AX_CONCIERGE_HANDLE ? "Commonflame" : humanizeHandle(handle));
   const resolvedMentionLabel =
     options?.mentionLabel ||
     (normalizedHandle === AX_CONCIERGE_HANDLE
-      ? "Waystation"
+      ? "Commonflame"
       : humanizeHandle(normalizedHandle));
 
   return {
@@ -1975,7 +1975,7 @@ function buildCardCopyText(
 ) {
   const sections = [
     `Summary: ${summary}`,
-    `Participants: ${participantLabel || "Waystation"}`,
+    `Participants: ${participantLabel || "Commonflame"}`,
     mentionLabel ? `Mentions: ${mentionLabel}` : null,
     `When: ${timestamp || "just now"}`,
     `Status: ${statusLabel || "Delivered"}`,
@@ -2315,7 +2315,7 @@ function buildLauncherWidgetDescriptor({
 
 export function AxPlatformShell({
   spaceName = "Current Space",
-  agentName = "Waystation",
+  agentName = "Commonflame",
   username,
   onLogout,
 }: {
@@ -3378,7 +3378,7 @@ export function AxPlatformShell({
       ) ||
       buildFallbackAgentProfile(AX_CONCIERGE_HANDLE, {
         name: agentName,
-        mentionLabel: "Waystation",
+        mentionLabel: "Commonflame",
       })
     );
   }, [agentName, directoryAgents]);
@@ -3558,7 +3558,7 @@ export function AxPlatformShell({
     if (profile) return profile.mentionLabel;
 
     const handle = extractSafeHandle(value);
-    if (handle === "ax") return "Waystation";
+    if (handle === "ax") return "Commonflame";
     if (handle) return `@${handle}`;
 
     if (value.toLowerCase().includes("space agent")) return agentName;
@@ -8268,7 +8268,7 @@ export function AxPlatformShell({
                                 )}
                               >
                                 {normalizedHandle === AX_CONCIERGE_HANDLE
-                                  ? "@Waystation"
+                                  ? "@Commonflame"
                                   : `@${agent.handle}`}
                               </span>
                               {isSelected ? (

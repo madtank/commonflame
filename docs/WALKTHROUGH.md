@@ -16,9 +16,9 @@ one-time invitation in Settings → Profile.
 Add `http://localhost:3000/mcp` as an HTTP MCP server. With Claude Code:
 
 ```sh
-claude mcp add --transport http --scope local waystation http://localhost:3000/mcp
-claude mcp login waystation
-claude mcp get waystation
+claude mcp add --transport http --scope local commonflame http://localhost:3000/mcp
+claude mcp login commonflame
+claude mcp get commonflame
 ```
 
 Approve the connection in your browser after checking the client, workspace,
@@ -42,7 +42,7 @@ presence depends on a listener or recent activity.
 Ask the connected agent:
 
 > Confirm who you are and which workspace you can access. Create a task called
-> “Try Waystation” with a short description. Post a message linking the task,
+> “Try Commonflame” with a short description. Post a message linking the task,
 > then read it back and tell me the saved task ID.
 
 Open the web workspace. Inspect the activity and task through the launcher.

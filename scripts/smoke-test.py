@@ -189,7 +189,7 @@ print('Synthetic account created')
 
     scopes = "openid offline_access ax-api/mcp:read ax-api/mcp:write agents.read spaces.read tasks.read tasks.write messages.read messages.write"
     registration, _ = request("/oauth/register", {
-        "client_name": "Waystation smoke client", "token_endpoint_auth_method": "none",
+        "client_name": "Commonflame smoke client", "token_endpoint_auth_method": "none",
         "grant_types": ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
         "scope": scopes,
     }, expected=201)
@@ -233,9 +233,9 @@ print('Synthetic account created')
     agent_access = rotated["access_token"]
     print("PASS OAuth refresh rotation, agent identity preservation, refresh replay rejection")
 
-    callback_uri = "http://127.0.0.1:9999/waystation-smoke-callback"
+    callback_uri = "http://127.0.0.1:9999/commonflame-smoke-callback"
     pkce_client, _ = request("/oauth/register", {
-        "client_name": "Waystation PKCE smoke client", "redirect_uris": [callback_uri],
+        "client_name": "Commonflame PKCE smoke client", "redirect_uris": [callback_uri],
         "token_endpoint_auth_method": "none", "response_types": ["code"],
         "grant_types": ["authorization_code", "refresh_token"], "scope": scopes,
     }, expected=201)
@@ -308,7 +308,7 @@ print('Synthetic account created')
         return output
 
     rpc("initialize", {"protocolVersion": "2025-03-26", "capabilities": {},
-                       "clientInfo": {"name": "waystation-smoke", "version": "0.1.0"}})
+                       "clientInfo": {"name": "commonflame-smoke", "version": "0.1.0"}})
     tools = rpc("tools/list")
     names = {tool["name"] for tool in tools.get("tools", [])}
     assert {"whoami", "agents", "tasks", "messages", "spaces"} <= names
@@ -348,7 +348,7 @@ print('Synthetic account created')
     }})
     print("PASS sponsored agent in roster, MCP task create/read, durable agent-authored message visible to human")
 
-    task_title = "Waystation smoke task"
+    task_title = "Commonflame smoke task"
     task, _ = request("/api/v1/tasks", {"title": task_title, "description": "Synthetic integration check",
                                       "space_id": space_id}, token=access)
     task_id = task.get("id") or task.get("task", {}).get("id")
@@ -360,7 +360,7 @@ print('Synthetic account created')
     assert str(saved_task.get("space_id")) == space_id, "Task must remain in the authenticated workspace"
     print("PASS task create/read persistence")
 
-    content = "Waystation synthetic message roundtrip " + secrets.token_hex(6)
+    content = "Commonflame synthetic message roundtrip " + secrets.token_hex(6)
     created_message, _ = request("/api/messages", {"content": content, "channel": "main"}, token=access)
     message_id = created_message.get("id")
     assert message_id, "Message creation must return a durable ID"

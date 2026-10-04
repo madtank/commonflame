@@ -15,7 +15,7 @@ try {
         jsonrpc: "2.0", id: message.id,
         result: {
           protocolVersion: "2026-01-26",
-          hostInfo: { name: "Waystation", version: "1.0.0" },
+          hostInfo: { name: "Commonflame", version: "1.0.0" },
           hostCapabilities: {
             serverTools: {}, serverResources: {}, openLinks: {},
             message: { text: {} },
@@ -31,7 +31,7 @@ try {
       }));
     },
   };
-  const app = new App({ name: "Waystation asset check", version: "1.0.0" }, {}, { autoResize: false });
+  const app = new App({ name: "Commonflame asset check", version: "1.0.0" }, {}, { autoResize: false });
   await app.connect(transport);
   assert.equal(LATEST_PROTOCOL_VERSION, "2026-01-26");
   assert.equal(app.getHostContext().theme, "dark");

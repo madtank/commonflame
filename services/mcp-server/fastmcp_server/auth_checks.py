@@ -1,4 +1,4 @@
-"""Auth checks and middleware for Waystation Agent tool access.
+"""Auth checks and middleware for Commonflame Agent tool access.
 
 Backend-issued tokens carry a tools_allowed claim listing which tools
 the agent may use. User access tokens without this claim are checked by backend permissions.

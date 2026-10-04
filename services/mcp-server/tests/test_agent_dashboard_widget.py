@@ -91,7 +91,7 @@ def test_agents_widget_uses_quick_action_emoji_mapping_for_known_agent_handles()
 
 
 def test_agents_widget_uses_quick_action_emoji_mapping_for_ax_display_name() -> None:
-    assert _call_widget_function("quickActionAgentEmoji", "space_agent", "Waystation") == "✨"
+    assert _call_widget_function("quickActionAgentEmoji", "space_agent", "Commonflame") == "✨"
 
 
 def test_roster_status_controls_include_explicit_availability_filters() -> None:

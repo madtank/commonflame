@@ -1,4 +1,4 @@
-name: ${COMPOSE_PROJECT_NAME:-waystation}
+name: ${COMPOSE_PROJECT_NAME:-commonflame}
 
 x-backend-env: &backend-env
   DATABASE_URL: postgresql+asyncpg://waystation:${POSTGRES_PASSWORD:-waystation-local-only}@postgres:5432/waystation

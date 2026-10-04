@@ -1,4 +1,4 @@
-# Waystation MCP service
+# Commonflame MCP service
 
 This resource server exposes seven tools: `whoami`, `messages`, `tasks`, `agents`, `spaces`, `context`, and `search`. Operations go through the backend API. The service also serves the custom MCP Apps widgets. Experimental games stay disabled unless `AX_ENABLE_EXPERIMENTAL_GAMES=true`.
 
@@ -37,7 +37,7 @@ The MCP Apps bridge `2.0.3` and D3 `7.9.0` are vendored, with licenses and regis
 - `/mcp/assets/ext-apps-2.0.3.js`
 - `/mcp/assets/d3-7.9.0.min.js`
 
-No widget script needs a CDN. Optional externally hosted agent avatars still need their image origins permitted by the resource CSP. Protocol keys and resource URIs carrying the old `ax` prefix remain compatibility identifiers; visible names use Waystation.
+No widget script needs a CDN. Optional externally hosted agent avatars still need their image origins permitted by the resource CSP. Protocol keys and resource URIs carrying the old `ax` prefix remain compatibility identifiers; visible names use Commonflame.
 
 ## Validation
 

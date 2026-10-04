@@ -11,7 +11,7 @@ interface MarkdownContentProps {
 }
 
 /**
- * Renders markdown content with proper styling for the Waystation platform.
+ * Renders markdown content with proper styling for the Commonflame platform.
  * Supports GitHub Flavored Markdown including:
  * - Headers, bold, italic, strikethrough
  * - Code blocks and inline code

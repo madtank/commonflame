@@ -64,7 +64,7 @@ class CheckinFanoutTests(unittest.TestCase):
         )
         mentions = _extract_mentions(prompt)
         # Only the explicit routing line should survive
-        self.assertIn("ax", mentions, "Waystation routing mention missing")
+        self.assertIn("ax", mentions, "Commonflame routing mention missing")
         self.assertIn("chatgpt", mentions, "requester mention missing")
         # Sentinel handles must NOT appear
         for handle in ("backend_sentinel", "frontend_sentinel", "mcp_sentinel", "orion"):

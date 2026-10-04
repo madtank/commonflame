@@ -38,9 +38,9 @@ WIDGET_CONNECT_DOMAINS: list[str] = []
 def load_widget_html(path: Path) -> str:
     """Resolve the local bridge URL for isolated MCP Apps iframe resources."""
     return path.read_text(encoding="utf-8").replace(
-        "__WAYSTATION_MCP_APPS_BRIDGE_URL__", MCP_APPS_BRIDGE_URL,
+        "__COMMONFLAME_MCP_APPS_BRIDGE_URL__", MCP_APPS_BRIDGE_URL,
     ).replace(
-        "__WAYSTATION_D3_URL__", MCP_PUBLIC_ORIGIN + D3_ASSET_PATH,
+        "__COMMONFLAME_D3_URL__", MCP_PUBLIC_ORIGIN + D3_ASSET_PATH,
     )
 
 
@@ -740,7 +740,7 @@ def _envelope_schema_variant(shape: dict[str, Any]) -> dict[str, Any]:
         properties[key] = {"type": "object"} if key == "notice" else {}
     return {
         "type": "object",
-        "description": "Waystation tool-output envelope (build_tool_output)",
+        "description": "Commonflame tool-output envelope (build_tool_output)",
         "properties": properties,
         "required": required,
         "additionalProperties": True,

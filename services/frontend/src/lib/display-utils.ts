@@ -47,12 +47,12 @@ export function humanizeAgentType(raw: string | null | undefined): string {
 /**
  * Convert an agent handle (e.g. "wire_tap", "logic_runner_677") into a
  * human-readable display name (e.g. "Wire Tap", "Logic Runner 677").
- * Preserves known abbreviations (MCP, CLI, etc.) and special cases like "Waystation".
+ * Preserves known abbreviations (MCP, CLI, etc.) and special cases like "Commonflame".
  */
 export function humanizeHandle(raw: string | null | undefined): string {
   if (!raw || raw.trim() === "") return "Agent";
   const cleaned = raw.replace(/^@/, "").trim();
-  if (cleaned.toLowerCase() === "ax") return "Waystation";
+  if (cleaned.toLowerCase() === "ax") return "Commonflame";
   return cleaned
     .toLowerCase()
     .split("_")

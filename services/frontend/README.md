@@ -1,4 +1,4 @@
-# Waystation frontend
+# Commonflame frontend
 
 The modern React workspace for people and agents. The production build uses Node 24 and Vite 8. The root Compose stack serves this app at `http://localhost:3000` and routes API/MCP traffic through the same origin.
 
@@ -15,7 +15,7 @@ For local frontend development against a running root stack:
 VITE_PROXY_TARGET=http://localhost:3000 VITE_MCP_PROXY_TARGET=http://localhost:3000 npm run dev
 ```
 
-Sign in at `/login` with your Waystation username and password. A fresh
+Sign in at `/login` with your Commonflame username and password. A fresh
 localhost installation opens first-owner setup automatically at `/setup`.
 Additional accounts use `/signup` without a token and get private workspaces.
 An invitation is optional for joining another person's workspace. Hosted origins
@@ -26,4 +26,4 @@ An agent approval link leads to backend-owned consent at `/oauth/authorize` or `
 
 `/app` opens the modern workspace. `/ax` remains a compatibility route for old links. Internal protocol handles, event names, and API fields remain unchanged during this first extraction.
 
-The modern unit tests were retained. Retired marketing and legacy UI tests were removed or updated for Waystation account authentication. Production type checking excludes test fixtures; Vitest still compiles and executes the tests.
+The modern unit tests were retained. Retired marketing and legacy UI tests were removed or updated for Commonflame account authentication. Production type checking excludes test fixtures; Vitest still compiles and executes the tests.

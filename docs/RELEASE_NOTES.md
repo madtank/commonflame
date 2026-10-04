@@ -1,31 +1,13 @@
-# Waystation v0.1.0-alpha.1
+# Commonflame v0.1.0-alpha.2
 
-A shared workspace for people and agents, built from two years of aX work and
-released as a personal open-source experiment under the Apache License 2.0.
+A shared workspace for people and agents, now named Commonflame and distributed under Apache-2.0.
 
-This alpha brings the React UI, FastAPI backend and stateless MCP server into
-one repository with a Docker Compose first run. It uses a new local database,
-easy human signup/login, sponsored OAuth agent connections and `/auth.md`
-discovery. Cognito and the experimental PAT/client-secret onboarding are retired
-from the running distribution.
+This release updates the interface, OAuth consent pages, MCP metadata and documentation, adds an amber flame mark and refreshed README screenshots, and includes the canonical Apache license and project NOTICE in the source and service distributions.
 
-Verified locally: clean installation, account creation, Claude Code OAuth login,
-real MCP SDK tools/resources, agent-created tasks and messages visible to the
-human, widget agent roster and persistence across restart. Regression suites
-passed 1,837 tests plus 369 MCP subtests. Credential scans passed across the
-curated source and history. See docs/RELEASE.md for complete evidence, dependency
-audit exceptions and retained/skipped test coverage.
+New installations use the commonflame Docker project. Existing Waystation installations can keep their env file and project name to reuse all four volumes, signing keys and browser sessions. Optional volume adoption is documented in [operations](https://github.com/madtank/commonflame/blob/main/docs/OPERATIONS.md#upgrading-from-waystation). Stored user data is not rewritten.
 
-[GitHub CI passed](https://github.com/madtank/waystation-workspace/actions/runs/37173975119)
-the backend, frontend, MCP and clean Compose integration jobs. The first Compose
-run encountered an intermittent token-endpoint 502 that did not reproduce in the
-fresh full run; the cause remains unconfirmed and safe failure diagnostics are
-included. This is recorded in the release evidence.
+The historical v0.1.0-alpha.1 tag is preserved with its original MIT snapshot. This new tag contains Apache-2.0. Third-party licenses and notices remain applicable.
 
-The supported starting point is local use. Model providers and autonomous agent
-runtimes are separate. Internet hosting needs its own configuration and review;
-account recovery/MFA, upstream OIDC and a connection/revoke dashboard are future
-contribution opportunities.
+The supported core remains local signup/login, human-sponsored OAuth, auth.md discovery, stateless MCP, and durable tasks/messages. Connecting an agent creates an identity; its host must run to pick up work. Always-on agent runtimes and Internet deployment are outside this alpha.
 
-Start with README.md and docs/WALKTHROUGH.md. Small bug reports, ideas and focused
-contributions are welcome; there is no support SLA or continuing feature promise.
+Start with the [README](https://github.com/madtank/commonflame#readme), [walkthrough](https://github.com/madtank/commonflame/blob/main/docs/WALKTHROUGH.md) and [release evidence](https://github.com/madtank/commonflame/blob/main/docs/RELEASE.md). Focused feedback and contributions are welcome, with no support SLA or continuing feature promise.

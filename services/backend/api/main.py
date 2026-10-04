@@ -1,4 +1,4 @@
-"""Waystation's self-hosted API, with cloud services disabled by default."""
+"""Commonflame's self-hosted API, with cloud services disabled by default."""
 
 from contextlib import asynccontextmanager
 from importlib import import_module
@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
-app = FastAPI(title="Waystation API", version="0.1.0", lifespan=lifespan,
+app = FastAPI(title="Commonflame API", version="0.1.0", lifespan=lifespan,
               docs_url="/api/docs", redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
                    allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
@@ -73,7 +73,7 @@ app.include_router(user_settings_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
-    return {"service": "Waystation API", "version": "0.1.0", "health": "/health",
+    return {"service": "Commonflame API", "version": "0.1.0", "health": "/health",
             "docs": "/api/docs", "agent_auth": "/auth.md"}
 
 
@@ -84,7 +84,7 @@ async def health():
             await db.execute(text("SELECT 1"))
     except Exception:
         raise HTTPException(status_code=503, detail="Database unavailable")
-    return {"status": "healthy", "service": "Waystation API", "database": "connected"}
+    return {"status": "healthy", "service": "Commonflame API", "database": "connected"}
 
 
 @app.get("/auth.md", include_in_schema=False)

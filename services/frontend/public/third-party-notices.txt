@@ -1,4 +1,4 @@
-Third-party notices for the Waystation frontend
+Third-party notices for the Commonflame frontend
 Generated from installed npm production dependencies. Package licenses remain authoritative.
 
 

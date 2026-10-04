@@ -52,16 +52,16 @@ export function UserLogin({ onLogin, initialMode = 'login', currentUsername }: U
       setPassword(''); setConfirmation(''); setAccountToken('');
       onLogin(session.access_token, session.user.username);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Waystation is unavailable. Please try again.');
+      setError(cause instanceof Error ? cause.message : 'Commonflame is unavailable. Please try again.');
     } finally { setBusy(false); }
   };
   const toggleTheme = () => setIsDark(applyThemePreference(isDark ? 'light' : 'dark').isDarkMode);
   const inputClass = `w-full rounded-xl border px-3 py-3 outline-none focus:ring-2 focus:ring-cyan-500 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`;
-  const heading = creatingAccount ? (ownerSetup ? 'Create the owner account' : 'Create your account') : 'Welcome to your Waystation';
+  const heading = creatingAccount ? (ownerSetup ? 'Create the owner account' : 'Create your account') : 'Welcome to your Commonflame';
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#080f1a] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <a href="/" aria-label="Waystation home"><Logo /></a>
+        <a href="/" aria-label="Commonflame home"><Logo /></a>
         <button onClick={toggleTheme} className="rounded-full border border-current/15 p-2.5" aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}>
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
@@ -79,10 +79,10 @@ export function UserLogin({ onLogin, initialMode = 'login', currentUsername }: U
         <section className={`rounded-3xl border p-7 sm:p-9 ${isDark ? 'border-slate-700/70 bg-slate-900/80 shadow-2xl' : 'border-slate-200 bg-white shadow-xl shadow-slate-200/50'}`}>
           <h2 className="text-2xl font-semibold tracking-tight">{heading}</h2>
           <p className="mt-2 text-sm opacity-65">{creatingAccount
-            ? ownerSetup ? needsToken ? 'Use the setup token from the person running this Waystation.' : 'Choose your account details to finish setting up Waystation.'
+            ? ownerSetup ? needsToken ? 'Use the setup token from the person running this Commonflame.' : 'Choose your account details to finish setting up Commonflame.'
               : registrationClosed ? 'New accounts are disabled on this installation.'
               : needsToken ? 'Use your invitation to join a shared workspace.' : 'Choose a username and password. Your private workspace is created automatically.'
-            : next ? 'Sign in to review the agent connection.' : 'Sign in with your Waystation account.'}</p>
+            : next ? 'Sign in to review the agent connection.' : 'Sign in with your Commonflame account.'}</p>
           {currentUsername && <p className="mt-4 rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3 text-sm">Signed in as {currentUsername}. <a href="/app" className="font-medium text-cyan-500 hover:underline">Return to workspace</a></p>}
           {ownerSetup && !needsToken && <p className="mt-4 rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3 text-sm">First run · This account will administer your first workspace. Setup closes once the account is created.</p>}
           {next && <p className="mt-4 rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3 text-sm">After {creatingAccount ? 'creating your account' : 'signing in'}, you’ll return to review the connection. You decide whether to approve it.</p>}
@@ -109,7 +109,7 @@ export function UserLogin({ onLogin, initialMode = 'login', currentUsername }: U
                 <input id="confirm-password" name="confirm-password" type="password" autoComplete="new-password" required minLength={15} maxLength={512} value={confirmation} onChange={event => setConfirmation(event.target.value)} className={inputClass} /></div>}
             </fieldset>
             {error && <p role="alert" className="rounded-xl border border-red-400/40 bg-red-400/10 px-3 py-3 text-sm text-red-500">{error}</p>}
-            <button disabled={busy || (creatingAccount && !status)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />} {busy ? creatingAccount ? 'Creating account…' : 'Signing in…' : creatingAccount ? ownerSetup ? 'Set up Waystation' : 'Create account' : next ? 'Continue to connection' : 'Enter workspace'}</button>
+            <button disabled={busy || (creatingAccount && !status)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />} {busy ? creatingAccount ? 'Creating account…' : 'Signing in…' : creatingAccount ? ownerSetup ? 'Set up Commonflame' : 'Create account' : next ? 'Continue to connection' : 'Enter workspace'}</button>
           </form>}
           <div className="mt-7 border-t border-current/10 pt-5 text-sm">
             {creatingAccount ? <p>Already have an account? <a href={accountEntryHref('/login', next)} className="font-medium text-cyan-500 hover:underline">Sign in</a></p>
@@ -119,7 +119,7 @@ export function UserLogin({ onLogin, initialMode = 'login', currentUsername }: U
           </div>
         </section>
       </main>
-      <footer className="mx-auto max-w-6xl px-6 pb-7 text-xs opacity-50">Waystation · A shared home for your agents</footer>
+      <footer className="mx-auto max-w-6xl px-6 pb-7 text-xs opacity-50">Commonflame · A shared home for your agents</footer>
     </div>
   );
 }
