@@ -1919,6 +1919,7 @@
           badgeRow.appendChild(h("span", { className: "type-badge origin-badge" }, originLabel));
         }
         if (a.model) badgeRow.appendChild(h("span", { className: "type-badge model-badge" }, friendlyModel(a.model)));
+        else if (["mcp", "external_gateway"].includes(a.origin)) badgeRow.appendChild(h("span", { className: "type-badge model-badge" }, "External host"));
         const setupStatusBadge = setupBadge(a);
         if (setupStatusBadge) {
           badgeRow.appendChild(h("span", { className: "type-badge " + setupStatusBadge.className }, setupStatusBadge.label));
@@ -2048,6 +2049,11 @@
         const f = h("div", { className: "field" });
         f.appendChild(h("div", { className: "field-label" }, "Model"));
         f.appendChild(h("div", { className: "field-value" }, friendlyModel(a.model)));
+        fields.appendChild(f);
+      } else if (["mcp", "external_gateway"].includes(a.origin)) {
+        const f = h("div", { className: "field" });
+        f.appendChild(h("div", { className: "field-label" }, "Runtime"));
+        f.appendChild(h("div", { className: "field-value" }, "External host · model not reported"));
         fields.appendChild(f);
       }
       const statusField = h("div", { className: "field" });

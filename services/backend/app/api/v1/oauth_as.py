@@ -123,10 +123,12 @@ class DeviceApprovalPrincipal:
     space_id: str
 
 
-async def _require_human_sponsor(session) -> uuid.UUID:
+async def _require_account_sponsor(session) -> uuid.UUID:
+    # A normal account can be operated by a person or an autonomous agent.
+    # A scoped MCP credential cannot mint a new team grant on its own.
     if (getattr(session, "is_agent", False) or getattr(session, "principal_type", "user") != "user"
             or not session.user.active or session.user.auth_provider not in {"builtin", "local"}):
-        raise HTTPException(status_code=403, detail={"error": "human_sponsor_required"})
+        raise HTTPException(status_code=403, detail={"error": "account_sponsor_required"})
     try:
         space_id = uuid.UUID(str(session.space_id))
     except (ValueError, TypeError) as exc:
@@ -162,7 +164,7 @@ def _device_verification_uri(request: Request) -> str:
 
 def _mcp_connection_metadata(resource_url: str) -> dict[str, Any]:
     return {"resource": resource_url, "agent_identity": "signed_agent_id",
-            "onboarding": "human_sponsored_oauth",
+            "onboarding": "account_sponsored_oauth",
             "agent_url_template": resource_url + "/agents/{agent_name}"}
 
 
@@ -388,7 +390,7 @@ async def get_device_approval_principal(request: Request, db: AsyncSession = Dep
     if not token:
         raise HTTPException(status_code=401, detail={"error": "login_required"}, headers={"WWW-Authenticate": "Bearer"})
     session = await get_secure_session(request=request, token=token, db=db)
-    space_id = await _require_human_sponsor(session)
+    space_id = await _require_account_sponsor(session)
     return DeviceApprovalPrincipal(user_id=str(session.user.id), space_id=str(space_id))
 
 
@@ -425,7 +427,7 @@ def _oauth_authorize_session_token(request: Request) -> str | None:
     dependencies with auto_error=True turn missing credentials into the default
     `401 {"detail":"Not authenticated"}` before OAuth request validation can run,
     creating a chicken-and-egg deadlock for new MCP clients. Keep token lookup
-    optional here and redirect unauthenticated humans to login/consent instead.
+    optional here and redirect unauthenticated account owners to login/consent instead.
 
     Deliberately do not accept ambient cookies on this GET endpoint: a
     top-level cross-site navigation can carry SameSite=Lax cookies, so minting an
@@ -668,7 +670,7 @@ async def _resolve_or_create_oauth_agent(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "error": "invalid_target",
-                "error_description": "human approval has no workspace binding",
+                "error_description": "account approval has no workspace binding",
             },
         )
     await verify_space_membership(db, user.id, target_space_id)
@@ -1014,7 +1016,7 @@ async def _issue_authorization_code_redirect(
     )
 
     code = f"code_{secrets.token_urlsafe(32)}"
-    space_id = await _require_human_sponsor(session)
+    space_id = await _require_account_sponsor(session)
     record = OAuthAuthorizationCode(
         code_hash=hash_token(code),
         client_id=client_id,
@@ -1090,7 +1092,7 @@ async def approve_authorization(request: Request, db: AsyncSession = Depends(get
     if not isinstance(params.get("approved"), bool):
         raise HTTPException(status_code=400, detail={"error": "invalid_request", "error_description": "Explicit approval or denial required"})
     session = await get_secure_session(request=request, token=token, db=db)
-    await _require_human_sponsor(session)
+    await _require_account_sponsor(session)
     authorize = {key: params.get(key) for key in ("response_type", "client_id", "redirect_uri", "scope", "state", "resource", "code_challenge", "code_challenge_method")}
     if not params["approved"]:
         response = await _authorization_error_redirect(db=db, authorize=authorize,
@@ -1315,7 +1317,7 @@ async def _handle_authorization_code(params: dict[str, str], db: AsyncSession):
     if not verifier or _pkce_challenge(verifier) != record.code_challenge:
         return _oauth_error("invalid_grant", "PKCE verification failed")
     if params.get("resource") and params["resource"] not in {record.resource, _default_resource_url()}:
-        return _oauth_error("invalid_target", "resource does not match human approval")
+        return _oauth_error("invalid_target", "resource does not match account approval")
 
     record.consumed_at = _now_utc()
     response = await _issue_oauth_token_response(
@@ -1355,7 +1357,7 @@ async def _handle_refresh_token(params: dict[str, str], db: AsyncSession):
         return _oauth_error("invalid_client", "client authentication failed", 401)
 
     if params.get("resource") and params["resource"] not in {record.resource, _default_resource_url()}:
-        return _oauth_error("invalid_target", "resource does not match human approval")
+        return _oauth_error("invalid_target", "resource does not match account approval")
     refresh_scope = _validate_requested_scope(params.get("scope")) or record.scope
     _validate_scope_subset(refresh_scope, record.scope)
 
@@ -1446,7 +1448,7 @@ async def token_endpoint(request: Request, db: AsyncSession = Depends(get_db_ses
         scope = record.scope or DEFAULT_USER_SCOPE
         audience = _validated_resource_url(record.resource)
         if params.get("resource") and params["resource"] not in {record.resource, _default_resource_url()}:
-            return _oauth_error("invalid_target", "resource does not match human approval")
+            return _oauth_error("invalid_target", "resource does not match account approval")
         record.consumed_at = _now_utc()
         response = await _issue_oauth_token_response(
             db,

@@ -66,6 +66,7 @@ def test_discovery_uses_configured_origin_never_forwarded_host():
     assert data['authorization_endpoint']=='http://localhost:3000/oauth/authorize'
     assert data['registration_endpoint']=='http://localhost:3000/oauth/register'
     assert data['mcp']['resource']=='http://localhost:3000/mcp'
+    assert data['mcp']['onboarding']=='account_sponsored_oauth'
     assert data['code_challenge_methods_supported']==['S256']
 
 
@@ -120,11 +121,30 @@ async def test_authorize_missing_explicit_decision_or_bearer_does_not_issue():
 async def test_agent_or_non_member_cannot_sponsor_another_agent():
     db=fake_db();user=SimpleNamespace(id=uuid.uuid4(),active=True,auth_provider='builtin')
     session=SimpleNamespace(user=user,space_id=str(uuid.uuid4()),db=db,is_agent=True,principal_type='agent')
-    with pytest.raises(HTTPException) as exc: await oauth_as._require_human_sponsor(session)
+    with pytest.raises(HTTPException) as exc: await oauth_as._require_account_sponsor(session)
     assert exc.value.status_code==403
     session.is_agent=False;session.principal_type='user';db.scalar.return_value=False
-    with pytest.raises(HTTPException) as exc: await oauth_as._require_human_sponsor(session)
+    with pytest.raises(HTTPException) as exc: await oauth_as._require_account_sponsor(session)
     assert exc.value.status_code==403
+
+
+@pytest.mark.asyncio
+async def test_automation_owned_account_can_authorize_its_workers(monkeypatch):
+    # "user" is an authenticated account principal, not a claim of biology.
+    db = fake_db()
+    owner = SimpleNamespace(id=uuid.uuid4(), username='automation_team_owner',
+                            active=True, auth_provider='builtin')
+    space = uuid.uuid4()
+    session = SimpleNamespace(user=owner, space_id=str(space), db=db,
+                              is_agent=False, principal_type='user')
+    monkeypatch.setattr(oauth_as, 'get_secure_session', AsyncMock(return_value=session))
+    response = await oauth_as.approve_authorization(
+        request(body={**authorize_params(), 'approved':True},
+                headers={'authorization':'Bearer synthetic-account-session'}), db)
+    assert response.status_code == 200
+    grant = db.add.call_args.args[0]
+    assert grant.owner_user_id == owner.id
+    assert grant.authorized_space_id == space
 
 
 @pytest.mark.asyncio

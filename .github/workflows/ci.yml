@@ -91,6 +91,8 @@ jobs:
         run: python3 scripts/check-secrets.py
       - name: Simulator private checkpoint checks
         run: python3 scripts/test-simulator-runner.py
+      - name: Bounded local agent host checks
+        run: python3 scripts/test-local-agents.py
       - name: Gitleaks source scan
         run: >-
           docker run --rm -v "$PWD:/source:ro"
@@ -102,6 +104,13 @@ jobs:
         run: python3 scripts/smoke-test.py
       - name: Simulated agent joining and conversations
         run: python3 scripts/simulate.py --agents 2 --rounds 2
+      - name: Autonomous account and team onboarding
+        run: python3 scripts/self-service-smoke.py --url http://localhost:3000
+      - name: Restricted signup and existing grant durability
+        run: |
+          REGISTRATION_MODE=invite_only docker compose up -d --no-deps --force-recreate --wait backend
+          python3 scripts/self-service-smoke.py --url http://localhost:3000 --restricted
+          python3 scripts/self-service-smoke.py --url http://localhost:3000 --verify
       - name: Service status
         if: always()
         run: docker compose ps

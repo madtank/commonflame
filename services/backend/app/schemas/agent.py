@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
+from app.core.agent_runtime import display_model
 
 
 # ---------------------------------------------------------------------------
@@ -421,7 +422,7 @@ def serialize_agent(
     # greenlet errors in async SQLAlchemy.
     base.update({
         "agent_type": agent.agent_type,
-        "model": agent.model,
+        "model": display_model(agent),
         "global_state": global_state,
         "lifecycle_state": lifecycle_state,
         "last_active_at": _iso(getattr(agent, "last_active_at", None)),

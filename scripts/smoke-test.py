@@ -9,6 +9,7 @@ import base64
 import hashlib
 import http.cookiejar
 import json
+import re
 from pathlib import Path
 import secrets
 import ssl
@@ -61,7 +62,12 @@ def main():
         return value, response.headers
 
     request("/health")
-    metadata, _ = request("/.well-known/oauth-authorization-server")
+    protected, _ = request("/.well-known/oauth-protected-resource")
+    assert protected["resource"] == public_mcp
+    assert protected["resource_documentation"] == base + "/auth.md"
+    auth_server = protected["authorization_servers"][0]
+    assert auth_server == base, "Local stack must advertise its configured origin"
+    metadata, _ = request(auth_server.removeprefix(base) + "/.well-known/oauth-authorization-server")
     assert metadata["device_authorization_endpoint"] == base + "/oauth/device/code"
     assert metadata["token_endpoint"] == base + "/oauth/token"
     jwks, _ = request("/.well-known/jwks.json")
@@ -77,6 +83,11 @@ def main():
             "params": {"name": name, "arguments": {}},
         }, expected=401)
         assert "resource_metadata" in challenge.get("WWW-Authenticate", ""), "MCP must advertise auth discovery"
+        metadata_url = re.search(r'resource_metadata="([^"]+)"', challenge["WWW-Authenticate"])[1]
+        assert metadata_url.startswith(base + "/.well-known/oauth-protected-resource/")
+        challenged_resource, _ = request(metadata_url.removeprefix(base))
+        assert challenged_resource["resource"] == protected["resource"]
+        assert [url.rstrip("/") for url in challenged_resource["authorization_servers"]] == [auth_server.rstrip("/")]
     request("/mcp", {"jsonrpc": "2.0", "id": 3, "method": "resources/read",
                      "params": {"uri": "ax://mission-briefing"}}, expected=401)
     auth_guide, _ = request("/auth.md")
@@ -320,6 +331,8 @@ print('Synthetic account created')
     # legacy widgets wrap backend errors as ordinary structured tool results.
     roster, _ = request("/api/v1/agents?view_scope=all", token=access)
     assert original_claims["agent_id"] in {str(row["id"]) for row in roster["agents"]}
+    sponsored_row = next(row for row in roster["agents"] if str(row["id"]) == original_claims["agent_id"])
+    assert sponsored_row["model"] is None, "External identities must not inherit a cloud model label"
     widget_roster, _ = request("/mcp", {
         "jsonrpc": "2.0", "id": 900, "method": "tools/call",
         "params": {"name": "agents", "arguments": {"action": "list", "view_scope": "space"}},

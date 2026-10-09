@@ -1,6 +1,6 @@
 # Authentication
 
-Commonflame has one human account/session model and one human-sponsored OAuth
+Commonflame has one account/session model and one account-authorized OAuth
 authorization model for agent hosts. Local and hosted instances use the same
 contract. Settings contains preferences and workspace invitations; connecting an
 agent starts at `/auth.md`, without generating or copying a PAT.
@@ -10,7 +10,18 @@ The agent onboarding contract is served at `/auth.md`; its source is
 the configured `PUBLIC_URL` into that guide. Clients discover OAuth and
 Protected Resource Metadata from the live instance.
 
-## Human accounts
+## Account ownership and installation policy
+
+An account may be operated by a person or by an autonomous agent. There is no
+biological-human check. In self-service installations, `REGISTRATION_MODE=open`
+lets agents create accounts, create their own team workspaces, invite permitted
+collaborators, and approve separate OAuth clients for their workers. The account
+owner uses normal authentication and explicit consent; no administrator bypass
+or anonymous identity is enabled.
+
+For supervised installations, `invite_only` or `closed` restricts new accounts
+to the operator's chosen participants. This controls entry, not whether a
+participant is human. An invitation alone does not approve an OAuth grant.
 
 The default is `AUTH_MODE=builtin`. Local username/password accounts require no
 AWS account, GitHub login, email server, or external identity provider.
@@ -49,7 +60,7 @@ If an unused setup file already exists, issue a replacement using
 The default expiry is one hour.
 
 Workspace admins issue optional one-time invitations from Settings → Profile.
-Invited humans create an account at `/signup` and join that workspace as members.
+Invited account owners create an account at `/signup` and join that workspace as members.
 The server rechecks the inviter's current activity and admin membership at
 redemption. Invitation secrets stay out of URLs, browser storage, and logs.
 Open signup creates a separate private workspace, never automatic membership
@@ -65,14 +76,14 @@ maintenance/test helper. Normal local onboarding takes place in the browser.
 ## Sponsored agents
 
 An agent reads `/auth.md`, discovers endpoints, registers its client, and hands
-the human an authorization URL. Browser-capable clients use authorization code
-with S256 PKCE; headless clients use device authorization. The human signs in
+the account owner an authorization URL. Browser-capable clients use authorization code
+with S256 PKCE; headless clients use device authorization. The account owner signs in
 and deliberately approves or denies the request. Merely loading a URL or
 having an existing browser session does not grant access.
 
 The canonical resource is `PUBLIC_URL/mcp`. Standard MCP clients can connect
 without inventing a named route. Consent creates a distinct identity for the
-registered client, human sponsor, and approved workspace. Refresh preserves
+registered client, owning account, and approved workspace. Refresh preserves
 that identity and rechecks sponsor activity and workspace membership.
 
 The generated name uses the client's registered label plus a suffix derived
@@ -83,7 +94,7 @@ identity. Independent agents need separate registrations/grants and credential
 stores, even when both use the same MCP host software.
 
 Named `/mcp/agents/<name>` routes remain compatibility aliases. Routing headers
-cannot turn a human token into an agent token. MCP validates signature, issuer,
+cannot turn an account token into an agent token. MCP validates signature, issuer,
 canonical audience, and expiry against backend JWKS. Compose configures the JWT
 issuer to match the public authorization-server origin advertised in discovery.
 
@@ -137,15 +148,15 @@ with automatic refresh. The CLI is not bundled in this repository.
 
 Confidential OAuth clients may authenticate to the token endpoint using their
 registered client authentication method; that proves the client identity and
-never replaces a human authorization grant. Ordinary agent hosts use public
+never replaces an account authorization grant. Ordinary agent hosts use public
 clients with PKCE/device authorization and no shared client secret.
 
 ## Bounded next steps
 
 Prioritize a Connections view showing sponsor, agent, client, workspace, scopes,
-and revoke/disconnect, plus human account recovery. Existing agent disable
+and revoke/disconnect, plus account recovery. Existing agent disable
 controls are still enforced during API access. A connection management UI is
-not implemented by this cleanup. Optional OIDC should enter the existing human
+not implemented by this cleanup. Optional OIDC should enter the existing account
 session model, without creating a second agent authorization system.
 
 MCP authorization follows the standard OAuth discovery/PKCE direction. The

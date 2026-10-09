@@ -2318,7 +2318,7 @@
         const empty = el("div", { className: "empty-state", "data-testid": "tasks-empty-state" });
         const emptyMessage = hasActiveFilters
           ? "No tasks match the current filters."
-          : "No tasks yet. Create your first task from this widget.";
+          : "No open tasks. Check Completed for finished work, or create a task.";
         empty.appendChild(el("div", null, emptyMessage));
         const emptyActions = el("div", { className: "empty-actions" });
         if (hasActiveFilters) {
@@ -2339,6 +2339,21 @@
             }
           });
           emptyActions.appendChild(clearBtn);
+        }
+        if (!hasActiveFilters) {
+          const completedBtn = el("button", { className: "btn-secondary", type: "button" }, "View completed tasks");
+          completedBtn.addEventListener("click", async () => {
+            state.activeStatus = "completed";
+            state.excludeDone = false;
+            state.offset = 0;
+            render();
+            try {
+              await fetchList();
+            } catch (error) {
+              showTaskError(errorMessageFromUnknown(error));
+            }
+          });
+          emptyActions.appendChild(completedBtn);
         }
         const createCta = el("button", { className: "btn-primary", type: "button" }, "Create task");
         createCta.addEventListener("click", () => {

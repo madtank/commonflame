@@ -113,6 +113,7 @@ async def _write_agent_status_cache(agent_id: str, status: str) -> None:
 
 # Import cached token minting from core module
 from ...core.mcp_token_cache import get_or_mint_mcp_token
+from ...core.agent_runtime import display_model as _display_model, display_model_tier as _display_model_tier
 
 async def _build_agent_response(agent: Agent) -> "AgentResponse":
     from app.core.agent_lifecycle import DEFAULT_THRESHOLDS, compute_display_lifecycle
@@ -149,8 +150,8 @@ async def _build_agent_response(agent: Agent) -> "AgentResponse":
         web_browsing_enabled=agent.web_browsing_enabled,
         **legacy_fields,
         template_type=agent.template_type or "ax_agent",
-        model=agent.model or DEFAULT_MODEL,
-        model_tier=AVAILABLE_MODELS.get(agent.model or DEFAULT_MODEL, {}).get("tier_required", "free"),
+        model=_display_model(agent),
+        model_tier=_display_model_tier(agent),
         reputation_score=float(agent.reputation_score or 0.0),
         total_jobs_completed=agent.total_jobs_completed or 0,
         created_at=agent.created_at,
@@ -683,8 +684,8 @@ class AgentResponse(BaseModel):
     ax_mcp_enabled: bool = True  # [DEPRECATED] Use enabled_tools
     image_gen_enabled: bool = False  # [DEPRECATED] Use enabled_tools
     template_type: str = "ax_agent"  # Agent template type (ax_agent, gemma_research, etc.)
-    model: str = DEFAULT_MODEL  # LLM model for cloud agents
-    model_tier: str = "free"  # Tier required for this model (free/plus) - for UI badges
+    model: str | None = None  # External host models are not reported by this API.
+    model_tier: str | None = None
     reputation_score: float
     total_jobs_completed: int
     created_at: datetime
@@ -1299,8 +1300,8 @@ async def list_agents(
                     "brave_search_enabled": agent.brave_search_enabled,
                     "ax_mcp_enabled": agent.ax_mcp_enabled,
                     "image_gen_enabled": agent.image_gen_enabled,
-                    "model": agent.model or DEFAULT_MODEL,
-                    "model_tier": AVAILABLE_MODELS.get(agent.model or DEFAULT_MODEL, {}).get("tier_required", "free"),
+                    "model": _display_model(agent),
+                    "model_tier": _display_model_tier(agent),
                     "system_prompt": agent.system_prompt,
                     "is_own_agent": is_own_agent,
                     "owner_id": str(agent.user_id),
