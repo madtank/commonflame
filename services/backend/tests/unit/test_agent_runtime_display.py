@@ -12,7 +12,7 @@ from app.schemas.agent import serialize_agent, DetailLevel
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("origin", ["mcp", "external_gateway", "cloud"])
+@pytest.mark.parametrize("origin", ["mcp", "external_gateway", "cloud", "agentcore", "space_agent"])
 async def test_response_distinguishes_external_identity_from_cloud_runtime(monkeypatch, origin):
     now = datetime.now(timezone.utc)
     agent = Agent(
@@ -31,7 +31,7 @@ async def test_response_distinguishes_external_identity_from_cloud_runtime(monke
     assert roster_response["model"] == response["model"]
     assert response["id"] == str(agent.id)
     assert response["origin"] == origin
-    if origin == "cloud":
+    if origin in {"cloud", "agentcore", "space_agent"}:
         assert response["model"] == agents.DEFAULT_MODEL
         assert response["model_tier"] is not None
     else:

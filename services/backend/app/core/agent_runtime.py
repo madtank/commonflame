@@ -5,7 +5,7 @@ from app.core.models_config import AVAILABLE_MODELS, DEFAULT_MODEL
 def display_model(agent) -> str | None:
     # The database default populates external identities too; it does not
     # attest to the model (or even existence of a model) in an independent host.
-    if agent.origin not in (None, "cloud"):
+    if agent.origin in ("mcp", "external_gateway"):
         return None
     return agent.model or DEFAULT_MODEL
 

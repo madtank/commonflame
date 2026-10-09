@@ -123,6 +123,9 @@ async def test_agent_or_non_member_cannot_sponsor_another_agent():
     session=SimpleNamespace(user=user,space_id=str(uuid.uuid4()),db=db,is_agent=True,principal_type='agent')
     with pytest.raises(HTTPException) as exc: await oauth_as._require_account_sponsor(session)
     assert exc.value.status_code==403
+    session.is_agent=False;session.principal_type='user';db.scalar.return_value=False
+    with pytest.raises(HTTPException) as exc: await oauth_as._require_account_sponsor(session)
+    assert exc.value.status_code==403
 
 
 @pytest.mark.asyncio
@@ -142,9 +145,6 @@ async def test_automation_owned_account_can_authorize_its_workers(monkeypatch):
     grant = db.add.call_args.args[0]
     assert grant.owner_user_id == owner.id
     assert grant.authorized_space_id == space
-    session.is_agent=False;session.principal_type='user';db.scalar.return_value=False
-    with pytest.raises(HTTPException) as exc: await oauth_as._require_account_sponsor(session)
-    assert exc.value.status_code==403
 
 
 @pytest.mark.asyncio

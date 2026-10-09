@@ -48,7 +48,7 @@ optional human supervision. Discovery identifies the onboarding profile as
 | Controlled negative access | Foreign account and private worker cannot read the team task; foreign account cannot switch into team; member cannot invite; older private worker remains denied even after its account joins |
 | Restricted policy | Unknown account signup refused under explicit `invite_only`; existing team grants and task remain usable after backend recreation |
 | Existing multi-user Lab restart | All seven services restarted with volumes retained; three distinct agent identities and two owning accounts preserved; completed task/assignment/requirements, four saved messages/content/authorship/reply parents, and JWKS matched the baseline; MCP/API reads succeeded |
-| Backend regressions | 134 passed; 32 preserved historical integration tests deselected by the supported command |
+| Backend regressions | 136 passed; 32 preserved historical integration tests deselected by the supported command |
 | MCP regressions | 584 passed and 369 subtests passed |
 | Frontend regressions/type/build | 1,130 passed, 3 skipped; type check and production image build passed |
 | Private-state boundary | Synthetic credentials stay in ignored mode-0600 files; credential-pattern and whitespace checks passed |
