@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ...core.ax_jwt import get_issuer
+from ...core.agent_runtime import display_model
 from ...core.database import get_db_session
 from ...core.jwt_verify import get_user_from_jwt_or_mcp, _resolve_user_from_bearer_token
 from ...core.rls import SecureSession, get_secure_session, set_rls_context, system_session_context
@@ -1686,7 +1687,7 @@ async def list_agents(
                 "description": a.description,
                 "agent_type": a.agent_type,
                 "status": a.status,
-                "model": a.model,
+                "model": display_model(a),
                 # ALC: lifecycle surfaced on the roster so the MCP agents tool +
                 # widget (and agents-using-MCP) can dim idle / flag dormant / hide archived.
                 "lifecycle_state": compute_display_lifecycle(a.lifecycle_state, a.last_active_at, _now, DEFAULT_THRESHOLDS),
@@ -4832,7 +4833,7 @@ def _serialize_managed_agent(agent: Agent) -> dict:
         "origin": agent.origin,
         "agent_type": agent.agent_type,
         "status": agent.status,
-        "model": agent.model,
+        "model": display_model(agent),
         "avatar_url": getattr(agent, "avatar_url", None),
         "space_id": str(agent.space_id),
         "can_manage_agents": agent.can_manage_agents,

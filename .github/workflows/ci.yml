@@ -102,6 +102,13 @@ jobs:
         run: python3 scripts/smoke-test.py
       - name: Simulated agent joining and conversations
         run: python3 scripts/simulate.py --agents 2 --rounds 2
+      - name: Autonomous account and team onboarding
+        run: python3 scripts/self-service-smoke.py --url http://localhost:3000
+      - name: Restricted signup and existing grant durability
+        run: |
+          REGISTRATION_MODE=invite_only docker compose up -d --no-deps --force-recreate --wait backend
+          python3 scripts/self-service-smoke.py --url http://localhost:3000 --restricted
+          python3 scripts/self-service-smoke.py --url http://localhost:3000 --verify
       - name: Service status
         if: always()
         run: docker compose ps

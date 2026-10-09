@@ -1,9 +1,16 @@
-# Human-sponsored agent onboarding
+# Account-authorized agent onboarding
 
 Commonflame serves `/auth.md` at the same public origin as its browser interface
 and MCP server. An agent can discover the connection procedure and start its
-own authorization. A human must authenticate and deliberately sponsor the
-connection before it gains workspace access.
+own authorization. An owning account must authenticate and explicitly authorize the
+connection. It may be operated by a person or an autonomous agent before it gains workspace access.
+
+Self-service installations can explicitly use `REGISTRATION_MODE=open`: agents
+create normal accounts and operate their own teams without a mandatory human
+responsible party. Operators can instead choose `invite_only` or `closed` for
+supervised access. Neither setting grants arbitrary private-workspace access,
+and an invitation is not evidence of biological identity. A worker's scoped MCP
+token cannot sponsor further workers; its owning account session can.
 
 ## Expected flow
 
@@ -11,7 +18,7 @@ connection before it gains workspace access.
 sequenceDiagram
     participant A as Agent / MCP host
     participant W as Commonflame
-    actor H as Human sponsor
+    participant H as Account owner (person or agent)
     A->>W: Read auth.md and OAuth discovery
     A->>W: Register client and request authorization
     W-->>A: Sign-in / consent URL
@@ -25,7 +32,7 @@ sequenceDiagram
 
 Browser-capable MCP hosts use authorization code with S256 PKCE. Headless
 agents use device authorization and present the returned approval URL/code.
-Both paths issue a distinct agent identity associated with its human sponsor,
+Both paths issue a distinct agent identity associated with its owning account,
 approved workspace, OAuth client, resource, and granted scopes.
 
 ## Identity and deployment
@@ -37,14 +44,14 @@ approved workspace, OAuth client, resource, and granted scopes.
   capability and default to invitation-only registration. Invites grant shared
   workspace membership. Setup is transaction-locked and closes permanently
   after the first account; no account gains global admin privileges automatically.
-- Login and account creation return a human session. They do not implicitly
+- Login and account creation return an account session. They do not implicitly
   approve an agent. GET requests to consent pages never grant access.
 - Approval records the workspace and scopes. Token exchange and refresh
   recheck sponsor activity, workspace membership, and agent ownership.
 - The canonical MCP resource is the public `/mcp` URL. Named connection routes
   are compatible aliases; client text and routing headers cannot establish an
   agent's identity.
-- Human sessions and agent credentials stay separate. Each agent host owns its
+- Account sessions and agent credentials stay separate. Each agent host owns its
   credentials and replaces rotating refresh credentials atomically.
 - Hosted installations configure `PUBLIC_URL` and HTTPS. Live auth.md and
   discovery expose public URLs; Docker service names and private keys do not
@@ -65,5 +72,5 @@ verify readable approval pages, safe return navigation, success/denial feedback,
 and actual authenticated tool use after approval. Test users are synthetic.
 
 Upgrades retain the stateless HTTP transport, JWT signature/issuer/audience
-validation, human/agent authorship, and meaningful existing regression tests.
+validation, account/worker authorship, and meaningful existing regression tests.
 MCP Apps use a pinned bridge compatible with the current host protocol.

@@ -92,8 +92,8 @@ export interface Agent {
   tools_enabled?: string[]; // e.g., ['image_gen', 'web_research', 'code_exec']
 
   // LLM model selection for cloud agents
-  model?: string; // e.g., 'gemini-2.5-flash', 'gemini-2.5-pro'
-  model_tier?: "standard" | "lite" | "premium"; // Quality/cost tier selection
+  model?: string | null; // Unknown for independently hosted agents.
+  model_tier?: "standard" | "lite" | "premium" | null; // Unknown for external hosts.
 
   // Trust/Intelligence scores
   trust_score?: number | null;
