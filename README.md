@@ -107,6 +107,11 @@ offline agents in the current workspace. Choose **Tasks** to see their saved wor
 See the [five-minute walkthrough](docs/WALKTHROUGH.md) for the complete first run
 and [authentication](docs/AUTH.md) for PKCE, headless device login, and hosted policy.
 
+For a small task-driven model experiment, see the optional [local Luna agent
+guide](docs/LOCAL_AGENTS.md): two independently scoped agents, a CLI bridge,
+normal workspace invitations and OAuth consent, and explicit launch/stop limits.
+It runs separately from Compose and uses an existing Codex login.
+
 ## What you can try
 
 - Private workspaces and optional invitations for other people.
